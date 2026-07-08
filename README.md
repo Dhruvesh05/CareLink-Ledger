@@ -1,43 +1,46 @@
 # CareLink Ledger
 
-## Cross-Chain Healthcare Data Interoperability Platform
+CareLink Ledger is a cross-chain healthcare data interoperability platform designed to synchronize Electronic Health Records across Hyperledger Fabric, Ethereum Sepolia, and Polygon Amoy through a custom relay bridge.
 
-CareLink Ledger is a blockchain-based healthcare interoperability platform that synchronizes electronic health records across:
+This repository is currently scaffolded only. It contains the complete folder architecture, placeholder configuration files, and deployment-ready boundaries for:
 
-- Hyperledger Fabric
-- Ethereum Sepolia
-- Polygon Amoy
+- Hyperledger Fabric chaincode and network assets
+- Ethereum and Polygon smart contract projects
+- Relay bridge services
+- Node.js backend APIs
+- Python FastAPI analytics services
+- React frontend
+- HAPI FHIR R4 server assets
+- Dataset, generator, docs, scripts, and shared configs
 
-using a custom relay bridge.
+No application logic has been implemented yet.
 
----
-
-## Tech Stack
+## Intended Stack
 
 - Hyperledger Fabric
 - Solidity
 - Go
-- Node.js
-- Express.js
+- Node.js and Express.js
 - React.js
-- FastAPI
-- Docker
-- HAPI FHIR
+- Python and FastAPI
+- HAPI FHIR R4
 - MongoDB Atlas
-- IPFS
+- IPFS via Pinata
+- Docker and Docker Compose
 
----
-
-## Project Structure
+## Repository Layout
 
 ```text
 carelink/
 ├── blockchain/
-├── backend/
 ├── bridge/
+├── backend/
 ├── analytics/
 ├── frontend/
 ├── fhir/
 ├── dataset/
-└── generator/
+├── generator/
+├── docs/
+├── scripts/
+└── configs/
 ```

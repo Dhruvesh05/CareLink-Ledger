@@ -1,0 +1,4 @@
+# CareLink Ledger Docker Compose placeholder.
+# Add service definitions for backend, frontend, analytics, FHIR, blockchain tooling, and supporting infrastructure later.
+
+services: {}
