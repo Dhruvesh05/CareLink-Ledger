@@ -1,16 +1,16 @@
 import { defineConfig } from "hardhat/config";
 import hardhatToolboxMochaEthersPlugin from "@nomicfoundation/hardhat-toolbox-mocha-ethers";
-import * as dotenv from "dotenv";
 import hardhatVerify from "@nomicfoundation/hardhat-verify";
+import * as dotenv from "dotenv";
 
+// Load environment variables from the root .env file
 dotenv.config({ path: "../../.env" });
-console.log("ETHERSCAN =", process.env.ETHERSCAN_API_KEY);
 
 export default defineConfig({
   plugins: [
     hardhatToolboxMochaEthersPlugin,
-    hardhatVerify
-],
+    hardhatVerify,
+  ],
 
   solidity: {
     version: "0.8.28",
@@ -23,11 +23,13 @@ export default defineConfig({
   },
 
   networks: {
+    // Local Hardhat Network
     hardhatMainnet: {
       type: "edr-simulated",
       chainType: "l1",
     },
 
+    // Ethereum Sepolia Testnet
     sepolia: {
       type: "http",
       chainType: "l1",
@@ -37,6 +39,7 @@ export default defineConfig({
         : [],
     },
 
+    // Polygon Amoy Testnet
     amoy: {
       type: "http",
       chainType: "l1",
@@ -44,11 +47,12 @@ export default defineConfig({
       accounts: process.env.PRIVATE_KEY
         ? [process.env.PRIVATE_KEY]
         : [],
-    },  
+    },
   },
+
   verify: {
-        etherscan: {
-            apiKey: process.env.ETHERSCAN_API_KEY || "",
-        }
-    }
+    etherscan: {
+      apiKey: process.env.ETHERSCAN_API_KEY || "",
+    },
+  },
 });

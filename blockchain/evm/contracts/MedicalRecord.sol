@@ -90,6 +90,12 @@ contract MedicalRecord {
     ///      for the same patient twice (accidental double-submit or replay).
     mapping(bytes32 => bool) private _fileHashUsed;
 
+    /// @dev Doctors explicitly granted read access to a record by its
+    ///      patient, beyond the record's own treating doctor. Keyed
+    ///      recordId => doctor => authorized. Only the patient who owns the
+    ///      record may grant or revoke this.
+    mapping(uint256 => mapping(address => bool)) private _authorizedDoctors;
+
     // ---------------------------------------------------------------------
     // EVENTS
     // ---------------------------------------------------------------------
@@ -129,6 +135,20 @@ contract MedicalRecord {
         uint256 timestamp
     );
 
+    event AccessGranted(
+        uint256 indexed recordId,
+        address indexed patient,
+        address indexed doctor,
+        uint256 timestamp
+    );
+
+    event AccessRevoked(
+        uint256 indexed recordId,
+        address indexed patient,
+        address indexed doctor,
+        uint256 timestamp
+    );
+
     // ---------------------------------------------------------------------
     // CUSTOM ERRORS
     // ---------------------------------------------------------------------
@@ -156,6 +176,9 @@ contract MedicalRecord {
     error InvalidCategory();
     error VersionMismatch();
     error DuplicateRecord();
+
+    error AccessAlreadyGranted();
+    error AccessNotGranted();
 
     // ---------------------------------------------------------------------
     // MODIFIERS
@@ -288,6 +311,7 @@ contract MedicalRecord {
         if (expectedVersion != record.version) revert VersionMismatch();
 
         _validateDoctor(msg.sender);
+        _validateHospital(record.hospital);
         _validateHashes(newIpfsHash, newFileHash);
         _validateCategory(newCategory);
 
@@ -333,12 +357,72 @@ contract MedicalRecord {
     }
 
     // ---------------------------------------------------------------------
+    // ACCESS DELEGATION
+    // ---------------------------------------------------------------------
+
+    /// @notice Lets the patient who owns a record grant an additional
+    ///         doctor read access to it, beyond the doctor who created it.
+    /// @dev Only the record's own patient may call this — not an admin —
+    ///      since access delegation is the patient's decision to make about
+    ///      their own data. The granted doctor must currently be active and
+    ///      verified in DoctorRegistry; this is re-checked at read time via
+    ///      `_authorizeRead` as well, so a doctor who later becomes inactive
+    ///      or unverified automatically loses read access without the
+    ///      patient needing to explicitly revoke. Here it is checked up
+    ///      front purely to reject an obviously-invalid grant early.
+    function grantAccess(uint256 recordId, address doctor) external existingRecord(recordId) {
+        StoredRecord storage record = _records[recordId];
+
+        if (msg.sender != record.patient) revert Unauthorized();
+        _validateDoctor(doctor);
+        if (_authorizedDoctors[recordId][doctor]) revert AccessAlreadyGranted();
+
+        _authorizedDoctors[recordId][doctor] = true;
+
+        emit AccessGranted(recordId, msg.sender, doctor, block.timestamp);
+        auditLog.createAudit(recordId, msg.sender, IAuditLog.Action.GRANT_ACCESS, "Doctor access granted");
+    }
+
+    /// @notice Lets the patient who owns a record revoke a previously
+    ///         granted doctor's read access to it.
+    /// @dev Revoking access from the record's own treating doctor (the one
+    ///      who created it) has no effect on their access — that access
+    ///      comes from having created the record, not from a grant, and is
+    ///      only removed by `deactivateMedicalRecord`.
+    function revokeAccess(uint256 recordId, address doctor) external existingRecord(recordId) {
+        StoredRecord storage record = _records[recordId];
+
+        if (msg.sender != record.patient) revert Unauthorized();
+        if (!_authorizedDoctors[recordId][doctor]) revert AccessNotGranted();
+
+        _authorizedDoctors[recordId][doctor] = false;
+
+        emit AccessRevoked(recordId, msg.sender, doctor, block.timestamp);
+        auditLog.createAudit(recordId, msg.sender, IAuditLog.Action.REVOKE_ACCESS, "Doctor access revoked");
+    }
+
+    /// @notice Returns whether a doctor currently holds patient-granted
+    ///         access to a record (independent of whether they created it).
+    /// @dev This reflects only the stored grant flag, not whether that
+    ///      access would currently be usable — a granted doctor who has
+    ///      since gone inactive or unverified still shows `true` here, but
+    ///      will be rejected by `_authorizeRead` at actual read time. The
+    ///      grant itself is left untouched so access resumes automatically
+    ///      once the doctor is reactivated/reverified, with no need for the
+    ///      patient to grant again.
+    function isAuthorizedDoctor(uint256 recordId, address doctor) external view returns (bool) {
+        return _authorizedDoctors[recordId][doctor];
+    }
+
+    // ---------------------------------------------------------------------
     // READ ACCESS
     // ---------------------------------------------------------------------
 
     /// @notice Free, non-logging read of a record's metadata. Subject to the
     ///         same access rules as `viewRecord`: the owning patient, the
-    ///         creating doctor, the originating hospital, or an admin.
+    ///         creating doctor, any doctor the patient has granted access to
+    ///         via `grantAccess` (provided that doctor is currently active
+    ///         and verified), the originating hospital, or an admin.
     /// @dev Use this for cheap off-chain reads (dashboards, list views)
     ///      where an on-chain access trail isn't required. Being a `view`
     ///      function it can never write to AuditLog.
@@ -349,7 +433,7 @@ contract MedicalRecord {
         returns (MedicalRecordView memory)
     {
         StoredRecord storage record = _records[recordId];
-        _authorizeRead(record);
+        _authorizeRead(recordId, record);
         return _toView(recordId, record);
     }
 
@@ -367,9 +451,29 @@ contract MedicalRecord {
         returns (MedicalRecordView memory)
     {
         StoredRecord storage record = _records[recordId];
-        _authorizeRead(record);
+        _authorizeRead(recordId, record);
 
         auditLog.createAudit(recordId, msg.sender, IAuditLog.Action.VIEW_RECORD, "Record viewed");
+
+        return _toView(recordId, record);
+    }
+
+    /// @notice Same access rules and return value as `getMedicalRecord`, but
+    ///         writes a DOWNLOAD_RECORD entry to AuditLog instead of
+    ///         VIEW_RECORD.
+    /// @dev Use this when the caller is retrieving the underlying file
+    ///      itself (e.g. fetching it from IPFS via the returned
+    ///      `ipfsHash`), so the audit trail can distinguish a metadata
+    ///      view from an actual file download.
+    function logDownload(uint256 recordId)
+        external
+        existingRecord(recordId)
+        returns (MedicalRecordView memory)
+    {
+        StoredRecord storage record = _records[recordId];
+        _authorizeRead(recordId, record);
+
+        auditLog.createAudit(recordId, msg.sender, IAuditLog.Action.DOWNLOAD_RECORD, "Record downloaded");
 
         return _toView(recordId, record);
     }
@@ -430,14 +534,36 @@ contract MedicalRecord {
         if (bytes(fileHash).length == 0) revert EmptyFileHash();
     }
 
-    /// @dev Read-access gate shared by every record-retrieval path.
-    function _authorizeRead(StoredRecord storage record) internal view {
+    /// @dev Read-access gate shared by every record-retrieval path
+    ///      (`getMedicalRecord`, `viewRecord`, `logDownload`). A caller
+    ///      passes if they are the owning patient, the treating doctor, the
+    ///      originating hospital, an admin, OR a doctor the patient has
+    ///      separately granted access to via `grantAccess` — but a granted
+    ///      doctor only counts if they are still active and verified in
+    ///      DoctorRegistry right now. This means access silently pauses the
+    ///      moment a granted doctor is deactivated or has their
+    ///      verification revoked, and silently resumes if they're later
+    ///      reactivated/reverified, with no action needed from the patient
+    ///      either way. The treating doctor's own access is not subject to
+    ///      this re-check here; their ability to write is already gated by
+    ///      `_validateDoctor` on the write paths, and `deactivateMedicalRecord`
+    ///      is the intended way to fully retire a record.
+    function _authorizeRead(uint256 recordId, StoredRecord storage record) internal view {
         bool isPatientOwner = msg.sender == record.patient;
         bool isTreatingDoctor = msg.sender == record.doctor;
+        bool isGrantedDoctor = _authorizedDoctors[recordId][msg.sender]
+            && doctorRegistry.isDoctorActive(msg.sender)
+            && doctorRegistry.isDoctorVerified(msg.sender);
         bool isOriginatingHospital = msg.sender == record.hospital;
         bool isAdminCaller = accessControl.isAdmin(msg.sender);
 
-        if (!isPatientOwner && !isTreatingDoctor && !isOriginatingHospital && !isAdminCaller) {
+        if (
+            !isPatientOwner &&
+            !isTreatingDoctor &&
+            !isGrantedDoctor &&
+            !isOriginatingHospital &&
+            !isAdminCaller
+        ) {
             revert Unauthorized();
         }
     }
