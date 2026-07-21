@@ -1,0 +1,21 @@
+export const CONTRACTS = {
+
+  ACCESS_CONTROL:
+    process.env.ACCESS_CONTROL_ADDRESS!,
+
+  PATIENT_REGISTRY:
+    process.env.PATIENT_REGISTRY_ADDRESS!,
+
+  DOCTOR_REGISTRY:
+    process.env.DOCTOR_REGISTRY_ADDRESS!,
+
+  HOSPITAL_REGISTRY:
+    process.env.HOSPITAL_REGISTRY_ADDRESS!,
+
+  AUDIT_LOG:
+    process.env.AUDIT_LOG_ADDRESS!,
+
+  MEDICAL_RECORD:
+    process.env.MEDICAL_RECORD_ADDRESS!
+
+};
