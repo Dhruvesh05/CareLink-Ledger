@@ -30,4 +30,28 @@ router.get(
 
 );
 
+router.post(
+
+    "/update-blood-group",
+
+    controller.updateBloodGroup.bind(controller)
+
+);
+
+router.post(
+
+    "/deactivate",
+
+    controller.deactivatePatient.bind(controller)
+
+);
+
+router.post(
+
+    "/reactivate",
+
+    controller.reactivatePatient.bind(controller)
+
+);
+
 export default router;

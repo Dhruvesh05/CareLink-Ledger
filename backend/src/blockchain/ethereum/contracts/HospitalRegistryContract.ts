@@ -27,6 +27,25 @@ export class HospitalRegistryContract {
 
 
 
+    async verifyHospital(
+        wallet: string
+    ) {
+
+
+        const tx =
+            await ethereum.hospitalRegistry.verifyHospital(
+                wallet
+            );
+
+
+        return await tx.wait();
+
+    }
+
+
+
+
+
     async getHospital(
         wallet: string
     ) {

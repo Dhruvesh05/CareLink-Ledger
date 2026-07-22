@@ -155,6 +155,11 @@ export class HospitalController {
 
     /**
      * POST /api/hospitals/verify
+     *
+     * Actually submits the on-chain verifyHospital() transaction.
+     * Previously this only re-read isHospitalVerified() and never called
+     * verifyHospital() itself, so a hospital could never be moved from
+     * unverified to verified through this endpoint.
      */
     async verifyHospital(req: Request, res: Response) {
 
@@ -169,13 +174,17 @@ export class HospitalController {
                 });
             }
 
+            const transaction =
+                await this.hospitalService.verifyHospital(wallet);
+
             const verified =
                 await this.hospitalService.isHospitalVerified(wallet);
 
             return res.json({
                 success: true,
                 wallet,
-                verified
+                verified,
+                transaction: serializeBigInt(transaction)
             });
 
         } catch (error: any) {
@@ -184,7 +193,10 @@ export class HospitalController {
 
             return res.status(500).json({
                 success: false,
-                message: error.message
+                message: error.message,
+                reason: error.reason,
+                code: error.code,
+                shortMessage: error.shortMessage
             });
 
         }

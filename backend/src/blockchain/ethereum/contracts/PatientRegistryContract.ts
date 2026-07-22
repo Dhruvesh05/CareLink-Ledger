@@ -1,6 +1,8 @@
 import { ethereum } from "../config/ethereum";
 
+
 export class PatientRegistryContract {
+
 
     async registerPatient(
         fullNameHash: string,
@@ -9,46 +11,103 @@ export class PatientRegistryContract {
         gender: string
     ) {
 
-        const tx = await ethereum.patientRegistry.registerPatient(
-            fullNameHash,
-            dobHash,
-            bloodGroup,
-            gender
-        );
+
+        const tx =
+            await ethereum.patientRegistry.registerPatient(
+                fullNameHash,
+                dobHash,
+                bloodGroup,
+                gender
+            );
+
 
         return await tx.wait();
 
     }
 
-    async getPatient(wallet: string) {
 
-        return await ethereum.patientRegistry.getPatient(wallet);
+
+
+
+    async getPatient(
+        wallet: string
+    ) {
+
+
+        return await ethereum.patientRegistry.getPatient(
+            wallet
+        );
+
+    }
+
+
+
+
+
+    async isPatientActive(
+        wallet: string
+    ) {
+
+
+        return await ethereum.patientRegistry.isPatientActive(
+            wallet
+        );
 
     }
 
-    async isPatientActive(wallet: string) {
 
-        return await ethereum.patientRegistry.isPatientActive(wallet);
 
-    }
 
-    async getRecordCount(wallet: string) {
-
-        return await ethereum.patientRegistry.getRecordCount(wallet);
-
-    }
 
     async updateBloodGroup(
-        bloodGroup: string
+        newBloodGroup: string
     ) {
+
 
         const tx =
             await ethereum.patientRegistry.updateBloodGroup(
-                bloodGroup
+                newBloodGroup
             );
+
 
         return await tx.wait();
 
     }
+
+
+
+
+
+    async deactivatePatient() {
+
+
+        const tx =
+            await ethereum.patientRegistry.deactivatePatient();
+
+
+        return await tx.wait();
+
+    }
+
+
+
+
+
+    async reactivatePatient(
+        wallet: string
+    ) {
+
+
+        const tx =
+            await ethereum.patientRegistry.reactivatePatient(
+                wallet
+            );
+
+
+        return await tx.wait();
+
+    }
+
+
 
 }

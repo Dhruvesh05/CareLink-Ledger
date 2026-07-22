@@ -37,4 +37,28 @@ export class EthereumPatientService {
 
     }
 
+    async isPatientActive(wallet: string) {
+
+        return await this.patientRegistry.isPatientActive(wallet);
+
+    }
+
+    async updateBloodGroup(newBloodGroup: string) {
+
+        return await this.patientRegistry.updateBloodGroup(newBloodGroup);
+
+    }
+
+    async deactivatePatient() {
+
+        return await this.patientRegistry.deactivatePatient();
+
+    }
+
+    async reactivatePatient(wallet: string) {
+
+        return await this.patientRegistry.reactivatePatient(wallet);
+
+    }
+
 }

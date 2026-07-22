@@ -181,6 +181,7 @@ export class EthereumProvider implements IBlockchainProvider {
     return await this.doctorRegistry.isDoctorVerified(wallet);
   }
 
+
   /**
    * ------------------------------------------------------------
    * Hospital
@@ -192,13 +193,29 @@ export class EthereumProvider implements IBlockchainProvider {
     registrationNumberHash: string,
     locationHash: string
   ) {
-    const tx = await this.hospitalRegistry.registerHospital(
-      hospitalNameHash,
-      registrationNumberHash,
-      locationHash
-    );
+    console.log("Register Hospital Wallet:", this.wallet.address);
 
-    return await tx.wait();
+    try {
+      const tx = await this.hospitalRegistry.registerHospital(
+        hospitalNameHash,
+        registrationNumberHash,
+        locationHash
+      );
+
+      return await tx.wait();
+    } catch (err: any) {
+      console.log("RegisterHospital Error:", err);
+
+      if (err.data) {
+        console.log("Error Data:", err.data);
+      }
+
+      if (err.reason) {
+        console.log("Reason:", err.reason);
+      }
+
+      throw err;
+    }
   }
 
   async verifyHospital(wallet: string) {
@@ -229,6 +246,10 @@ export class EthereumProvider implements IBlockchainProvider {
 
   async isHospitalVerified(wallet: string) {
     return await this.hospitalRegistry.isHospitalVerified(wallet);
+  }
+
+  async testDoctorHospital() {
+    return await this.doctorRegistry.getDoctorHospital(this.wallet.address);
   }
 
   /**

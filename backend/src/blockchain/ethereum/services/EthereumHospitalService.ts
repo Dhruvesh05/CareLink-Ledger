@@ -29,6 +29,15 @@ export class EthereumHospitalService {
     }
 
 
+    async verifyHospital(
+        wallet:string
+    ){
+
+        return await this.hospitalContract.verifyHospital(wallet);
+
+    }
+
+
     async getHospital(
         wallet:string
     ){

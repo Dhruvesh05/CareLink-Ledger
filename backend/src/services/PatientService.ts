@@ -1,13 +1,15 @@
-import { EthereumProvider } from "../blockchain/ethereum/EthereumProvider";
-import { BlockchainFactory } from "../blockchain/provider/BlockchainFactory";
-import { BlockchainType } from "../blockchain/provider/BlockchainType";
+import { EthereumPatientService } from "../blockchain/ethereum/services/EthereumPatientService";
 
 
 export class PatientService {
 
-    private blockchain = BlockchainFactory.getProvider();
+    private blockchainService: EthereumPatientService;
+
     constructor() {
-        this.blockchain = new EthereumProvider();
+
+        this.blockchainService =
+            new EthereumPatientService();
+
     }
 
     async registerPatient(
@@ -22,7 +24,7 @@ export class PatientService {
 
     ) {
 
-        return await this.blockchain.registerPatient(
+        return await this.blockchainService.registerPatient(
 
             fullNameHash,
 
@@ -42,7 +44,7 @@ export class PatientService {
 
     ) {
 
-        return await this.blockchain.getPatient(
+        return await this.blockchainService.getPatient(
 
             patientWallet
 
@@ -56,7 +58,41 @@ export class PatientService {
 
     ) {
 
-        return await this.blockchain.isPatientActive(
+        return await this.blockchainService.isPatientActive(
+
+            patientWallet
+
+        );
+
+    }
+
+    async updateBloodGroup(
+
+        newBloodGroup: string
+
+    ) {
+
+        return await this.blockchainService.updateBloodGroup(
+
+            newBloodGroup
+
+        );
+
+    }
+
+    async deactivatePatient() {
+
+        return await this.blockchainService.deactivatePatient();
+
+    }
+
+    async reactivatePatient(
+
+        patientWallet: string
+
+    ) {
+
+        return await this.blockchainService.reactivatePatient(
 
             patientWallet
 

@@ -30,6 +30,15 @@ export class HospitalService {
     }
 
 
+    async verifyHospital(
+        wallet:string
+    ){
+
+        return await this.blockchainService.verifyHospital(wallet);
+
+    }
+
+
     async getHospital(
         wallet:string
     ){
