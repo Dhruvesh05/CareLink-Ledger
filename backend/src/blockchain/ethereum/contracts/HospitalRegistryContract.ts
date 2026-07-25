@@ -46,6 +46,78 @@ export class HospitalRegistryContract {
 
 
 
+    async revokeVerification(
+        wallet: string
+    ) {
+
+
+        const tx =
+            await ethereum.hospitalRegistry.revokeVerification(
+                wallet
+            );
+
+
+        return await tx.wait();
+
+    }
+
+
+
+
+
+    async reactivateHospital(
+        wallet: string
+    ) {
+
+
+        const tx =
+            await ethereum.hospitalRegistry.reactivateHospital(
+                wallet
+            );
+
+
+        return await tx.wait();
+
+    }
+
+
+
+
+
+    async deactivateHospital() {
+
+
+        const tx =
+            await ethereum.hospitalRegistry.deactivateHospital();
+
+
+        return await tx.wait();
+
+    }
+
+
+
+
+
+    async updateLocation(
+        newLocationHash: string
+    ) {
+
+
+        const tx =
+            await ethereum.hospitalRegistry.updateLocation(
+                newLocationHash
+            );
+
+
+        return await tx.wait();
+
+    }
+
+
+
+
+
     async getHospital(
         wallet: string
     ) {
@@ -84,6 +156,17 @@ export class HospitalRegistryContract {
         return await ethereum.hospitalRegistry.isHospitalVerified(
             wallet
         );
+
+    }
+
+
+
+
+
+    async totalHospitals() {
+
+
+        return await ethereum.hospitalRegistry.totalHospitals();
 
     }
 
