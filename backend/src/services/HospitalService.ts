@@ -39,6 +39,40 @@ export class HospitalService {
     }
 
 
+    async revokeVerification(
+        wallet:string
+    ){
+
+        return await this.blockchainService.revokeVerification(wallet);
+
+    }
+
+
+    async reactivateHospital(
+        wallet:string
+    ){
+
+        return await this.blockchainService.reactivateHospital(wallet);
+
+    }
+
+
+    async deactivateHospital(){
+
+        return await this.blockchainService.deactivateHospital();
+
+    }
+
+
+    async updateLocation(
+        newLocationHash:string
+    ){
+
+        return await this.blockchainService.updateLocation(newLocationHash);
+
+    }
+
+
     async getHospital(
         wallet:string
     ){
@@ -62,6 +96,13 @@ export class HospitalService {
     ){
 
         return await this.blockchainService.isHospitalVerified(wallet);
+
+    }
+
+
+    async totalHospitals(){
+
+        return await this.blockchainService.totalHospitals();
 
     }
 

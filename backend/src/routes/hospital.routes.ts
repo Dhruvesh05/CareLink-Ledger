@@ -14,12 +14,16 @@ router.post(
 );
 
 /**
- * Get Hospital Details
- * GET /api/hospitals/:wallet
+ * Total Hospitals
+ * GET /api/hospitals/count
+ *
+ * Registered BEFORE /:wallet — both are single-segment GET routes, so
+ * "count" would otherwise be captured as a wallet param and never reach
+ * this handler.
  */
 router.get(
-    "/:wallet",
-    controller.getHospital.bind(controller)
+    "/count",
+    controller.totalHospitals.bind(controller)
 );
 
 /**
@@ -41,7 +45,16 @@ router.get(
 );
 
 /**
- * Check Hospital Verification Status (POST)
+ * Get Hospital Details
+ * GET /api/hospitals/:wallet
+ */
+router.get(
+    "/:wallet",
+    controller.getHospital.bind(controller)
+);
+
+/**
+ * Verify Hospital
  * POST /api/hospitals/verify
  *
  * Body:
@@ -52,6 +65,59 @@ router.get(
 router.post(
     "/verify",
     controller.verifyHospital.bind(controller)
+);
+
+/**
+ * Revoke Hospital Verification
+ * POST /api/hospitals/revoke
+ *
+ * Body:
+ * {
+ *   "wallet":"0x..."
+ * }
+ */
+router.post(
+    "/revoke",
+    controller.revokeVerification.bind(controller)
+);
+
+/**
+ * Reactivate Hospital
+ * POST /api/hospitals/reactivate
+ *
+ * Body:
+ * {
+ *   "wallet":"0x..."
+ * }
+ */
+router.post(
+    "/reactivate",
+    controller.reactivateHospital.bind(controller)
+);
+
+/**
+ * Deactivate Hospital (self — acts on backend signer's own wallet)
+ * POST /api/hospitals/deactivate
+ *
+ * Body: (empty)
+ */
+router.post(
+    "/deactivate",
+    controller.deactivateHospital.bind(controller)
+);
+
+/**
+ * Update Hospital Location (self — acts on backend signer's own wallet)
+ * PUT /api/hospitals/location
+ *
+ * Body:
+ * {
+ *   "locationHash":"..."
+ * }
+ */
+router.put(
+    "/location",
+    controller.updateLocation.bind(controller)
 );
 
 export default router;

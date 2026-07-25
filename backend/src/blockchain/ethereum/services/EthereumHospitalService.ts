@@ -38,6 +38,40 @@ export class EthereumHospitalService {
     }
 
 
+    async revokeVerification(
+        wallet:string
+    ){
+
+        return await this.hospitalContract.revokeVerification(wallet);
+
+    }
+
+
+    async reactivateHospital(
+        wallet:string
+    ){
+
+        return await this.hospitalContract.reactivateHospital(wallet);
+
+    }
+
+
+    async deactivateHospital(){
+
+        return await this.hospitalContract.deactivateHospital();
+
+    }
+
+
+    async updateLocation(
+        newLocationHash:string
+    ){
+
+        return await this.hospitalContract.updateLocation(newLocationHash);
+
+    }
+
+
     async getHospital(
         wallet:string
     ){
@@ -61,6 +95,13 @@ export class EthereumHospitalService {
     ){
 
         return await this.hospitalContract.isHospitalVerified(wallet);
+
+    }
+
+
+    async totalHospitals(){
+
+        return await this.hospitalContract.totalHospitals();
 
     }
 
