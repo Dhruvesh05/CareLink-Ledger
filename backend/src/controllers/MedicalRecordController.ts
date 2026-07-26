@@ -1,5 +1,110 @@
 import { Request, Response } from "express";
+import { ethers } from "ethers";
+
 import { MedicalRecordService } from "../services/MedicalRecordService";
+import { serializeBigInt } from "../utils/bigint";
+
+/**
+ * Status mapping based on the custom errors declared in MedicalRecord.sol.
+ * If your deployed contract's error names differ, adjust these lists.
+ */
+const BAD_REQUEST_ERRORS = [
+    "ZeroAddress",
+    "InvalidPatient",
+    "InvalidDoctor",
+    "InvalidHospital",
+    "EmptyIPFSHash",
+    "EmptyFileHash",
+    "InvalidCategory"
+];
+
+const FORBIDDEN_ERRORS = [
+    "Unauthorized"
+];
+
+const NOT_FOUND_ERRORS = [
+    "RecordNotFound"
+];
+
+const CONFLICT_ERRORS = [
+    "InactiveRecord",
+    "AlreadyInactive",
+    "PatientInactive",
+    "DoctorInactive",
+    "DoctorNotVerified",
+    "HospitalInactive",
+    "HospitalNotVerified",
+    "VersionMismatch",
+    "DuplicateRecord",
+    "AccessAlreadyGranted",
+    "AccessNotGranted"
+];
+
+function resolveErrorText(error: any): string {
+
+    return (
+        error?.reason ||
+        error?.shortMessage ||
+        error?.message ||
+        ""
+    ).toString();
+
+}
+
+function statusForError(error: any): number {
+
+    const errorText = resolveErrorText(error);
+
+    if (BAD_REQUEST_ERRORS.some((name) => errorText.includes(name))) {
+        return 400;
+    }
+
+    if (FORBIDDEN_ERRORS.some((name) => errorText.includes(name))) {
+        return 403;
+    }
+
+    if (NOT_FOUND_ERRORS.some((name) => errorText.includes(name))) {
+        return 404;
+    }
+
+    if (CONFLICT_ERRORS.some((name) => errorText.includes(name))) {
+        return 409;
+    }
+
+    return 500;
+
+}
+
+function errorResponse(error: any) {
+
+    return {
+        success: false,
+        message: error.message,
+        reason: error.reason,
+        code: error.code,
+        shortMessage: error.shortMessage
+    };
+
+}
+
+/**
+ * Parses a route/body value into a positive integer recordId.
+ * Returns null if invalid, so the caller can respond with 400.
+ */
+function parseRecordId(value: any): number | null {
+
+    const recordId = Number(value);
+
+    if (
+        !Number.isInteger(recordId) ||
+        recordId <= 0
+    ) {
+        return null;
+    }
+
+    return recordId;
+
+}
 
 export class MedicalRecordController {
 
@@ -8,6 +113,7 @@ export class MedicalRecordController {
     /*
     ==========================================================
     CREATE MEDICAL RECORD
+    POST /api/medical-records/create
     ==========================================================
     */
 
@@ -26,33 +132,41 @@ export class MedicalRecordController {
                 emergency
             } = req.body;
 
-            const receipt =
+            if (!patient || !ethers.isAddress(patient)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid patient wallet address"
+                });
+            }
+
+            if (!ipfsHash || !fileHash || !category) {
+                return res.status(400).json({
+                    success: false,
+                    message: "ipfsHash, fileHash and category are required"
+                });
+            }
+
+            const transaction =
                 await this.medicalRecordService.createMedicalRecord(
                     patient,
                     ipfsHash,
                     fileHash,
                     category,
-                    emergency
+                    Boolean(emergency)
                 );
 
             return res.status(201).json({
                 success: true,
-                transaction: receipt
+                transaction: serializeBigInt(transaction)
             });
 
         }
 
         catch (error: any) {
 
-            console.error(error);
+            console.error("Create Medical Record Error:", error);
 
-            return res.status(500).json({
-                success: false,
-                message: error.message,
-                reason: error.reason,
-                code: error.code,
-                shortMessage: error.shortMessage
-            });
+            return res.status(statusForError(error)).json(errorResponse(error));
 
         }
 
@@ -61,6 +175,7 @@ export class MedicalRecordController {
     /*
     ==========================================================
     GET MEDICAL RECORD
+    GET /api/medical-records/:recordId
     ==========================================================
     */
 
@@ -71,29 +186,32 @@ export class MedicalRecordController {
 
         try {
 
+            const recordId = parseRecordId(req.params.recordId);
+
+            if (recordId === null) {
+                return res.status(400).json({
+                    success: false,
+                    message: "recordId must be a positive integer"
+                });
+            }
+
             const record =
                 await this.medicalRecordService.getMedicalRecord(
-                    Number(req.params.recordId)
+                    recordId
                 );
 
             return res.json({
                 success: true,
-                record
+                record: serializeBigInt(record)
             });
 
         }
 
         catch (error: any) {
 
-            console.error(error);
+            console.error("Get Medical Record Error:", error);
 
-            return res.status(500).json({
-                success: false,
-                message: error.message,
-                reason: error.reason,
-                code: error.code,
-                shortMessage: error.shortMessage
-            });
+            return res.status(statusForError(error)).json(errorResponse(error));
 
         }
 
@@ -101,7 +219,8 @@ export class MedicalRecordController {
 
     /*
     ==========================================================
-    VIEW RECORD
+    VIEW RECORD (writes a VIEW_RECORD audit entry)
+    GET /api/medical-records/view/:recordId
     ==========================================================
     */
 
@@ -112,29 +231,32 @@ export class MedicalRecordController {
 
         try {
 
+            const recordId = parseRecordId(req.params.recordId);
+
+            if (recordId === null) {
+                return res.status(400).json({
+                    success: false,
+                    message: "recordId must be a positive integer"
+                });
+            }
+
             const record =
                 await this.medicalRecordService.viewRecord(
-                    Number(req.params.recordId)
+                    recordId
                 );
 
             return res.json({
                 success: true,
-                record
+                record: serializeBigInt(record)
             });
 
         }
 
         catch (error: any) {
 
-            console.error(error);
+            console.error("View Record Error:", error);
 
-            return res.status(500).json({
-                success: false,
-                message: error.message,
-                reason: error.reason,
-                code: error.code,
-                shortMessage: error.shortMessage
-            });
+            return res.status(statusForError(error)).json(errorResponse(error));
 
         }
 
@@ -143,6 +265,7 @@ export class MedicalRecordController {
     /*
     ==========================================================
     UPDATE RECORD
+    PUT /api/medical-records/update
     ==========================================================
     */
 
@@ -154,14 +277,42 @@ export class MedicalRecordController {
         try {
 
             const {
-                recordId,
+                recordId: rawRecordId,
                 ipfsHash,
                 fileHash,
                 category,
-                expectedVersion
+                expectedVersion: rawExpectedVersion
             } = req.body;
 
-            const receipt =
+            const recordId = parseRecordId(rawRecordId);
+
+            if (recordId === null) {
+                return res.status(400).json({
+                    success: false,
+                    message: "recordId must be a positive integer"
+                });
+            }
+
+            const expectedVersion = Number(rawExpectedVersion);
+
+            if (
+                !Number.isInteger(expectedVersion) ||
+                expectedVersion <= 0
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    message: "expectedVersion must be a positive integer"
+                });
+            }
+
+            if (!ipfsHash || !fileHash || !category) {
+                return res.status(400).json({
+                    success: false,
+                    message: "ipfsHash, fileHash and category are required"
+                });
+            }
+
+            const transaction =
                 await this.medicalRecordService.updateMedicalRecord(
                     recordId,
                     ipfsHash,
@@ -172,22 +323,16 @@ export class MedicalRecordController {
 
             return res.json({
                 success: true,
-                transaction: receipt
+                transaction: serializeBigInt(transaction)
             });
 
         }
 
         catch (error: any) {
 
-            console.error(error);
+            console.error("Update Medical Record Error:", error);
 
-            return res.status(500).json({
-                success: false,
-                message: error.message,
-                reason: error.reason,
-                code: error.code,
-                shortMessage: error.shortMessage
-            });
+            return res.status(statusForError(error)).json(errorResponse(error));
 
         }
 
@@ -196,6 +341,7 @@ export class MedicalRecordController {
     /*
     ==========================================================
     DEACTIVATE RECORD
+    DELETE /api/medical-records/:recordId
     ==========================================================
     */
 
@@ -206,29 +352,32 @@ export class MedicalRecordController {
 
         try {
 
-            const receipt =
+            const recordId = parseRecordId(req.params.recordId);
+
+            if (recordId === null) {
+                return res.status(400).json({
+                    success: false,
+                    message: "recordId must be a positive integer"
+                });
+            }
+
+            const transaction =
                 await this.medicalRecordService.deactivateMedicalRecord(
-                    Number(req.params.recordId)
+                    recordId
                 );
 
             return res.json({
                 success: true,
-                transaction: receipt
+                transaction: serializeBigInt(transaction)
             });
 
         }
 
         catch (error: any) {
 
-            console.error(error);
+            console.error("Deactivate Medical Record Error:", error);
 
-            return res.status(500).json({
-                success: false,
-                message: error.message,
-                reason: error.reason,
-                code: error.code,
-                shortMessage: error.shortMessage
-            });
+            return res.status(statusForError(error)).json(errorResponse(error));
 
         }
 
@@ -237,6 +386,7 @@ export class MedicalRecordController {
     /*
     ==========================================================
     GRANT ACCESS
+    POST /api/medical-records/grant
     ==========================================================
     */
 
@@ -248,11 +398,27 @@ export class MedicalRecordController {
         try {
 
             const {
-                recordId,
+                recordId: rawRecordId,
                 doctor
             } = req.body;
 
-            const receipt =
+            const recordId = parseRecordId(rawRecordId);
+
+            if (recordId === null) {
+                return res.status(400).json({
+                    success: false,
+                    message: "recordId must be a positive integer"
+                });
+            }
+
+            if (!doctor || !ethers.isAddress(doctor)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid doctor wallet address"
+                });
+            }
+
+            const transaction =
                 await this.medicalRecordService.grantAccess(
                     recordId,
                     doctor
@@ -260,22 +426,16 @@ export class MedicalRecordController {
 
             return res.json({
                 success: true,
-                transaction: receipt
+                transaction: serializeBigInt(transaction)
             });
 
         }
 
         catch (error: any) {
 
-            console.error(error);
+            console.error("Grant Access Error:", error);
 
-            return res.status(500).json({
-                success: false,
-                message: error.message,
-                reason: error.reason,
-                code: error.code,
-                shortMessage: error.shortMessage
-            });
+            return res.status(statusForError(error)).json(errorResponse(error));
 
         }
 
@@ -284,6 +444,7 @@ export class MedicalRecordController {
     /*
     ==========================================================
     REVOKE ACCESS
+    POST /api/medical-records/revoke
     ==========================================================
     */
 
@@ -295,11 +456,27 @@ export class MedicalRecordController {
         try {
 
             const {
-                recordId,
+                recordId: rawRecordId,
                 doctor
             } = req.body;
 
-            const receipt =
+            const recordId = parseRecordId(rawRecordId);
+
+            if (recordId === null) {
+                return res.status(400).json({
+                    success: false,
+                    message: "recordId must be a positive integer"
+                });
+            }
+
+            if (!doctor || !ethers.isAddress(doctor)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid doctor wallet address"
+                });
+            }
+
+            const transaction =
                 await this.medicalRecordService.revokeAccess(
                     recordId,
                     doctor
@@ -307,22 +484,71 @@ export class MedicalRecordController {
 
             return res.json({
                 success: true,
-                transaction: receipt
+                transaction: serializeBigInt(transaction)
             });
 
         }
 
         catch (error: any) {
 
-            console.error(error);
+            console.error("Revoke Access Error:", error);
 
-            return res.status(500).json({
-                success: false,
-                message: error.message,
-                reason: error.reason,
-                code: error.code,
-                shortMessage: error.shortMessage
+            return res.status(statusForError(error)).json(errorResponse(error));
+
+        }
+
+    }
+
+    /*
+    ==========================================================
+    IS AUTHORIZED DOCTOR
+    GET /api/medical-records/authorized/:recordId/:wallet
+    ==========================================================
+    */
+
+    async isAuthorizedDoctor(
+        req: Request,
+        res: Response
+    ) {
+
+        try {
+
+            const recordId = parseRecordId(req.params.recordId);
+
+            if (recordId === null) {
+                return res.status(400).json({
+                    success: false,
+                    message: "recordId must be a positive integer"
+                });
+            }
+
+            const { wallet } = req.params;
+
+            if (!wallet || !ethers.isAddress(wallet)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid wallet address"
+                });
+            }
+
+            const authorized =
+                await this.medicalRecordService.isAuthorizedDoctor(
+                    recordId,
+                    wallet
+                );
+
+            return res.json({
+                success: true,
+                authorized
             });
+
+        }
+
+        catch (error: any) {
+
+            console.error("Is Authorized Doctor Error:", error);
+
+            return res.status(statusForError(error)).json(errorResponse(error));
 
         }
 
@@ -331,6 +557,7 @@ export class MedicalRecordController {
     /*
     ==========================================================
     PATIENT RECORDS
+    GET /api/medical-records/patient/:wallet
     ==========================================================
     */
 
@@ -341,29 +568,32 @@ export class MedicalRecordController {
 
         try {
 
+            const { wallet } = req.params;
+
+            if (!wallet || !ethers.isAddress(wallet)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid wallet address"
+                });
+            }
+
             const records =
                 await this.medicalRecordService.getPatientRecords(
-                    req.params.wallet
+                    wallet
                 );
 
             return res.json({
                 success: true,
-                records
+                records: serializeBigInt(records)
             });
 
         }
 
         catch (error: any) {
 
-            console.error(error);
+            console.error("Get Patient Records Error:", error);
 
-            return res.status(500).json({
-                success: false,
-                message: error.message,
-                reason: error.reason,
-                code: error.code,
-                shortMessage: error.shortMessage
-            });
+            return res.status(statusForError(error)).json(errorResponse(error));
 
         }
 
@@ -372,6 +602,7 @@ export class MedicalRecordController {
     /*
     ==========================================================
     DOCTOR RECORDS
+    GET /api/medical-records/doctor/:wallet
     ==========================================================
     */
 
@@ -382,29 +613,32 @@ export class MedicalRecordController {
 
         try {
 
+            const { wallet } = req.params;
+
+            if (!wallet || !ethers.isAddress(wallet)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid wallet address"
+                });
+            }
+
             const records =
                 await this.medicalRecordService.getDoctorRecords(
-                    req.params.wallet
+                    wallet
                 );
 
             return res.json({
                 success: true,
-                records
+                records: serializeBigInt(records)
             });
 
         }
 
         catch (error: any) {
 
-            console.error(error);
+            console.error("Get Doctor Records Error:", error);
 
-            return res.status(500).json({
-                success: false,
-                message: error.message,
-                reason: error.reason,
-                code: error.code,
-                shortMessage: error.shortMessage
-            });
+            return res.status(statusForError(error)).json(errorResponse(error));
 
         }
 
@@ -413,6 +647,7 @@ export class MedicalRecordController {
     /*
     ==========================================================
     HOSPITAL RECORDS
+    GET /api/medical-records/hospital/:wallet
     ==========================================================
     */
 
@@ -423,29 +658,32 @@ export class MedicalRecordController {
 
         try {
 
+            const { wallet } = req.params;
+
+            if (!wallet || !ethers.isAddress(wallet)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid wallet address"
+                });
+            }
+
             const records =
                 await this.medicalRecordService.getHospitalRecords(
-                    req.params.wallet
+                    wallet
                 );
 
             return res.json({
                 success: true,
-                records
+                records: serializeBigInt(records)
             });
 
         }
 
         catch (error: any) {
 
-            console.error(error);
+            console.error("Get Hospital Records Error:", error);
 
-            return res.status(500).json({
-                success: false,
-                message: error.message,
-                reason: error.reason,
-                code: error.code,
-                shortMessage: error.shortMessage
-            });
+            return res.status(statusForError(error)).json(errorResponse(error));
 
         }
 
@@ -453,7 +691,8 @@ export class MedicalRecordController {
 
     /*
     ==========================================================
-    DOWNLOAD AUDIT
+    DOWNLOAD AUDIT (writes a DOWNLOAD_RECORD audit entry)
+    POST /api/medical-records/download/:recordId
     ==========================================================
     */
 
@@ -464,29 +703,32 @@ export class MedicalRecordController {
 
         try {
 
-            const receipt =
+            const recordId = parseRecordId(req.params.recordId);
+
+            if (recordId === null) {
+                return res.status(400).json({
+                    success: false,
+                    message: "recordId must be a positive integer"
+                });
+            }
+
+            const record =
                 await this.medicalRecordService.logDownload(
-                    Number(req.params.recordId)
+                    recordId
                 );
 
             return res.json({
                 success: true,
-                transaction: receipt
+                record: serializeBigInt(record)
             });
 
         }
 
         catch (error: any) {
 
-            console.error(error);
+            console.error("Log Download Error:", error);
 
-            return res.status(500).json({
-                success: false,
-                message: error.message,
-                reason: error.reason,
-                code: error.code,
-                shortMessage: error.shortMessage
-            });
+            return res.status(statusForError(error)).json(errorResponse(error));
 
         }
 
@@ -495,6 +737,7 @@ export class MedicalRecordController {
     /*
     ==========================================================
     RECORD EXISTS
+    GET /api/medical-records/exists/:recordId
     ==========================================================
     */
 
@@ -505,9 +748,18 @@ export class MedicalRecordController {
 
         try {
 
+            const recordId = parseRecordId(req.params.recordId);
+
+            if (recordId === null) {
+                return res.status(400).json({
+                    success: false,
+                    message: "recordId must be a positive integer"
+                });
+            }
+
             const exists =
                 await this.medicalRecordService.recordExists(
-                    Number(req.params.recordId)
+                    recordId
                 );
 
             return res.json({
@@ -519,15 +771,9 @@ export class MedicalRecordController {
 
         catch (error: any) {
 
-            console.error(error);
+            console.error("Record Exists Error:", error);
 
-            return res.status(500).json({
-                success: false,
-                message: error.message,
-                reason: error.reason,
-                code: error.code,
-                shortMessage: error.shortMessage
-            });
+            return res.status(statusForError(error)).json(errorResponse(error));
 
         }
 
@@ -536,6 +782,7 @@ export class MedicalRecordController {
     /*
     ==========================================================
     TOTAL RECORDS
+    GET /api/medical-records/stats/total
     ==========================================================
     */
 
@@ -551,22 +798,16 @@ export class MedicalRecordController {
 
             return res.json({
                 success: true,
-                total
+                total: serializeBigInt(total)
             });
 
         }
 
         catch (error: any) {
 
-            console.error(error);
+            console.error("Total Records Error:", error);
 
-            return res.status(500).json({
-                success: false,
-                message: error.message,
-                reason: error.reason,
-                code: error.code,
-                shortMessage: error.shortMessage
-            });
+            return res.status(statusForError(error)).json(errorResponse(error));
 
         }
 

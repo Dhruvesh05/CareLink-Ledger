@@ -17,12 +17,6 @@ router.post(
     controller.createMedicalRecord.bind(controller)
 );
 
-// Get Record by ID
-router.get(
-    "/:recordId",
-    controller.getMedicalRecord.bind(controller)
-);
-
 // View Record (logs audit trail)
 router.get(
     "/view/:recordId",
@@ -33,12 +27,6 @@ router.get(
 router.put(
     "/update",
     controller.updateMedicalRecord.bind(controller)
-);
-
-// Deactivate Record
-router.delete(
-    "/:recordId",
-    controller.deactivateMedicalRecord.bind(controller)
 );
 
 /*
@@ -57,6 +45,12 @@ router.post(
 router.post(
     "/revoke",
     controller.revokeAccess.bind(controller)
+);
+
+// Check whether a doctor currently holds patient-granted access
+router.get(
+    "/authorized/:recordId/:wallet",
+    controller.isAuthorizedDoctor.bind(controller)
 );
 
 /*
@@ -111,6 +105,29 @@ router.get(
 router.get(
     "/stats/total",
     controller.totalRecords.bind(controller)
+);
+
+/*
+==========================================================
+GET / DEACTIVATE BY ID
+==========================================================
+Registered LAST — "/:recordId" is a single-segment catch-all and would
+otherwise swallow any of the more specific single-segment-looking paths
+above if it came first. All routes above are either two/three-segment
+paths (no collision) or different HTTP methods, so this ordering is
+safe, but keeping it last avoids any future foot-gun as routes are added.
+*/
+
+// Get Record by ID
+router.get(
+    "/:recordId",
+    controller.getMedicalRecord.bind(controller)
+);
+
+// Deactivate Record
+router.delete(
+    "/:recordId",
+    controller.deactivateMedicalRecord.bind(controller)
 );
 
 export default router;

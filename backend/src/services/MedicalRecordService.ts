@@ -1,11 +1,15 @@
-import { EthereumProvider } from "../blockchain/ethereum/EthereumProvider";
+import { EthereumMedicalRecordService } from "../blockchain/ethereum/services/EthereumMedicalRecordService";
+
 
 export class MedicalRecordService {
 
-    private blockchain: EthereumProvider;
+    private blockchainService: EthereumMedicalRecordService;
 
     constructor() {
-        this.blockchain = new EthereumProvider();
+
+        this.blockchainService =
+            new EthereumMedicalRecordService();
+
     }
 
     /*
@@ -22,7 +26,7 @@ export class MedicalRecordService {
         emergency: boolean
     ) {
 
-        return await this.blockchain.createMedicalRecord(
+        return await this.blockchainService.createMedicalRecord(
             patient,
             ipfsHash,
             fileHash,
@@ -36,7 +40,7 @@ export class MedicalRecordService {
         recordId: number
     ) {
 
-        return await this.blockchain.getMedicalRecord(
+        return await this.blockchainService.getMedicalRecord(
             recordId
         );
 
@@ -50,7 +54,7 @@ export class MedicalRecordService {
         expectedVersion: number
     ) {
 
-        return await this.blockchain.updateMedicalRecord(
+        return await this.blockchainService.updateMedicalRecord(
             recordId,
             ipfsHash,
             fileHash,
@@ -64,7 +68,7 @@ export class MedicalRecordService {
         recordId: number
     ) {
 
-        return await this.blockchain.deactivateMedicalRecord(
+        return await this.blockchainService.deactivateMedicalRecord(
             recordId
         );
 
@@ -81,7 +85,7 @@ export class MedicalRecordService {
         doctor: string
     ) {
 
-        return await this.blockchain.grantAccess(
+        return await this.blockchainService.grantAccess(
             recordId,
             doctor
         );
@@ -93,7 +97,19 @@ export class MedicalRecordService {
         doctor: string
     ) {
 
-        return await this.blockchain.revokeAccess(
+        return await this.blockchainService.revokeAccess(
+            recordId,
+            doctor
+        );
+
+    }
+
+    async isAuthorizedDoctor(
+        recordId: number,
+        doctor: string
+    ) {
+
+        return await this.blockchainService.isAuthorizedDoctor(
             recordId,
             doctor
         );
@@ -110,7 +126,7 @@ export class MedicalRecordService {
         recordId: number
     ) {
 
-        return await this.blockchain.viewRecord(
+        return await this.blockchainService.viewRecord(
             recordId
         );
 
@@ -120,7 +136,7 @@ export class MedicalRecordService {
         patient: string
     ) {
 
-        return await this.blockchain.getPatientRecords(
+        return await this.blockchainService.getPatientRecords(
             patient
         );
 
@@ -130,7 +146,7 @@ export class MedicalRecordService {
         doctor: string
     ) {
 
-        return await this.blockchain.getDoctorRecords(
+        return await this.blockchainService.getDoctorRecords(
             doctor
         );
 
@@ -140,7 +156,7 @@ export class MedicalRecordService {
         hospital: string
     ) {
 
-        return await this.blockchain.getHospitalRecords(
+        return await this.blockchainService.getHospitalRecords(
             hospital
         );
 
@@ -156,7 +172,7 @@ export class MedicalRecordService {
         recordId: number
     ) {
 
-        return await this.blockchain.logDownload(
+        return await this.blockchainService.logDownload(
             recordId
         );
 
@@ -172,7 +188,7 @@ export class MedicalRecordService {
         recordId: number
     ) {
 
-        return await this.blockchain.recordExists(
+        return await this.blockchainService.recordExists(
             recordId
         );
 
@@ -180,7 +196,7 @@ export class MedicalRecordService {
 
     async totalRecords() {
 
-        return await this.blockchain.totalRecords();
+        return await this.blockchainService.totalRecords();
 
     }
 
