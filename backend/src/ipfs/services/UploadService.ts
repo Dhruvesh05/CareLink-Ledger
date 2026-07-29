@@ -1,20 +1,13 @@
 import { ipfsClient, type IIPFSClient } from "../client/IPFSClient";
+import type { IUploadResult } from "../interfaces/IUploadResult";
 
 export type UploadableContent = Buffer | Uint8Array | string;
 
-export interface IUploadResult {
-	readonly cid: string;
-	readonly path: string;
-	readonly size: number;
-	readonly gatewayUrl: string;
+export interface IUploadOptions {
+	readonly pin?: boolean;
 }
 
-export interface IUploadServiceResult extends IUploadResult {
-	readonly cid: string;
-	readonly path: string;
-	readonly size: number;
-	readonly gatewayUrl: string;
-}
+export type IUploadServiceResult = IUploadResult;
 
 export class UploadServiceError extends Error {
 	constructor(message: string, public readonly cause?: unknown) {
@@ -30,9 +23,12 @@ export class UploadService {
 		this.client = client;
 	}
 
-	async uploadFile(content: UploadableContent): Promise<IUploadServiceResult> {
+	async uploadFile(
+		content: UploadableContent,
+		options: IUploadOptions = {}
+	): Promise<IUploadServiceResult> {
 		try {
-			const result = await this.client.add(content, true);
+			const result = await this.client.add(content, options.pin ?? false);
 
 			return {
 				cid: result.cid,
@@ -45,7 +41,10 @@ export class UploadService {
 		}
 	}
 
-	async uploadText(text: string): Promise<IUploadServiceResult> {
-		return this.uploadFile(text);
+	async uploadText(
+		text: string,
+		options: IUploadOptions = {}
+	): Promise<IUploadServiceResult> {
+		return this.uploadFile(text, options);
 	}
 }

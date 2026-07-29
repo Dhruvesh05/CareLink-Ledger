@@ -13,6 +13,7 @@ export interface IIPFSClient {
 	cat(cid: string): Promise<Uint8Array>;
 	pin(cid: string): Promise<void>;
 	unpin(cid: string): Promise<void>;
+	isPinned(cid: string): Promise<boolean>;
 	getGatewayUrl(cid: string): string;
 	ping(): Promise<boolean>;
 }
@@ -78,6 +79,19 @@ export class IPFSClient implements IIPFSClient {
 
 	async unpin(cid: string): Promise<void> {
 		await this.client.pin.rm(cid);
+	}
+
+	async isPinned(cid: string): Promise<boolean> {
+		const trimmedCid = cid.trim();
+		const listing = this.client.pin.ls({ paths: trimmedCid });
+
+		for await (const entry of listing) {
+			if (entry.cid.toString() === trimmedCid) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	getGatewayUrl(cid: string): string {
