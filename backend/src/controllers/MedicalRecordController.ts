@@ -124,13 +124,17 @@ export class MedicalRecordController {
 
         try {
 
-            const {
-                patient,
-                ipfsHash,
-                fileHash,
-                category,
-                emergency
-            } = req.body;
+            const { patient, category, emergency } = req.body;
+
+            // multer should place file on req.file (in-memory)
+            const file = req.file as Express.Multer.File | undefined;
+
+            if (!file) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Missing file upload"
+                });
+            }
 
             if (!patient || !ethers.isAddress(patient)) {
                 return res.status(400).json({
@@ -139,21 +143,19 @@ export class MedicalRecordController {
                 });
             }
 
-            if (!ipfsHash || !fileHash || !category) {
+            if (!category) {
                 return res.status(400).json({
                     success: false,
-                    message: "ipfsHash, fileHash and category are required"
+                    message: "category is required"
                 });
             }
 
-            const transaction =
-                await this.medicalRecordService.createMedicalRecord(
-                    patient,
-                    ipfsHash,
-                    fileHash,
-                    category,
-                    Boolean(emergency)
-                );
+            const transaction = await this.medicalRecordService.createMedicalRecord(
+                patient,
+                file,
+                category,
+                Boolean(emergency)
+            );
 
             return res.status(201).json({
                 success: true,
@@ -275,14 +277,13 @@ export class MedicalRecordController {
     ) {
 
         try {
-
             const {
                 recordId: rawRecordId,
-                ipfsHash,
-                fileHash,
-                category,
-                expectedVersion: rawExpectedVersion
+                expectedVersion: rawExpectedVersion,
+                category
             } = req.body;
+
+            const file = req.file as Express.Multer.File | undefined;
 
             const recordId = parseRecordId(rawRecordId);
 
@@ -305,21 +306,27 @@ export class MedicalRecordController {
                 });
             }
 
-            if (!ipfsHash || !fileHash || !category) {
+
+            if (!file) {
                 return res.status(400).json({
                     success: false,
-                    message: "ipfsHash, fileHash and category are required"
+                    message: "Missing file upload for update"
                 });
             }
 
-            const transaction =
-                await this.medicalRecordService.updateMedicalRecord(
-                    recordId,
-                    ipfsHash,
-                    fileHash,
-                    category,
-                    expectedVersion
-                );
+            if (!category) {
+                return res.status(400).json({
+                    success: false,
+                    message: "category is required"
+                });
+            }
+
+            const transaction = await this.medicalRecordService.updateMedicalRecord(
+                recordId,
+                file,
+                category,
+                expectedVersion
+            );
 
             return res.json({
                 success: true,
