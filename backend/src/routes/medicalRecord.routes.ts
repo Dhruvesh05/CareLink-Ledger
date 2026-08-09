@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { MedicalRecordController } from "../controllers/MedicalRecordController";
+import upload, { requireFile } from "../middleware/upload.middleware";
 
 const router = Router();
 
@@ -14,6 +15,8 @@ MEDICAL RECORD
 // Create Record
 router.post(
     "/create",
+    upload.single("file"),
+    requireFile,
     controller.createMedicalRecord.bind(controller)
 );
 
@@ -26,6 +29,8 @@ router.get(
 // Update Record
 router.put(
     "/update",
+    upload.single("file"),
+    requireFile,
     controller.updateMedicalRecord.bind(controller)
 );
 
