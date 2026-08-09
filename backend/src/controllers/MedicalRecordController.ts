@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { ethers } from "ethers";
 
 import { MedicalRecordService } from "../services/MedicalRecordService";
+import IPFSServiceAdapter from "../ipfs/adapters/IPFSServiceAdapter";
 import { serializeBigInt } from "../utils/bigint";
 
 /**
@@ -108,7 +109,7 @@ function parseRecordId(value: any): number | null {
 
 export class MedicalRecordController {
 
-    private medicalRecordService = new MedicalRecordService();
+    private medicalRecordService = new MedicalRecordService(new IPFSServiceAdapter());
 
     /*
     ==========================================================
