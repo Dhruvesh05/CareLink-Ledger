@@ -37,8 +37,7 @@ const BAD_REQUEST_ERRORS = [
     "EmptyField"
 ];
 
-function resolveErrorName(error: any): string | undefined {
-
+function resolveErrorName(error: any): string {
     return (
         error?.reason ||
         error?.shortMessage ||
@@ -145,7 +144,8 @@ export class HospitalController {
 
         try {
 
-            const { wallet } = req.params;
+            const walletParam = req.params.wallet as unknown as string | string[] | undefined;
+            const wallet = Array.isArray(walletParam) ? walletParam[0] : walletParam;
 
             if (!wallet || !ethers.isAddress(wallet)) {
                 return res.status(400).json({
@@ -179,7 +179,8 @@ export class HospitalController {
 
         try {
 
-            const { wallet } = req.params;
+            const walletParam = req.params.wallet as unknown as string | string[] | undefined;
+            const wallet = Array.isArray(walletParam) ? walletParam[0] : walletParam;
 
             if (!wallet || !ethers.isAddress(wallet)) {
                 return res.status(400).json({
@@ -213,7 +214,8 @@ export class HospitalController {
 
         try {
 
-            const { wallet } = req.params;
+            const walletParam = req.params.wallet as unknown as string | string[] | undefined;
+            const wallet = Array.isArray(walletParam) ? walletParam[0] : walletParam;
 
             if (!wallet || !ethers.isAddress(wallet)) {
                 return res.status(400).json({
@@ -248,9 +250,10 @@ export class HospitalController {
 
         try {
 
-            const { wallet } = req.body;
+            const { wallet } = req.body as { [key: string]: any };
+            const walletStr = Array.isArray(wallet) ? wallet[0] : wallet;
 
-            if (!wallet || !ethers.isAddress(wallet)) {
+            if (!walletStr || !ethers.isAddress(walletStr)) {
                 return res.status(400).json({
                     success: false,
                     message: "Invalid wallet address"
@@ -288,9 +291,10 @@ export class HospitalController {
 
         try {
 
-            const { wallet } = req.body;
+            const { wallet } = req.body as { [key: string]: any };
+            const walletStr = Array.isArray(wallet) ? wallet[0] : wallet;
 
-            if (!wallet || !ethers.isAddress(wallet)) {
+            if (!walletStr || !ethers.isAddress(walletStr)) {
                 return res.status(400).json({
                     success: false,
                     message: "Invalid wallet address"
@@ -328,9 +332,10 @@ export class HospitalController {
 
         try {
 
-            const { wallet } = req.body;
+            const { wallet } = req.body as { [key: string]: any };
+            const walletStr = Array.isArray(wallet) ? wallet[0] : wallet;
 
-            if (!wallet || !ethers.isAddress(wallet)) {
+            if (!walletStr || !ethers.isAddress(walletStr)) {
                 return res.status(400).json({
                     success: false,
                     message: "Invalid wallet address"

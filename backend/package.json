@@ -26,6 +26,7 @@
     "@veramo/kms-local": "^7.0.0",
     "axios": "^1.18.1",
     "bcrypt": "^6.0.0",
+    "better-sqlite3": "^12.11.1",
     "compression": "^1.8.1",
     "cors": "^2.8.6",
     "did-resolver": "^5.0.1",
@@ -47,6 +48,7 @@
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jest": "^29.5.14",
