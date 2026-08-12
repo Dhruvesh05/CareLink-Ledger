@@ -48,13 +48,16 @@ def test_load_missing_csv(loader):
         loader.load("test_data/missing.csv")
 
 
-def test_wrong_extension(loader):
+def test_wrong_extension(loader, tmp_path):
     """
     Verify ValueError is raised for an unsupported extension.
     """
 
+    wrong_file = tmp_path / "sample.xlsx"
+    wrong_file.write_text("not an actual Excel file")
+
     with pytest.raises(ValueError):
-        loader.load("test_data/sample.xlsx")
+        loader.load(str(wrong_file))
 
 
 def test_load_empty_csv(loader):
