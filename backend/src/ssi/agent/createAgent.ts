@@ -60,8 +60,10 @@ export async function createAgent(): Promise<AnyAgent> {
     const didManager = new DIDManager({ providers: { "did:key": keyDidProvider }, defaultProvider: "did:key", store: didStore });
 
     // DID resolver plugin
-    const resolver = getDidKeyResolver();
-    const didResolverPlugin = new DIDResolverPlugin({ resolver });
+    const resolverMap = getDidKeyResolver();
+    // getDidKeyResolver() returns a map { key: resolverFunction } which matches
+    // the DIDResolverPlugin constructor overload that accepts a map of DID method resolvers.
+    const didResolverPlugin = new DIDResolverPlugin(resolverMap as any);
 
     // DataStore ORM plugin (query helpers)
     const dataStoreOrm = new DataStoreORM(dataSource);
