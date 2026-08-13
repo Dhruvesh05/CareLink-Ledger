@@ -38,6 +38,26 @@ jest.mock("@veramo/did-resolver", () => ({
     }
 }));
 
+jest.mock("@veramo/kms-local", () => ({
+    KeyManagementSystem: class {}
+}));
+
+jest.mock("@veramo/kms-web3", () => ({
+    KeyManagementSystem: class {}
+}));
+
+jest.mock("@veramo/kms-did-resolver", () => ({}));
+
+jest.mock("@veramo/data-store", () => ({
+    DataStore: class {},
+    DataStoreORM: class {},
+    Entities: {},
+    migrations: [],
+    MessageStore: class {},
+    MessageStoreORM: class {},
+    MessageStoreModule: class {}
+}));
+
 import { createAgent } from "../agent/createAgent";
 
 describe("SSI Veramo Agent foundation", () => {
