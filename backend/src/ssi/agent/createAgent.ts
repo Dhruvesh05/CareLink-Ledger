@@ -8,7 +8,7 @@ export async function createAgent(): Promise<AnyAgent> {
     if (singletonAgent) return singletonAgent;
 
     // Dynamically import Veramo components
-    const [{ Agent }, { KeyManager }, dataStore, kmsLocalModule, { DIDManager }, didProviderKey, { DIDResolverPlugin }] =
+    const [{ Agent }, { KeyManager }, dataStore, kmsLocalModule, { DIDManager }, didProviderKey, { DIDResolverPlugin }, credentialW3c, credentialJwt] =
         await Promise.all([
             import("@veramo/core"),
             import("@veramo/key-manager"),
@@ -17,11 +17,15 @@ export async function createAgent(): Promise<AnyAgent> {
             import("@veramo/did-manager"),
             import("@veramo/did-provider-key"),
             import("@veramo/did-resolver"),
+            import("@veramo/credential-w3c"),
+            import("@veramo/credential-jwt"),
         ]);
 
     const { KeyStore, PrivateKeyStore, DIDStore, DataStoreORM, Entities } = dataStore as any;
     const { KeyManagementSystem, SecretBox } = kmsLocalModule as any;
     const { getDidKeyResolver, KeyDIDProvider } = didProviderKey as any;
+    const { CredentialPlugin } = credentialW3c as any;
+    const { CredentialProviderJWT } = credentialJwt as any;
 
     // TypeORM DataSource
     const { DataSource } = await import("typeorm");
@@ -68,8 +72,11 @@ export async function createAgent(): Promise<AnyAgent> {
     // DataStore ORM plugin (query helpers)
     const dataStoreOrm = new DataStoreORM(dataSource);
 
+    // Credential plugin with the JWT proof provider required for signed W3C VCs.
+    const credentialPlugin = new CredentialPlugin([new CredentialProviderJWT()]);
+
     // compose agent
-    singletonAgent = new Agent({ plugins: [keyManager, didManager, didResolverPlugin, dataStoreOrm] });
+    singletonAgent = new Agent({ plugins: [keyManager, didManager, didResolverPlugin, dataStoreOrm, credentialPlugin] });
 
     return singletonAgent;
 }
