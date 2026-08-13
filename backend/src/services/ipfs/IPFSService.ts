@@ -17,7 +17,11 @@ export interface IPFSService {
 // should be provided by the IPFS integrator (Palak) and should implement
 // `IPFSService`.
 export class NotImplementedIPFSService implements IPFSService {
-    async uploadFile(): Promise<IPFSUploadResult> {
+    async uploadFile(
+        file: Buffer,
+        fileName: string,
+        mimeType: string
+    ): Promise<IPFSUploadResult> {
         throw new Error("IPFS service not implemented");
     }
 }

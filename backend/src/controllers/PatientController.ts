@@ -14,22 +14,26 @@ export class PatientController {
         try {
 
             const {
-
                 fullNameHash,
-
                 dobHash,
-
                 bloodGroup,
+                gender,
+            } = req.body as { [key: string]: any };
 
-                gender
-
-            } = req.body;
+            const fullNameHashStr = Array.isArray(fullNameHash) ? fullNameHash[0] : fullNameHash;
+            const dobHashStr = Array.isArray(dobHash) ? dobHash[0] : dobHash;
+            const bloodGroupStr = Array.isArray(bloodGroup) ? bloodGroup[0] : bloodGroup;
+            const genderStr = Array.isArray(gender) ? gender[0] : gender;
 
             if (
-                !fullNameHash ||
-                !dobHash ||
-                !bloodGroup ||
-                !gender
+                !fullNameHashStr ||
+                !dobHashStr ||
+                !bloodGroupStr ||
+                !genderStr ||
+                typeof fullNameHashStr !== "string" ||
+                typeof dobHashStr !== "string" ||
+                typeof bloodGroupStr !== "string" ||
+                typeof genderStr !== "string"
             ) {
                 return res.status(400).json({
                     success: false,
@@ -37,18 +41,12 @@ export class PatientController {
                 });
             }
 
-            const receipt =
-                await this.patientService.registerPatient(
-
-                    fullNameHash,
-
-                    dobHash,
-
-                    bloodGroup,
-
-                    gender
-
-                );
+            const receipt = await this.patientService.registerPatient(
+                fullNameHashStr,
+                dobHashStr,
+                bloodGroupStr,
+                genderStr,
+            );
 
             return res.status(201).json({
 
@@ -92,10 +90,13 @@ export class PatientController {
 
         try {
 
-            const patient =
-                await this.patientService.getPatient(
-                    req.params.wallet
-                );
+            const walletParam = req.params.wallet as unknown as string | string[] | undefined;
+            const wallet = Array.isArray(walletParam) ? walletParam[0] : walletParam;
+            if (!wallet || typeof wallet !== "string") {
+                return res.status(400).json({ success: false, message: "wallet param is required" });
+            }
+
+            const patient = await this.patientService.getPatient(wallet);
 
             return res.json({
                 success: true,
@@ -136,12 +137,13 @@ export class PatientController {
 
         try {
 
-            const active =
-                await this.patientService.isPatientActive(
+            const walletParam2 = req.params.wallet as unknown as string | string[] | undefined;
+            const wallet2 = Array.isArray(walletParam2) ? walletParam2[0] : walletParam2;
+            if (!wallet2 || typeof wallet2 !== "string") {
+                return res.status(400).json({ success: false, message: "wallet param is required" });
+            }
 
-                    req.params.wallet
-
-                );
+            const active = await this.patientService.isPatientActive(wallet2);
 
             return res.json({
 
@@ -193,17 +195,17 @@ export class PatientController {
 
         try {
 
-            const { bloodGroup } = req.body;
+            const { bloodGroup } = req.body as { [key: string]: any };
+            const bloodGroupStr = Array.isArray(bloodGroup) ? bloodGroup[0] : bloodGroup;
 
-            if (!bloodGroup) {
+            if (!bloodGroupStr || typeof bloodGroupStr !== "string") {
                 return res.status(400).json({
                     success: false,
                     message: "bloodGroup is required"
                 });
             }
 
-            const receipt =
-                await this.patientService.updateBloodGroup(bloodGroup);
+            const receipt = await this.patientService.updateBloodGroup(bloodGroupStr);
 
             return res.json({
 
@@ -309,17 +311,17 @@ export class PatientController {
 
         try {
 
-            const { wallet } = req.body;
+            const { wallet } = req.body as { [key: string]: any };
+            const walletStr = Array.isArray(wallet) ? wallet[0] : wallet;
 
-            if (!wallet) {
+            if (!walletStr || typeof walletStr !== "string") {
                 return res.status(400).json({
                     success: false,
                     message: "Wallet address is required"
                 });
             }
 
-            const receipt =
-                await this.patientService.reactivatePatient(wallet);
+            const receipt = await this.patientService.reactivatePatient(walletStr);
 
             return res.json({
 

@@ -19,14 +19,23 @@ export class DoctorController {
                 fullNameHash,
                 licenseNumberHash,
                 specialization,
-                hospital
-            } = req.body;
+                hospital,
+            } = req.body as { [key: string]: any };
+
+            const fullNameHashStr = Array.isArray(fullNameHash) ? fullNameHash[0] : fullNameHash;
+            const licenseNumberHashStr = Array.isArray(licenseNumberHash) ? licenseNumberHash[0] : licenseNumberHash;
+            const specializationStr = Array.isArray(specialization) ? specialization[0] : specialization;
+            const hospitalStr = Array.isArray(hospital) ? hospital[0] : hospital;
 
             if (
-                !fullNameHash ||
-                !licenseNumberHash ||
-                !specialization ||
-                !hospital
+                !fullNameHashStr ||
+                !licenseNumberHashStr ||
+                !specializationStr ||
+                !hospitalStr ||
+                typeof fullNameHashStr !== "string" ||
+                typeof licenseNumberHashStr !== "string" ||
+                typeof specializationStr !== "string" ||
+                typeof hospitalStr !== "string"
             ) {
                 return res.status(400).json({
                     success: false,
@@ -34,13 +43,12 @@ export class DoctorController {
                 });
             }
 
-            const transaction =
-                await this.doctorService.registerDoctor(
-                    fullNameHash,
-                    licenseNumberHash,
-                    specialization,
-                    hospital
-                );
+            const transaction = await this.doctorService.registerDoctor(
+                fullNameHashStr,
+                licenseNumberHashStr,
+                specializationStr,
+                hospitalStr,
+            );
 
             return res.status(201).json({
                 success: true,
@@ -72,10 +80,13 @@ export class DoctorController {
 
         try {
 
-            const doctor =
-                await this.doctorService.getDoctor(
-                    req.params.wallet
-                );
+            const walletParam = req.params.wallet as unknown as string | string[] | undefined;
+            const wallet = Array.isArray(walletParam) ? walletParam[0] : walletParam;
+            if (!wallet || typeof wallet !== "string") {
+                return res.status(400).json({ success: false, message: "wallet param is required" });
+            }
+
+            const doctor = await this.doctorService.getDoctor(wallet);
 
             return res.json({
                 success: true,
@@ -107,10 +118,13 @@ export class DoctorController {
 
         try {
 
-            const active =
-                await this.doctorService.isDoctorActive(
-                    req.params.wallet
-                );
+            const walletParam2 = req.params.wallet as unknown as string | string[] | undefined;
+            const wallet2 = Array.isArray(walletParam2) ? walletParam2[0] : walletParam2;
+            if (!wallet2 || typeof wallet2 !== "string") {
+                return res.status(400).json({ success: false, message: "wallet param is required" });
+            }
+
+            const active = await this.doctorService.isDoctorActive(wallet2);
 
             return res.json({
                 success: true,
@@ -142,10 +156,13 @@ export class DoctorController {
 
         try {
 
-            const verified =
-                await this.doctorService.isDoctorVerified(
-                    req.params.wallet
-                );
+            const walletParam3 = req.params.wallet as unknown as string | string[] | undefined;
+            const wallet3 = Array.isArray(walletParam3) ? walletParam3[0] : walletParam3;
+            if (!wallet3 || typeof wallet3 !== "string") {
+                return res.status(400).json({ success: false, message: "wallet param is required" });
+            }
+
+            const verified = await this.doctorService.isDoctorVerified(wallet3);
 
             return res.json({
                 success: true,
@@ -177,10 +194,13 @@ export class DoctorController {
 
         try {
 
-            const hospital =
-                await this.doctorService.getDoctorHospital(
-                    req.params.wallet
-                );
+            const walletParam4 = req.params.wallet as unknown as string | string[] | undefined;
+            const wallet4 = Array.isArray(walletParam4) ? walletParam4[0] : walletParam4;
+            if (!wallet4 || typeof wallet4 !== "string") {
+                return res.status(400).json({ success: false, message: "wallet param is required" });
+            }
+
+            const hospital = await this.doctorService.getDoctorHospital(wallet4);
 
             return res.json({
                 success: true,
@@ -213,26 +233,25 @@ export class DoctorController {
 
         try {
 
-            const { wallet } = req.body;
+            const { wallet } = req.body as { [key: string]: any };
+            const walletStr = Array.isArray(wallet) ? wallet[0] : wallet;
 
-            if (!wallet) {
+            if (!walletStr || typeof walletStr !== "string") {
                 return res.status(400).json({
                     success: false,
-                    message: "Wallet address is required"
+                    message: "Wallet address is required",
                 });
             }
 
-            const transaction =
-                await this.doctorService.verifyDoctor(wallet);
+            const transaction = await this.doctorService.verifyDoctor(walletStr);
 
-            const verified =
-                await this.doctorService.isDoctorVerified(wallet);
+            const verified = await this.doctorService.isDoctorVerified(walletStr);
 
             return res.json({
                 success: true,
-                wallet,
+                wallet: walletStr,
                 verified,
-                transaction: serializeBigInt(transaction)
+                transaction: serializeBigInt(transaction),
             });
 
         } catch (error: any) {
@@ -261,26 +280,25 @@ export class DoctorController {
 
         try {
 
-            const { wallet } = req.body;
+            const { wallet } = req.body as { [key: string]: any };
+            const walletStr = Array.isArray(wallet) ? wallet[0] : wallet;
 
-            if (!wallet) {
+            if (!walletStr || typeof walletStr !== "string") {
                 return res.status(400).json({
                     success: false,
-                    message: "Wallet address is required"
+                    message: "Wallet address is required",
                 });
             }
 
-            const transaction =
-                await this.doctorService.revokeVerification(wallet);
+            const transaction = await this.doctorService.revokeVerification(walletStr);
 
-            const verified =
-                await this.doctorService.isDoctorVerified(wallet);
+            const verified = await this.doctorService.isDoctorVerified(walletStr);
 
             return res.json({
                 success: true,
-                wallet,
+                wallet: walletStr,
                 verified,
-                transaction: serializeBigInt(transaction)
+                transaction: serializeBigInt(transaction),
             });
 
         } catch (error: any) {
@@ -344,22 +362,22 @@ export class DoctorController {
 
         try {
 
-            const { wallet } = req.body;
+            const { wallet } = req.body as { [key: string]: any };
+            const walletStr = Array.isArray(wallet) ? wallet[0] : wallet;
 
-            if (!wallet) {
+            if (!walletStr || typeof walletStr !== "string") {
                 return res.status(400).json({
                     success: false,
-                    message: "Wallet address is required"
+                    message: "Wallet address is required",
                 });
             }
 
-            const transaction =
-                await this.doctorService.reactivateDoctor(wallet);
+            const transaction = await this.doctorService.reactivateDoctor(walletStr);
 
             return res.json({
                 success: true,
-                wallet,
-                transaction: serializeBigInt(transaction)
+                wallet: walletStr,
+                transaction: serializeBigInt(transaction),
             });
 
         } catch (error: any) {
@@ -388,17 +406,18 @@ export class DoctorController {
 
         try {
 
-            const { specialization } = req.body;
 
-            if (!specialization) {
+            const { specialization } = req.body as { [key: string]: any };
+            const specializationStr = Array.isArray(specialization) ? specialization[0] : specialization;
+
+            if (!specializationStr || typeof specializationStr !== "string") {
                 return res.status(400).json({
                     success: false,
-                    message: "specialization is required"
+                    message: "specialization is required",
                 });
             }
 
-            const transaction =
-                await this.doctorService.updateSpecialization(specialization);
+            const transaction = await this.doctorService.updateSpecialization(specializationStr);
 
             return res.json({
                 success: true,
