@@ -21,7 +21,7 @@ export async function createAgent(): Promise<AnyAgent> {
             import("@veramo/credential-jwt"),
         ]);
 
-    const { KeyStore, PrivateKeyStore, DIDStore, DataStoreORM, Entities } = dataStore as any;
+    const { KeyStore, PrivateKeyStore, DIDStore, DataStore, DataStoreORM, Entities } = dataStore as any;
     const { KeyManagementSystem, SecretBox } = kmsLocalModule as any;
     const { getDidKeyResolver, KeyDIDProvider } = didProviderKey as any;
     const { CredentialPlugin } = credentialW3c as any;
@@ -69,14 +69,17 @@ export async function createAgent(): Promise<AnyAgent> {
     // the DIDResolverPlugin constructor overload that accepts a map of DID method resolvers.
     const didResolverPlugin = new DIDResolverPlugin(resolverMap as any);
 
-    // DataStore ORM plugin (query helpers)
+    // DataStore plugin for VC/VP persistence, and DataStore ORM plugin for query helpers.
+    const dataStorePlugin = new DataStore(dataSource);
     const dataStoreOrm = new DataStoreORM(dataSource);
 
     // Credential plugin with the JWT proof provider required for signed W3C VCs.
     const credentialPlugin = new CredentialPlugin([new CredentialProviderJWT()]);
 
     // compose agent
-    singletonAgent = new Agent({ plugins: [keyManager, didManager, didResolverPlugin, dataStoreOrm, credentialPlugin] });
+    singletonAgent = new Agent({
+        plugins: [keyManager, didManager, didResolverPlugin, dataStorePlugin, dataStoreOrm, credentialPlugin],
+    });
 
     return singletonAgent;
 }
