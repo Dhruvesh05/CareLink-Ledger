@@ -1,6 +1,7 @@
 import { createAgent } from "../agent/createAgent";
 import { IIdentity } from "../interfaces/IIdentity";
 import { IIdentityService } from "../interfaces/IIdentityService";
+import CredentialService from "./CredentialService";
 import DidService from "./DidService";
 
 export class IdentityService implements IIdentityService {
@@ -53,6 +54,23 @@ export class IdentityService implements IIdentityService {
             did: item?.did,
             ...(item?.alias ? { alias: item.alias } : {}),
         }));
+    }
+
+    async issueCredentialForIdentity(
+        identityDid: string,
+        issuerDid: string,
+        credentialSubject: Record<string, unknown>,
+    ): Promise<any> {
+        if (!identityDid || typeof identityDid !== "string" || !identityDid.trim()) {
+            throw new Error("Identity DID is required.");
+        }
+
+        const identity = await this.getIdentityByDid(identityDid.trim());
+        if (!identity) {
+            throw new Error(`Identity does not exist for DID "${identityDid}".`);
+        }
+
+        return CredentialService.issueCredential(issuerDid, identity.did, credentialSubject);
     }
 }
 
