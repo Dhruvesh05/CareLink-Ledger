@@ -88,3 +88,6 @@ carelink/
 - API responses: prefer `{ success, message, data?, error? }` structure.
 - Validation: keep request validation in dedicated validators/middleware.
 - Health checks: expose liveness/readiness endpoints per service.
+## Development
+
+CareLink Ledger is developed using separate main and develop branches.
