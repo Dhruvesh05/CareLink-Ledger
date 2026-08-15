@@ -2,7 +2,7 @@ import { createAgent } from "../agent/createAgent";
 import { IDID } from "../interfaces/IDID";
 
 export class DidService implements IDID {
-    async createDid(): Promise<string> {
+    async createDid(alias?: string): Promise<string> {
         const agent = await createAgent();
 
         if (!agent || typeof agent.didManagerCreate !== "function") {
@@ -11,7 +11,7 @@ export class DidService implements IDID {
 
         const created = await agent.didManagerCreate({
             provider: "did:key",
-            alias: `carelink-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+            alias: alias ?? `carelink-${Date.now()}-${Math.random().toString(16).slice(2)}`,
         });
 
         if (!created || !created.did) {
