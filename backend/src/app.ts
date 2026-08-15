@@ -6,8 +6,11 @@ import cors from "cors";
 import helmet from "helmet";
 import compression from "compression";
 import morgan from "morgan";
+import { randomUUID } from "crypto";
 
 import routes from "./routes";
+import { errorHandler } from "./middleware/errorHandler";
+import { sendError, sendSuccess } from "./utils/response";
 
 const app: Express = express();
 
@@ -33,6 +36,11 @@ app.use(
     morgan("dev")
 );
 
+app.use((_, res, next) => {
+    res.setHeader("x-request-id", randomUUID());
+    next();
+});
+
 /* ==========================================================
    API ROUTES
 ========================================================== */
@@ -44,10 +52,8 @@ app.use("/api", routes);
 ========================================================== */
 
 app.get("/health", (_, res) => {
-
-    return res.status(200).json({
-        success: true,
-        message: "CareLink Backend Running"
+    return sendSuccess(res, "CareLink Backend Running", {
+        service: "backend"
     });
 
 });
@@ -57,9 +63,7 @@ app.get("/health", (_, res) => {
 ========================================================== */
 
 app.get("/", (_, res) => {
-
-    return res.status(200).json({
-        success: true,
+    return sendSuccess(res, "CareLink Backend Running", {
         project: "CareLink Ledger",
         version: "1.0.0",
         status: "Running"
@@ -72,11 +76,11 @@ app.get("/", (_, res) => {
 ========================================================== */
 
 app.use((req, res) => {
-
-    return res.status(404).json({
-        success: false,
-        message: `Route '${req.method} ${req.originalUrl}' not found`
-    });
+    return sendError(
+        res,
+        `Route '${req.method} ${req.originalUrl}' not found`,
+        404
+    );
 
 });
 
@@ -84,22 +88,6 @@ app.use((req, res) => {
    GLOBAL ERROR HANDLER
 ========================================================== */
 
-app.use(
-    (
-        err: any,
-        req: express.Request,
-        res: express.Response,
-        next: express.NextFunction
-    ) => {
-
-        console.error(err);
-
-        return res.status(err.status || 500).json({
-            success: false,
-            message: err.message || "Internal Server Error"
-        });
-
-    }
-);
+app.use(errorHandler);
 
 export default app;

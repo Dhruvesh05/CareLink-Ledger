@@ -1,14 +1,14 @@
 import { ethers } from "ethers";
 
-import AccessControlABI from "./abi/AccessControl.json";
-import PatientRegistryABI from "./abi/PatientRegistry.json";
-import DoctorRegistryABI from "./abi/DoctorRegistry.json";
-import HospitalRegistryABI from "./abi/HospitalRegistry.json";
-import AuditLogABI from "./abi/AuditLog.json";
-import MedicalRecordABI from "./abi/MedicalRecord.json";
+import AccessControlABI from "../abi/AccessControl.json";
+import PatientRegistryABI from "../abi/PatientRegistry.json";
+import DoctorRegistryABI from "../abi/DoctorRegistry.json";
+import HospitalRegistryABI from "../abi/HospitalRegistry.json";
+import AuditLogABI from "../abi/AuditLog.json";
+import MedicalRecordABI from "../abi/MedicalRecord.json";
 
-import { signer } from "./provider";
-import { CONTRACTS } from "../../config/blockchain";
+import { signer } from "../provider/provider";
+import { CONTRACTS } from "../../../config/blockchain";
 
 export const accessControl = new ethers.Contract(
   CONTRACTS.ACCESS_CONTROL,

@@ -1,0 +1,22 @@
+{
+	"name": "carelink-ledger",
+	"version": "1.0.0",
+	"private": true,
+	"description": "CareLink Ledger monorepo",
+	"workspaces": [
+		"backend",
+		"bridge",
+		"frontend",
+		"blockchain/evm",
+		"blockchain/polygon"
+	],
+	"scripts": {
+		"dev:backend": "npm --prefix backend run dev",
+		"dev:analytics": "uvicorn analytics.main:app --host 0.0.0.0 --port 8000 --reload",
+		"test:backend": "npm --prefix backend run test",
+		"build:backend": "npm --prefix backend run build",
+		"test:evm": "npm --prefix blockchain/evm run test",
+		"compose:up": "docker compose up -d",
+		"compose:down": "docker compose down"
+	}
+}

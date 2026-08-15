@@ -1,63 +1,89 @@
-import { Buffer } from "buffer";
+import {
+    ipfsClient,
+    IIPFSClient
+} from "../client/IPFSClient";
 
-import { ipfsClient, type IIPFSClient } from "../client/IPFSClient";
+export class InvalidCidError
+    extends Error {
 
-export class InvalidCidError extends Error {
-	constructor(message = "Invalid IPFS CID") {
-		super(message);
-		this.name = "InvalidCidError";
-	}
+    constructor(
+        message = "Invalid CID"
+    ) {
+        super(message);
+        this.name =
+            "InvalidCidError";
+    }
 }
 
-export class DownloadServiceError extends Error {
-	constructor(message: string, public readonly cause?: unknown) {
-		super(message);
-		this.name = "DownloadServiceError";
-	}
+export class DownloadServiceError
+    extends Error {
+
+    constructor(
+        message: string,
+        public readonly cause?: unknown
+    ) {
+        super(message);
+        this.name =
+            "DownloadServiceError";
+    }
 }
 
 export class DownloadService {
-	private readonly client: IIPFSClient;
 
-	constructor(client: IIPFSClient = ipfsClient) {
-		this.client = client;
-	}
+    private readonly client:
+        IIPFSClient;
 
-	async downloadFile(cid: string): Promise<Buffer> {
-		this.validateCid(cid);
+    constructor(
+        client: IIPFSClient =
+            ipfsClient
+    ) {
 
-		try {
-			const data = await this.client.cat(cid.trim());
-			return Buffer.from(data);
-		} catch (error: unknown) {
-			if (this.isInvalidCidError(error)) {
-				throw new InvalidCidError();
-			}
+        this.client = client;
+    }
 
-			throw new DownloadServiceError("Failed to download content from IPFS", error);
-		}
-	}
+    async downloadFile(
+        cid: string
+    ): Promise<Buffer> {
 
-	private validateCid(cid: string): void {
-		if (!cid || cid.trim().length === 0) {
-			throw new InvalidCidError("CID is required");
-		}
+        const normalized =
+            cid.trim();
 
-		if (/\s/.test(cid)) {
-			throw new InvalidCidError("CID must not contain whitespace");
-		}
-	}
+        if (!normalized) {
+            throw new InvalidCidError(
+                "CID is required"
+            );
+        }
 
-	private isInvalidCidError(error: unknown): boolean {
-		if (!(error instanceof Error)) {
-			return false;
-		}
+        try {
 
-		const message = error.message.toLowerCase();
+            const data =
+                await this.client.cat(
+                    normalized
+                );
 
-		return message.includes("invalid cid")
-			|| message.includes("failed to parse cid")
-			|| message.includes("cannot parse cid")
-			|| message.includes("multiformats/cid");
-	}
+            return Buffer.from(data);
+
+        } catch (error) {
+
+            const message =
+                error instanceof Error
+                    ? error.message
+                    : String(error);
+
+            if (
+                message
+                    .toLowerCase()
+                    .includes("cid")
+            ) {
+                throw new InvalidCidError(
+                    "Invalid CID"
+                );
+            }
+
+            throw new DownloadServiceError(
+                "Failed to download content from IPFS",
+                error
+            );
+        }
+    }
 }

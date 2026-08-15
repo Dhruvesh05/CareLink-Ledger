@@ -1,81 +1,114 @@
-import type { IFileMetadata } from "../interfaces/IFileMetadata";
+import {
+    IFileMetadata
+} from "../interfaces/IFileMetadata";
 
-export interface IMetadataInput {
-	readonly cid: string;
-	readonly fileName: string;
-	readonly mimeType: string;
-	readonly fileSize: number;
-	readonly uploadedAt?: Date | string;
+interface MetadataInput {
+    cid: string;
+    fileName: string;
+    mimeType: string;
+    fileSize: number;
+    uploadedAt?: Date | string;
 }
 
-export class MetadataServiceError extends Error {
-	constructor(message: string, public readonly cause?: unknown) {
-		super(message);
-		this.name = "MetadataServiceError";
-	}
-}
+export class InvalidMetadataInputError
+    extends Error {
 
-export class InvalidMetadataInputError extends Error {
-	constructor(message: string) {
-		super(message);
-		this.name = "InvalidMetadataInputError";
-	}
+    constructor(
+        message: string
+    ) {
+        super(message);
+        this.name =
+            "InvalidMetadataInputError";
+    }
 }
 
 export class MetadataService {
-	generateMetadata(input: IMetadataInput): IFileMetadata {
-		this.validateInput(input);
 
-		try {
-			return {
-				cid: input.cid.trim(),
-				fileName: input.fileName.trim(),
-				mimeType: input.mimeType.trim(),
-				fileSize: input.fileSize,
-				uploadedAt: this.normalizeTimestamp(input.uploadedAt)
-			};
-		} catch (error: unknown) {
-			if (error instanceof InvalidMetadataInputError) {
-				throw error;
-			}
+    generateMetadata(
+        input: MetadataInput
+    ): IFileMetadata {
 
-			throw new MetadataServiceError("Failed to generate file metadata", error);
-		}
-	}
+        const cid =
+            input.cid.trim();
 
-	private validateInput(input: IMetadataInput): void {
-		if (!input.cid || input.cid.trim().length === 0) {
-			throw new InvalidMetadataInputError("CID is required");
-		}
+        const fileName =
+            input.fileName.trim();
 
-		if (!input.fileName || input.fileName.trim().length === 0) {
-			throw new InvalidMetadataInputError("File name is required");
-		}
+        const mimeType =
+            input.mimeType.trim();
 
-		if (!input.mimeType || input.mimeType.trim().length === 0) {
-			throw new InvalidMetadataInputError("MIME type is required");
-		}
+        if (!cid) {
+            throw new InvalidMetadataInputError(
+                "CID is required"
+            );
+        }
 
-		if (!Number.isFinite(input.fileSize) || input.fileSize < 0) {
-			throw new InvalidMetadataInputError("File size must be a non-negative finite number");
-		}
-	}
+        if (!fileName) {
+            throw new InvalidMetadataInputError(
+                "File name is required"
+            );
+        }
 
-	private normalizeTimestamp(value?: Date | string): string {
-		if (value instanceof Date) {
-			return value.toISOString();
-		}
+        if (!mimeType) {
+            throw new InvalidMetadataInputError(
+                "MIME type is required"
+            );
+        }
 
-		if (typeof value === "string" && value.trim().length > 0) {
-			const parsed = new Date(value);
+        if (
+            !Number.isFinite(
+                input.fileSize
+            ) ||
+            input.fileSize < 0
+        ) {
+            throw new InvalidMetadataInputError(
+                "File size must be a valid non-negative number"
+            );
+        }
 
-			if (Number.isNaN(parsed.getTime())) {
-				throw new InvalidMetadataInputError("Uploaded timestamp is invalid");
-			}
+        let uploadedAt: Date;
 
-			return parsed.toISOString();
-		}
+        if (
+            input.uploadedAt instanceof Date
+        ) {
 
-		return new Date().toISOString();
-	}
+            uploadedAt =
+                input.uploadedAt;
+
+        } else if (
+            typeof input.uploadedAt ===
+            "string"
+        ) {
+
+            uploadedAt =
+                new Date(
+                    input.uploadedAt
+                );
+
+        } else {
+
+            uploadedAt =
+                new Date();
+        }
+
+        if (
+            Number.isNaN(
+                uploadedAt.getTime()
+            )
+        ) {
+            throw new InvalidMetadataInputError(
+                "Uploaded timestamp is invalid"
+            );
+        }
+
+        return {
+            cid,
+            fileName,
+            mimeType,
+            fileSize:
+                input.fileSize,
+            uploadedAt:
+                uploadedAt.toISOString()
+        };
+    }
 }

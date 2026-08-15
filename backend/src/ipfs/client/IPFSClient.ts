@@ -1,111 +1,248 @@
-import { create, type IPFSHTTPClient } from "ipfs-http-client";
-
-import { ipfsConfig, type IIpfsConfig } from "../config/ipfs.config";
+import {
+    ipfsConfig,
+    type IIpfsConfig
+} from "../config/ipfs.config";
 
 export interface IIPFSAddResult {
-	readonly cid: string;
-	readonly path: string;
-	readonly size: number;
+    readonly cid: string;
+    readonly path: string;
+    readonly size: number;
 }
 
 export interface IIPFSClient {
-	add(content: string | Uint8Array | Buffer, pin?: boolean): Promise<IIPFSAddResult>;
-	cat(cid: string): Promise<Uint8Array>;
-	pin(cid: string): Promise<void>;
-	unpin(cid: string): Promise<void>;
-	isPinned(cid: string): Promise<boolean>;
-	getGatewayUrl(cid: string): string;
-	ping(): Promise<boolean>;
+    add(
+        content: string | Uint8Array | Buffer,
+        pin?: boolean
+    ): Promise<IIPFSAddResult>;
+
+    cat(cid: string): Promise<Uint8Array>;
+
+    pin(cid: string): Promise<void>;
+
+    unpin(cid: string): Promise<void>;
+
+    isPinned(cid: string): Promise<boolean>;
+
+    getGatewayUrl(cid: string): string;
+
+    ping(): Promise<boolean>;
 }
+
+interface IPFSClientLike {
+    add(
+        content: string | Uint8Array | Buffer,
+        options?: {
+            pin?: boolean;
+        }
+    ): Promise<{
+        cid: {
+            toString(): string;
+        };
+        path: string;
+        size: number;
+    }>;
+
+    cat(
+        cid: string
+    ): AsyncIterable<Uint8Array>;
+
+    pin: {
+        add(cid: string): Promise<unknown>;
+        rm(cid: string): Promise<unknown>;
+        ls(options: {
+            paths: string;
+        }): AsyncIterable<{
+            cid: {
+                toString(): string;
+            };
+        }>;
+    };
+
+    version(): Promise<unknown>;
+}
+
+type CreateIPFSClient = (
+    options: {
+        url: string;
+        timeout: number;
+    }
+) => IPFSClientLike;
 
 export class IPFSClient implements IIPFSClient {
-	private readonly client: IPFSHTTPClient;
 
-	private readonly config: IIpfsConfig;
+    private readonly config: IIpfsConfig;
 
-	constructor(config: IIpfsConfig = ipfsConfig) {
-		this.config = config;
-		this.client = create({
-			url: config.apiUrl,
-			timeout: config.timeout
-		});
-	}
+    private clientPromise:
+        Promise<IPFSClientLike> | null = null;
 
-	async add(
-		content: string | Uint8Array | Buffer,
-		pin = true
-	): Promise<IIPFSAddResult> {
-		const result = await this.client.add(content, {
-			pin
-		});
+    constructor(
+        config: IIpfsConfig = ipfsConfig
+    ) {
+        this.config = config;
+    }
 
-		return {
-			cid: result.cid.toString(),
-			path: result.path,
-			size: result.size
-		};
-	}
+    private async getClient(): Promise<IPFSClientLike> {
 
-	async cat(cid: string): Promise<Uint8Array> {
-		const chunks: Uint8Array[] = [];
+        if (!this.clientPromise) {
 
-		for await (const chunk of this.client.cat(cid)) {
-			chunks.push(chunk);
-		}
+            this.clientPromise =
+                import("ipfs-http-client")
+                    .then(
+                        (module) => {
 
-		if (chunks.length === 0) {
-			return new Uint8Array();
-		}
+                            const create =
+                                module.create as CreateIPFSClient;
 
-		const totalLength = chunks.reduce(
-			(length, chunk) => length + chunk.length,
-			0
-		);
+                            return create({
+                                url: this.config.apiUrl,
+                                timeout: this.config.timeout
+                            });
+                        }
+                    );
+        }
 
-		const data = new Uint8Array(totalLength);
-		let offset = 0;
+        return this.clientPromise;
+    }
 
-		for (const chunk of chunks) {
-			data.set(chunk, offset);
-			offset += chunk.length;
-		}
+    async add(
+        content: string | Uint8Array | Buffer,
+        pin = true
+    ): Promise<IIPFSAddResult> {
 
-		return data;
-	}
+        const client =
+            await this.getClient();
 
-	async pin(cid: string): Promise<void> {
-		await this.client.pin.add(cid);
-	}
+        const result =
+            await client.add(
+                content,
+                { pin }
+            );
 
-	async unpin(cid: string): Promise<void> {
-		await this.client.pin.rm(cid);
-	}
+        return {
+            cid: result.cid.toString(),
+            path: result.path,
+            size: result.size
+        };
+    }
 
-	async isPinned(cid: string): Promise<boolean> {
-		const trimmedCid = cid.trim();
-		const listing = this.client.pin.ls({ paths: trimmedCid });
+    async cat(
+        cid: string
+    ): Promise<Uint8Array> {
 
-		for await (const entry of listing) {
-			if (entry.cid.toString() === trimmedCid) {
-				return true;
-			}
-		}
+        const client =
+            await this.getClient();
 
-		return false;
-	}
+        const chunks: Uint8Array[] = [];
 
-	getGatewayUrl(cid: string): string {
-		return `${this.config.gatewayUrl}/${cid}`;
-	}
+        for await (
+            const chunk of client.cat(cid)
+        ) {
+            chunks.push(chunk);
+        }
 
-	async ping(): Promise<boolean> {
-		try {
-			await this.client.version();
-			return true;
-		} catch {
-			return false;
-		}
-	}
+        if (chunks.length === 0) {
+            return new Uint8Array();
+        }
+
+        const totalLength =
+            chunks.reduce(
+                (total, chunk) =>
+                    total + chunk.length,
+                0
+            );
+
+        const result =
+            new Uint8Array(totalLength);
+
+        let offset = 0;
+
+        for (const chunk of chunks) {
+
+            result.set(
+                chunk,
+                offset
+            );
+
+            offset += chunk.length;
+        }
+
+        return result;
+    }
+
+    async pin(
+        cid: string
+    ): Promise<void> {
+
+        const client =
+            await this.getClient();
+
+        await client.pin.add(cid);
+    }
+
+    async unpin(
+        cid: string
+    ): Promise<void> {
+
+        const client =
+            await this.getClient();
+
+        await client.pin.rm(cid);
+    }
+
+    async isPinned(
+        cid: string
+    ): Promise<boolean> {
+
+        const client =
+            await this.getClient();
+
+        const trimmedCid =
+            cid.trim();
+
+        const listing =
+            client.pin.ls({
+                paths: trimmedCid
+            });
+
+        for await (
+            const entry of listing
+        ) {
+
+            if (
+                entry.cid.toString() ===
+                trimmedCid
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    getGatewayUrl(
+        cid: string
+    ): string {
+
+        return `${this.config.gatewayUrl}/${encodeURIComponent(cid)}`;
+    }
+
+    async ping(): Promise<boolean> {
+
+        try {
+
+            const client =
+                await this.getClient();
+
+            await client.version();
+
+            return true;
+
+        } catch {
+
+            return false;
+        }
+    }
 }
 
-export const ipfsClient = new IPFSClient();
+export const ipfsClient =
+    new IPFSClient();

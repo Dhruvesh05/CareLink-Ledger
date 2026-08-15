@@ -1,80 +1,145 @@
-import { ipfsClient, type IIPFSClient } from "../client/IPFSClient";
+import {
+    ipfsClient,
+    IIPFSClient
+} from "../client/IPFSClient";
 
-export class InvalidCidError extends Error {
-	constructor(message = "Invalid IPFS CID") {
-		super(message);
-		this.name = "InvalidCidError";
-	}
+export class InvalidCidError
+    extends Error {
+
+    constructor(
+        message = "Invalid CID"
+    ) {
+        super(message);
+        this.name =
+            "InvalidCidError";
+    }
 }
 
-export class PinServiceError extends Error {
-	constructor(message: string, public readonly cause?: unknown) {
-		super(message);
-		this.name = "PinServiceError";
-	}
+export class PinServiceError
+    extends Error {
+
+    constructor(
+        message: string,
+        public readonly cause?: unknown
+    ) {
+        super(message);
+        this.name =
+            "PinServiceError";
+    }
+}
+
+function validateCid(
+    cid: string
+): string {
+
+    const value =
+        cid.trim();
+
+    if (!value) {
+        throw new InvalidCidError(
+            "CID is required"
+        );
+    }
+
+    if (/\s/.test(value)) {
+        throw new InvalidCidError(
+            "CID must not contain whitespace"
+        );
+    }
+
+    return value;
 }
 
 export class PinService {
-	private readonly client: IIPFSClient;
 
-	constructor(client: IIPFSClient = ipfsClient) {
-		this.client = client;
-	}
+    private readonly client:
+        IIPFSClient;
 
-	async pinCid(cid: string): Promise<void> {
-		this.validateCid(cid);
+    constructor(
+        client: IIPFSClient =
+            ipfsClient
+    ) {
 
-		try {
-			await this.client.pin(cid.trim());
-		} catch (error: unknown) {
-			throw new PinServiceError("Failed to pin CID on IPFS", error);
-		}
-	}
+        this.client = client;
+    }
 
-	async unpinCid(cid: string): Promise<void> {
-		this.validateCid(cid);
+    async pinCid(
+        cid: string
+    ): Promise<void> {
 
-		try {
-			await this.client.unpin(cid.trim());
-		} catch (error: unknown) {
-			throw new PinServiceError("Failed to unpin CID from IPFS", error);
-		}
-	}
+        const normalized =
+            validateCid(cid);
 
-	async isPinned(cid: string): Promise<boolean> {
-		this.validateCid(cid);
+        try {
 
-		try {
-			return await this.client.isPinned(cid.trim());
-		} catch (error: unknown) {
-			if (this.isInvalidCidError(error)) {
-				throw new InvalidCidError();
-			}
+            await this.client.pin(
+                normalized
+            );
 
-			throw new PinServiceError("Failed to check pinned state for CID", error);
-		}
-	}
+        } catch (error) {
 
-	private validateCid(cid: string): void {
-		if (!cid || cid.trim().length === 0) {
-			throw new InvalidCidError("CID is required");
-		}
+            throw new PinServiceError(
+                "Failed to pin CID on IPFS",
+                error
+            );
+        }
+    }
 
-		if (/\s/.test(cid)) {
-			throw new InvalidCidError("CID must not contain whitespace");
-		}
-	}
+    async unpinCid(
+        cid: string
+    ): Promise<void> {
 
-	private isInvalidCidError(error: unknown): boolean {
-		if (!(error instanceof Error)) {
-			return false;
-		}
+        const normalized =
+            validateCid(cid);
 
-		const message = error.message.toLowerCase();
+        try {
 
-		return message.includes("invalid cid")
-			|| message.includes("failed to parse cid")
-			|| message.includes("multiformats")
-			|| message.includes("cid");
-	}
+            await this.client.unpin(
+                normalized
+            );
+
+        } catch (error) {
+
+            throw new PinServiceError(
+                "Failed to unpin CID on IPFS",
+                error
+            );
+        }
+    }
+
+    async isPinned(
+        cid: string
+    ): Promise<boolean> {
+
+        const normalized =
+            validateCid(cid);
+
+        try {
+
+            return await this.client
+                .isPinned(normalized);
+
+        } catch (error) {
+
+            const message =
+                error instanceof Error
+                    ? error.message
+                    : "";
+
+            if (
+                message
+                    .toLowerCase()
+                    .includes("cid")
+            ) {
+                throw new InvalidCidError(
+                    "Invalid CID"
+                );
+            }
+
+            throw new PinServiceError(
+                "Failed to check CID pin status on IPFS",
+                error
+            );
+        }
+    }
 }

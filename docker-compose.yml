@@ -1,4 +1,45 @@
-# CareLink Ledger Docker Compose placeholder.
-# Add service definitions for backend, frontend, analytics, FHIR, blockchain tooling, and supporting infrastructure later.
+services:
+	mongo:
+		image: mongo:7
+		container_name: carelink-mongo
+		restart: unless-stopped
+		ports:
+			- "27017:27017"
+		environment:
+			MONGO_INITDB_DATABASE: carelink
+		volumes:
+			- mongo_data:/data/db
+		healthcheck:
+			test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+			interval: 15s
+			timeout: 5s
+			retries: 8
 
-services: {}
+	ipfs:
+		image: ipfs/kubo:latest
+		container_name: carelink-ipfs
+		restart: unless-stopped
+		ports:
+			- "4001:4001"
+			- "5001:5001"
+			- "8080:8080"
+		volumes:
+			- ipfs_staging:/export
+			- ipfs_data:/data/ipfs
+
+	fhir:
+		image: hapiproject/hapi:latest
+		container_name: carelink-fhir
+		restart: unless-stopped
+		ports:
+			- "8090:8080"
+		healthcheck:
+			test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8080/fhir/metadata"]
+			interval: 20s
+			timeout: 8s
+			retries: 8
+
+volumes:
+	mongo_data:
+	ipfs_staging:
+	ipfs_data:

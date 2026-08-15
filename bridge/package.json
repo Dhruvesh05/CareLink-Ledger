@@ -1,0 +1,11 @@
+{
+	"name": "carelink-bridge",
+	"version": "1.0.0",
+	"private": true,
+	"description": "CareLink Ledger cross-chain bridge service",
+	"scripts": {
+		"dev": "echo 'bridge scaffold present; runtime implementation planned in Phase 8'",
+		"build": "echo 'bridge build config pending Phase 8'",
+		"test": "echo 'bridge tests pending Phase 12'"
+	}
+}

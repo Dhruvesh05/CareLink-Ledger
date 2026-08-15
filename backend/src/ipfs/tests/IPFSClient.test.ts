@@ -68,7 +68,7 @@ describe("IPFSClient", () => {
 		mockCreate.mockClear();
 	});
 
-	it("creates the client with the provided config", () => {
+	it("creates the client with the provided config on first use", async () => {
 		const customConfig = {
 			...defaultConfig,
 			apiUrl: "http://localhost:5001/api/v0",
@@ -76,7 +76,9 @@ describe("IPFSClient", () => {
 			timeout: 45_000
 		};
 
-		new IPFSClient(customConfig);
+		const client = new IPFSClient(customConfig);
+
+		await client.ping();
 
 		expect(mockCreate).toHaveBeenCalledWith({
 			url: customConfig.apiUrl,

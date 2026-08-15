@@ -1,32 +1,45 @@
-import { IPFSService, IPFSUploadResult } from "../../services/ipfs/IPFSService";
-import { StorageService, IStorageResult } from "../services/StorageService";
-import type { IStorageOptions } from "../interfaces/IStorageOptions";
+import {
+    IPFSService,
+    IPFSUploadResult
+} from "../../services/ipfs/IPFSService";
 
-export class IPFSServiceAdapter implements IPFSService {
-    private readonly storage: StorageService;
+import { StorageService } from "../services/StorageService";
 
-    constructor(storageService: StorageService = new StorageService()) {
-        this.storage = storageService;
+export class IPFSServiceAdapter
+    implements IPFSService {
+
+    private readonly storageService: StorageService;
+
+    constructor(
+        storageService: StorageService =
+            new StorageService()
+    ) {
+        this.storageService =
+            storageService;
     }
 
-    async uploadFile(file: Buffer, fileName: string, mimeType: string): Promise<IPFSUploadResult> {
-        const input: IStorageOptions = {
-            content: file,
-            fileName,
-            mimeType,
-            uploadedAt: new Date()
-        };
+    async uploadFile(
+        file: Buffer,
+        fileName: string,
+        mimeType: string
+    ): Promise<IPFSUploadResult> {
 
-        const result: IStorageResult = await this.storage.store(input);
+        const result =
+            await this.storageService.store({
+                content: file,
+                fileName,
+                mimeType
+            });
 
         return {
             cid: result.upload.cid,
             size: result.upload.size,
-            mimeType: mimeType,
-            fileName: fileName
+            fileName: result.metadata.fileName,
+            mimeType: result.metadata.mimeType,
+            gatewayUrl:
+                result.upload.gatewayUrl
         };
     }
-
 }
 
 export default IPFSServiceAdapter;

@@ -1,0 +1,778 @@
+.
+├── .env
+├── .env.example
+├── .gitignore
+├── .vscode
+│   └── settings.json
+├── LICENSE
+├── README.md
+├── analytics
+│   ├── app
+│   │   ├── api
+│   │   │   └── .gitkeep
+│   │   ├── common
+│   │   │   ├── __init__.py
+│   │   │   ├── constants.py
+│   │   │   ├── enums.py
+│   │   │   ├── exceptions.py
+│   │   │   └── types.py
+│   │   ├── core
+│   │   │   ├── .gitkeep
+│   │   │   ├── config.py
+│   │   │   ├── logging.py
+│   │   │   └── settings.py
+│   │   ├── ingestion
+│   │   │   ├── __init__.py
+│   │   │   ├── base_loader.py
+│   │   │   ├── csv_loader.py
+│   │   │   ├── excel_loader.py
+│   │   │   ├── ingestion_service.py
+│   │   │   ├── json_loader.py
+│   │   │   └── loader_factory.py
+│   │   ├── mapping
+│   │   │   ├── __init__.py
+│   │   │   ├── column_matcher.py
+│   │   │   ├── mapping_engine.py
+│   │   │   ├── schema_detector.py
+│   │   │   └── schema_fingerprint.py
+│   │   ├── models
+│   │   │   ├── .gitkeep
+│   │   │   ├── dataset.py
+│   │   │   ├── hospital.py
+│   │   │   ├── patient.py
+│   │   │   ├── schema.py
+│   │   │   └── schema_profile.py
+│   │   ├── registry
+│   │   │   ├── __init__.py
+│   │   │   ├── base_registry.py
+│   │   │   ├── dataset_registry.py
+│   │   │   ├── hospital_registry.py
+│   │   │   ├── mapping_registry.py
+│   │   │   └── schema_registry.py
+│   │   ├── schemas
+│   │   │   ├── .gitkeep
+│   │   │   ├── __init__.py
+│   │   │   ├── datatype_detector.py
+│   │   │   ├── fingerprint_generator.py
+│   │   │   ├── metadata_extractor.py
+│   │   │   ├── schema_analyzer.py
+│   │   │   └── statistics_generator.py
+│   │   ├── services
+│   │   │   ├── .gitkeep
+│   │   │   ├── preprocessing.py
+│   │   │   └── schema_service.py
+│   │   ├── utils
+│   │   │   ├── .gitkeep
+│   │   │   └── file_utils.py
+│   │   └── validation
+│   │       ├── __init__.py
+│   │       ├── fhir_validator.py
+│   │       ├── semantic_validator.py
+│   │       └── structural_validator.py
+│   ├── main.py
+│   ├── notebooks
+│   │   └── .gitkeep
+│   ├── requirements.txt
+│   ├── test_data
+│   │   ├── empty.csv
+│   │   ├── empty.json
+│   │   ├── sample.csv
+│   │   └── sample.json
+│   └── tests
+│       ├── .gitkeep
+│       ├── __init__.py
+│       ├── test_base_loader.py
+│       ├── test_csv_loader.py
+│       ├── test_datatype_detector.py
+│       ├── test_fingerprint_generator.py
+│       ├── test_ingestion_service.py
+│       ├── test_json_loader.py
+│       ├── test_loader_factory.py
+│       ├── test_metadata_extractor.py
+│       ├── test_schema_analyzer.py
+│       ├── test_schema_integration.py
+│       ├── test_schema_service.py
+│       └── test_statistics_generator.py
+├── backend
+│   ├── .env
+│   ├── .env.example
+│   ├── .gitignore
+│   ├── README.md
+│   ├── backend-tree.txt
+│   ├── jest.config.cjs
+│   ├── logs
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── scripts
+│   │   ├── healthCheck.ts
+│   │   ├── seed.ts
+│   │   ├── ssi
+│   │   │   ├── testRealCredential.ts
+│   │   │   └── testRealDid.ts
+│   │   └── verifyContracts.ts
+│   ├── src
+│   │   ├── app.ts
+│   │   ├── blockchain
+│   │   │   ├── bridge
+│   │   │   │   ├── BridgeService.ts
+│   │   │   │   ├── adapters
+│   │   │   │   ├── events
+│   │   │   │   ├── listeners
+│   │   │   │   ├── queue
+│   │   │   │   └── retry
+│   │   │   ├── common
+│   │   │   │   ├── contractLoader.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── provider.ts
+│   │   │   │   └── signer.ts
+│   │   │   ├── ethereum
+│   │   │   │   ├── EthereumProvider.ts
+│   │   │   │   ├── abi
+│   │   │   │   │   ├── AccessControl.json
+│   │   │   │   │   ├── AuditLog.json
+│   │   │   │   │   ├── DoctorRegistry.json
+│   │   │   │   │   ├── HospitalRegistry.json
+│   │   │   │   │   ├── MedicalRecord.json
+│   │   │   │   │   └── PatientRegistry.json
+│   │   │   │   ├── addresses.ts
+│   │   │   │   ├── config
+│   │   │   │   │   └── ethereum.ts
+│   │   │   │   ├── contracts
+│   │   │   │   │   ├── AccessControlContract.ts
+│   │   │   │   │   ├── AuditContract.ts
+│   │   │   │   │   ├── DoctorRegistryContract.ts
+│   │   │   │   │   ├── HospitalRegistryContract.ts
+│   │   │   │   │   ├── MedicalRecordContract.ts
+│   │   │   │   │   ├── PatientRegistryContract.ts
+│   │   │   │   │   └── contracts.ts
+│   │   │   │   ├── deployments
+│   │   │   │   │   ├── amoy.json
+│   │   │   │   │   └── sepolia.json
+│   │   │   │   ├── provider
+│   │   │   │   │   ├── EthereumProvider.ts
+│   │   │   │   │   └── provider.ts
+│   │   │   │   ├── services
+│   │   │   │   │   ├── EthereumAuditService.ts
+│   │   │   │   │   ├── EthereumDoctorService.ts
+│   │   │   │   │   ├── EthereumHospitalService.ts
+│   │   │   │   │   ├── EthereumMedicalRecordService.ts
+│   │   │   │   │   └── EthereumPatientService.ts
+│   │   │   │   └── utils
+│   │   │   │       ├── gas.ts
+│   │   │   │       ├── provider.ts
+│   │   │   │       ├── signer.ts
+│   │   │   │       └── transaction.ts
+│   │   │   ├── fabric
+│   │   │   │   ├── chaincode
+│   │   │   │   ├── gateway
+│   │   │   │   ├── provider
+│   │   │   │   ├── services
+│   │   │   │   └── wallet
+│   │   │   ├── polygon
+│   │   │   │   ├── abi
+│   │   │   │   ├── contracts
+│   │   │   │   ├── deployments
+│   │   │   │   └── provider
+│   │   │   └── provider
+│   │   │       ├── BlockchainFactory.ts
+│   │   │       ├── BlockchainProvider.ts
+│   │   │       ├── BlockchainType.ts
+│   │   │       └── IBlockchainProvider.ts
+│   │   ├── config
+│   │   │   ├── blockchain.ts
+│   │   │   ├── cors.ts
+│   │   │   ├── database.ts
+│   │   │   ├── env.ts
+│   │   │   ├── logger.ts
+│   │   │   └── swagger.ts
+│   │   ├── controllers
+│   │   │   ├── AuditController.ts
+│   │   │   ├── AuthController.ts
+│   │   │   ├── DoctorController.ts
+│   │   │   ├── HealthController.ts
+│   │   │   ├── HospitalController.ts
+│   │   │   ├── IPFSController.ts
+│   │   │   ├── MedicalRecordController.ts
+│   │   │   └── PatientController.ts
+│   │   ├── docs
+│   │   │   ├── openapi.json
+│   │   │   └── swagger.yaml
+│   │   ├── dto
+│   │   │   ├── auth
+│   │   │   ├── doctor
+│   │   │   ├── hospital
+│   │   │   ├── medical
+│   │   │   └── patient
+│   │   ├── interfaces
+│   │   │   ├── IDoctor.ts
+│   │   │   ├── IHospital.ts
+│   │   │   ├── IMedicalRecord.ts
+│   │   │   ├── IPatient.ts
+│   │   │   └── IUser.ts
+│   │   ├── ipfs
+│   │   │   ├── README.md
+│   │   │   ├── adapters
+│   │   │   │   └── IPFSServiceAdapter.ts
+│   │   │   ├── client
+│   │   │   │   └── IPFSClient.ts
+│   │   │   ├── config
+│   │   │   │   └── ipfs.config.ts
+│   │   │   ├── index.ts
+│   │   │   ├── interfaces
+│   │   │   │   ├── IFileMetadata.ts
+│   │   │   │   ├── IStorageOptions.ts
+│   │   │   │   └── IUploadResult.ts
+│   │   │   ├── middleware
+│   │   │   │   └── ipfsValidation.middleware.ts
+│   │   │   ├── routes
+│   │   │   │   └── ipfs.routes.ts
+│   │   │   ├── services
+│   │   │   │   ├── DownloadService.ts
+│   │   │   │   ├── MetadataService.ts
+│   │   │   │   ├── PinService.ts
+│   │   │   │   ├── StorageService.ts
+│   │   │   │   └── UploadService.ts
+│   │   │   └── tests
+│   │   │       ├── DownloadService.test.ts
+│   │   │       ├── IPFSClient.test.ts
+│   │   │       ├── IPFSServiceAdapter.test.ts
+│   │   │       ├── MetadataService.test.ts
+│   │   │       ├── PinService.test.ts
+│   │   │       ├── StorageService.test.ts
+│   │   │       └── UploadService.test.ts
+│   │   ├── jest.setup.ts
+│   │   ├── middleware
+│   │   │   ├── admin.ts
+│   │   │   ├── auth.ts
+│   │   │   ├── doctor.ts
+│   │   │   ├── errorHandler.ts
+│   │   │   ├── patient.ts
+│   │   │   ├── upload.middleware.ts
+│   │   │   ├── upload.ts
+│   │   │   └── validation.ts
+│   │   ├── models
+│   │   │   ├── Audit.ts
+│   │   │   ├── Doctor.ts
+│   │   │   ├── Hospital.ts
+│   │   │   ├── MedicalRecordModel.ts
+│   │   │   ├── Patient.ts
+│   │   │   ├── Session.ts
+│   │   │   └── User.ts
+│   │   ├── repositories
+│   │   │   ├── AuditRepository.ts
+│   │   │   ├── DoctorRepository.ts
+│   │   │   ├── HospitalRepository.ts
+│   │   │   ├── PatientRepository.ts
+│   │   │   └── UserRepository.ts
+│   │   ├── routes
+│   │   │   ├── audit.routes.ts
+│   │   │   ├── auth.routes.ts
+│   │   │   ├── doctor.routes.ts
+│   │   │   ├── health.routes.ts
+│   │   │   ├── hospital.routes.ts
+│   │   │   ├── index.ts
+│   │   │   ├── medicalRecord.routes.ts
+│   │   │   └── patient.routes.ts
+│   │   ├── server.ts
+│   │   ├── services
+│   │   │   ├── AuditService.ts
+│   │   │   ├── AuthService.ts
+│   │   │   ├── DoctorService.ts
+│   │   │   ├── HospitalService.ts
+│   │   │   ├── MedicalRecordService.ts
+│   │   │   ├── PatientService.ts
+│   │   │   ├── UserService.ts
+│   │   │   └── ipfs
+│   │   │       └── IPFSService.ts
+│   │   ├── ssi
+│   │   │   ├── README.md
+│   │   │   ├── agent
+│   │   │   │   └── createAgent.ts
+│   │   │   ├── config
+│   │   │   │   └── veramo.config.ts
+│   │   │   ├── index.ts
+│   │   │   ├── interfaces
+│   │   │   │   ├── IDID.ts
+│   │   │   │   ├── IVerifiableCredential.ts
+│   │   │   │   └── IVerifiablePresentation.ts
+│   │   │   ├── services
+│   │   │   │   ├── CredentialService.ts
+│   │   │   │   ├── DidService.ts
+│   │   │   │   ├── IdentityService.ts
+│   │   │   │   └── VerificationService.ts
+│   │   │   └── tests
+│   │   │       ├── CredentialService.test.ts
+│   │   │       ├── DidService.test.ts
+│   │   │       └── createAgent.test.ts
+│   │   ├── types
+│   │   │   ├── auth.ts
+│   │   │   ├── blockchain.ts
+│   │   │   ├── common.ts
+│   │   │   └── express.d.ts
+│   │   ├── utils
+│   │   │   ├── bigint.ts
+│   │   │   ├── constants.ts
+│   │   │   ├── encryption.ts
+│   │   │   ├── hash.ts
+│   │   │   ├── ipfs.ts
+│   │   │   ├── jwt.ts
+│   │   │   ├── logger.ts
+│   │   │   ├── pinata.ts
+│   │   │   └── response.ts
+│   │   └── validators
+│   │       ├── auth.validator.ts
+│   │       ├── doctor.validator.ts
+│   │       ├── hospital.validator.ts
+│   │       ├── medical.validator.ts
+│   │       └── patient.validator.ts
+│   ├── ssi.sqlite
+│   ├── tests
+│   │   ├── e2e
+│   │   ├── integration
+│   │   └── unit
+│   ├── tsconfig.json
+│   ├── tsconfig.test.json
+│   └── uploads
+├── blockchain
+│   ├── evm
+│   │   ├── .agents
+│   │   │   └── skills
+│   │   │       ├── hardhat
+│   │   │       │   └── SKILL.md
+│   │   │       └── hardhat-toolbox-mocha-ethers
+│   │   │           └── SKILL.md
+│   │   ├── .claude -> .agents
+│   │   ├── .env
+│   │   ├── .gitignore
+│   │   ├── AGENTS.md
+│   │   ├── CLAUDE.md -> AGENTS.md
+│   │   ├── README.md
+│   │   ├── artifacts
+│   │   │   ├── artifacts.d.ts
+│   │   │   ├── build-info
+│   │   │   │   ├── solc-0_8_28-75ffaba189fbd8366cccccf2709e757fb33fd220.json
+│   │   │   │   ├── solc-0_8_28-75ffaba189fbd8366cccccf2709e757fb33fd220.output.json
+│   │   │   │   ├── solc-0_8_28-9ad578ebf1753e3943ae8e1de115511e52d262ac.json
+│   │   │   │   └── solc-0_8_28-9ad578ebf1753e3943ae8e1de115511e52d262ac.output.json
+│   │   │   └── contracts
+│   │   │       ├── AccessControl.sol
+│   │   │       │   ├── AccessControl.json
+│   │   │       │   ├── IAccessControl.json
+│   │   │       │   └── artifacts.d.ts
+│   │   │       ├── AuditLog.sol
+│   │   │       │   ├── AuditLog.json
+│   │   │       │   ├── IAuditLog.json
+│   │   │       │   └── artifacts.d.ts
+│   │   │       ├── DoctorRegistry.sol
+│   │   │       │   ├── DoctorRegistry.json
+│   │   │       │   ├── IDoctorRegistry.json
+│   │   │       │   └── artifacts.d.ts
+│   │   │       ├── HospitalRegistry.sol
+│   │   │       │   ├── HospitalRegistry.json
+│   │   │       │   ├── IHospitalRegistry.json
+│   │   │       │   └── artifacts.d.ts
+│   │   │       ├── MedicalRecord.sol
+│   │   │       │   ├── MedicalRecord.json
+│   │   │       │   └── artifacts.d.ts
+│   │   │       └── PatientRegistry.sol
+│   │   │           ├── IPatientRegistry.json
+│   │   │           ├── PatientRegistry.json
+│   │   │           └── artifacts.d.ts
+│   │   ├── cache
+│   │   │   ├── .hardhat-network-instances.json
+│   │   │   ├── build-info
+│   │   │   ├── compile-cache.json
+│   │   │   └── console-history.txt
+│   │   ├── contracts
+│   │   │   ├── AccessControl.sol
+│   │   │   ├── AuditLog.sol
+│   │   │   ├── DoctorRegistry.sol
+│   │   │   ├── HospitalRegistry.sol
+│   │   │   ├── MedicalRecord.sol
+│   │   │   └── PatientRegistry.sol
+│   │   ├── deployments
+│   │   │   ├── localhost.json
+│   │   │   └── sepolia.json
+│   │   ├── hardhat.config.ts
+│   │   ├── ignition
+│   │   │   ├── deployments
+│   │   │   │   ├── chain-11155111
+│   │   │   │   │   ├── artifacts
+│   │   │   │   │   │   ├── CareLink#AccessControl.json
+│   │   │   │   │   │   ├── CareLink#AuditLog.json
+│   │   │   │   │   │   ├── CareLink#DoctorRegistry.json
+│   │   │   │   │   │   ├── CareLink#HospitalRegistry.json
+│   │   │   │   │   │   ├── CareLink#MedicalRecord.json
+│   │   │   │   │   │   └── CareLink#PatientRegistry.json
+│   │   │   │   │   ├── build-info
+│   │   │   │   │   │   ├── solc-0_8_28-9700841141533413bb8a32f4ad8b9e1cf776a957.json
+│   │   │   │   │   │   ├── solc-0_8_28-9921ea5054dfcc4ca3a96044821943dae63ba12c.json
+│   │   │   │   │   │   ├── solc-0_8_28-a272f611fcd7df5e30e988be30d198a8479f54fe.json
+│   │   │   │   │   │   ├── solc-0_8_28-c05e2945323c246ff2ab312fc0f61ffd5c29bd00.json
+│   │   │   │   │   │   ├── solc-0_8_28-ce045009497ddbcd80cb88c98c260747caa3546e.json
+│   │   │   │   │   │   └── solc-0_8_28-d210a2e138de076c457c22520d1d34b7daa15d7b.json
+│   │   │   │   │   ├── deployed_addresses.json
+│   │   │   │   │   └── journal.jsonl
+│   │   │   │   └── chain-31337
+│   │   │   │       ├── artifacts
+│   │   │   │       │   ├── CareLink#AccessControl.json
+│   │   │   │       │   ├── CareLink#AuditLog.json
+│   │   │   │       │   ├── CareLink#DoctorRegistry.json
+│   │   │   │       │   ├── CareLink#HospitalRegistry.json
+│   │   │   │       │   ├── CareLink#MedicalRecord.json
+│   │   │   │       │   └── CareLink#PatientRegistry.json
+│   │   │   │       ├── build-info
+│   │   │   │       │   ├── solc-0_8_28-9700841141533413bb8a32f4ad8b9e1cf776a957.json
+│   │   │   │       │   ├── solc-0_8_28-9921ea5054dfcc4ca3a96044821943dae63ba12c.json
+│   │   │   │       │   ├── solc-0_8_28-a272f611fcd7df5e30e988be30d198a8479f54fe.json
+│   │   │   │       │   ├── solc-0_8_28-c05e2945323c246ff2ab312fc0f61ffd5c29bd00.json
+│   │   │   │       │   ├── solc-0_8_28-ce045009497ddbcd80cb88c98c260747caa3546e.json
+│   │   │   │       │   └── solc-0_8_28-d210a2e138de076c457c22520d1d34b7daa15d7b.json
+│   │   │   │       ├── deployed_addresses.json
+│   │   │   │       └── journal.jsonl
+│   │   │   └── modules
+│   │   │       ├── CareLink.ts
+│   │   │       └── Counter.ts
+│   │   ├── package-lock.json
+│   │   ├── package.json
+│   │   ├── scripts
+│   │   │   ├── check.ts
+│   │   │   ├── deploy-medical-record.ts
+│   │   │   ├── deploy.ts
+│   │   │   ├── setup.ts
+│   │   │   └── verify.ts
+│   │   ├── test
+│   │   │   ├── AccessControl.test.ts
+│   │   │   ├── AuditLog.test.ts
+│   │   │   ├── DoctorRegistry.test.ts
+│   │   │   ├── HospitalRegistry.test.ts
+│   │   │   ├── MedicalRecord.test.ts
+│   │   │   ├── PatientRegistry.test.ts
+│   │   │   ├── Security.test.ts
+│   │   │   ├── SystemIntegration.test.ts
+│   │   │   └── helpers
+│   │   │       ├── accounts.ts
+│   │   │       ├── deploy.ts
+│   │   │       ├── fixtures.ts
+│   │   │       └── setup.ts
+│   │   ├── tsconfig.json
+│   │   └── types
+│   │       └── ethers-contracts
+│   │           ├── AccessControl.sol
+│   │           │   ├── AccessControl.ts
+│   │           │   ├── IAccessControl.ts
+│   │           │   └── index.ts
+│   │           ├── AuditLog.sol
+│   │           │   ├── AuditLog.ts
+│   │           │   ├── IAuditLog.ts
+│   │           │   └── index.ts
+│   │           ├── DoctorRegistry.sol
+│   │           │   ├── DoctorRegistry.ts
+│   │           │   ├── IDoctorRegistry.ts
+│   │           │   └── index.ts
+│   │           ├── HospitalRegistry.sol
+│   │           │   ├── HospitalRegistry.ts
+│   │           │   ├── IHospitalRegistry.ts
+│   │           │   └── index.ts
+│   │           ├── MedicalRecord.ts
+│   │           ├── PatientRegistry.sol
+│   │           │   ├── IPatientRegistry.ts
+│   │           │   ├── PatientRegistry.ts
+│   │           │   └── index.ts
+│   │           ├── common.ts
+│   │           ├── factories
+│   │           │   ├── AccessControl.sol
+│   │           │   │   ├── AccessControl__factory.ts
+│   │           │   │   ├── IAccessControl__factory.ts
+│   │           │   │   └── index.ts
+│   │           │   ├── AuditLog.sol
+│   │           │   │   ├── AuditLog__factory.ts
+│   │           │   │   ├── IAuditLog__factory.ts
+│   │           │   │   └── index.ts
+│   │           │   ├── DoctorRegistry.sol
+│   │           │   │   ├── DoctorRegistry__factory.ts
+│   │           │   │   ├── IDoctorRegistry__factory.ts
+│   │           │   │   └── index.ts
+│   │           │   ├── HospitalRegistry.sol
+│   │           │   │   ├── HospitalRegistry__factory.ts
+│   │           │   │   ├── IHospitalRegistry__factory.ts
+│   │           │   │   └── index.ts
+│   │           │   ├── MedicalRecord__factory.ts
+│   │           │   ├── PatientRegistry.sol
+│   │           │   │   ├── IPatientRegistry__factory.ts
+│   │           │   │   ├── PatientRegistry__factory.ts
+│   │           │   │   └── index.ts
+│   │           │   └── index.ts
+│   │           ├── hardhat.d.ts
+│   │           └── index.ts
+│   ├── fabric
+│   │   ├── chaincode
+│   │   │   ├── cmd
+│   │   │   │   └── .gitkeep
+│   │   │   ├── contracts
+│   │   │   │   └── .gitkeep
+│   │   │   ├── go.mod
+│   │   │   ├── internal
+│   │   │   │   ├── models
+│   │   │   │   │   └── .gitkeep
+│   │   │   │   ├── services
+│   │   │   │   │   └── .gitkeep
+│   │   │   │   ├── utils
+│   │   │   │   │   └── .gitkeep
+│   │   │   │   └── validators
+│   │   │   │       └── .gitkeep
+│   │   │   ├── main.go
+│   │   │   ├── scripts
+│   │   │   │   └── .gitkeep
+│   │   │   └── tests
+│   │   │       └── .gitkeep
+│   │   └── network
+│   │       ├── artifacts
+│   │       │   └── .gitkeep
+│   │       ├── channels
+│   │       │   └── .gitkeep
+│   │       ├── config
+│   │       │   └── .gitkeep
+│   │       ├── docker
+│   │       │   └── .gitkeep
+│   │       ├── genesis
+│   │       │   └── .gitkeep
+│   │       ├── organizations
+│   │       │   └── .gitkeep
+│   │       └── scripts
+│   │           └── .gitkeep
+│   └── polygon
+│       ├── artifacts
+│       │   └── .gitkeep
+│       ├── cache
+│       │   └── .gitkeep
+│       ├── contracts
+│       │   └── .gitkeep
+│       ├── deploy
+│       │   └── .gitkeep
+│       ├── hardhat.config.js
+│       ├── ignition
+│       │   └── .gitkeep
+│       ├── interfaces
+│       │   └── .gitkeep
+│       ├── libraries
+│       │   └── .gitkeep
+│       ├── package.json
+│       ├── scripts
+│       │   └── .gitkeep
+│       ├── test
+│       │   └── .gitkeep
+│       └── utils
+│           └── .gitkeep
+├── bridge
+│   ├── package.json
+│   ├── scripts
+│   │   └── .gitkeep
+│   ├── src
+│   │   ├── adapters
+│   │   │   └── .gitkeep
+│   │   ├── config
+│   │   │   └── .gitkeep
+│   │   ├── contracts
+│   │   │   └── .gitkeep
+│   │   ├── events
+│   │   │   └── .gitkeep
+│   │   ├── index.js
+│   │   ├── listeners
+│   │   │   └── .gitkeep
+│   │   ├── relayers
+│   │   │   └── .gitkeep
+│   │   ├── services
+│   │   │   └── .gitkeep
+│   │   ├── types
+│   │   │   └── .gitkeep
+│   │   ├── utils
+│   │   │   └── .gitkeep
+│   │   └── validators
+│   │       └── .gitkeep
+│   └── test
+│       └── .gitkeep
+├── configs
+│   ├── README.md
+│   ├── analytics
+│   │   └── .gitkeep
+│   ├── backend
+│   │   └── .gitkeep
+│   ├── bridge
+│   │   └── .gitkeep
+│   ├── docker
+│   │   └── .gitkeep
+│   ├── env
+│   │   └── .gitkeep
+│   ├── fabric
+│   │   └── .gitkeep
+│   ├── fhir
+│   │   └── .gitkeep
+│   ├── frontend
+│   │   └── .gitkeep
+│   ├── hardhat
+│   │   └── .gitkeep
+│   ├── mappings
+│   │   └── .gitkeep
+│   └── nginx
+│       └── .gitkeep
+├── dataset
+│   ├── exports
+│   │   └── .gitkeep
+│   ├── processed
+│   │   └── .gitkeep
+│   ├── raw
+│   │   ├── .gitkeep
+│   │   ├── hospital_a
+│   │   │   ├── synthetic_asthma_dataset.csv
+│   │   │   └── synthetic_asthma_dataset.csv:Zone.Identifier
+│   │   ├── hospital_b
+│   │   │   ├── synthetic_clinical_dataset.csv
+│   │   │   └── synthetic_clinical_dataset.csv:Zone.Identifier
+│   │   ├── hospital_c
+│   │   │   ├── CKD_Risk_Progression_Dataset_2026.csv
+│   │   │   └── CKD_Risk_Progression_Dataset_2026.csv:Zone.Identifier
+│   │   └── hospital_d
+│   │       ├── allergies.csv
+│   │       ├── allergies.csv:Zone.Identifier
+│   │       ├── careplans.csv
+│   │       ├── careplans.csv:Zone.Identifier
+│   │       ├── conditions.csv
+│   │       ├── conditions.csv:Zone.Identifier
+│   │       ├── devices.csv
+│   │       ├── devices.csv:Zone.Identifier
+│   │       ├── encounters.csv
+│   │       ├── encounters.csv:Zone.Identifier
+│   │       ├── imaging_studies.csv
+│   │       ├── imaging_studies.csv:Zone.Identifier
+│   │       ├── immunizations.csv
+│   │       ├── immunizations.csv:Zone.Identifier
+│   │       ├── medications.csv
+│   │       ├── medications.csv:Zone.Identifier
+│   │       ├── observations.csv
+│   │       ├── observations.csv:Zone.Identifier
+│   │       ├── organizations.csv
+│   │       ├── organizations.csv:Zone.Identifier
+│   │       ├── patients.csv
+│   │       ├── patients.csv:Zone.Identifier
+│   │       ├── payer_transitions.csv
+│   │       ├── payer_transitions.csv:Zone.Identifier
+│   │       ├── payers.csv
+│   │       ├── payers.csv:Zone.Identifier
+│   │       ├── procedures.csv
+│   │       ├── procedures.csv:Zone.Identifier
+│   │       ├── providers.csv
+│   │       └── providers.csv:Zone.Identifier
+│   ├── samples
+│   │   └── .gitkeep
+│   ├── schemas
+│   │   └── .gitkeep
+│   └── synthetic
+│       └── .gitkeep
+├── desktop.ini
+├── docker-compose.yml
+├── docs
+│   ├── README.md
+│   ├── analytics
+│   │   └── .gitkeep
+│   ├── api
+│   │   └── .gitkeep
+│   ├── architecture
+│   │   └── .gitkeep
+│   ├── backend
+│   │   └── .gitkeep
+│   ├── blockchain
+│   │   └── .gitkeep
+│   ├── bridge
+│   │   └── .gitkeep
+│   ├── decisions
+│   │   └── .gitkeep
+│   ├── deployment
+│   │   └── .gitkeep
+│   ├── diagrams
+│   │   └── .gitkeep
+│   ├── fhir
+│   │   └── .gitkeep
+│   ├── frontend
+│   │   └── .gitkeep
+│   └── runbooks
+│       └── .gitkeep
+├── fhir
+│   ├── config
+│   │   └── .gitkeep
+│   ├── pom.xml
+│   ├── server
+│   │   ├── data
+│   │   │   └── .gitkeep
+│   │   ├── extensions
+│   │   │   └── .gitkeep
+│   │   ├── profiles
+│   │   │   └── .gitkeep
+│   │   ├── resources
+│   │   │   └── .gitkeep
+│   │   ├── scripts
+│   │   │   └── .gitkeep
+│   │   └── terminology
+│   │       └── .gitkeep
+│   └── tests
+│       └── .gitkeep
+├── frontend
+│   ├── e2e
+│   │   └── .gitkeep
+│   ├── package.json
+│   ├── public
+│   │   └── .gitkeep
+│   └── src
+│       ├── assets
+│       │   └── .gitkeep
+│       ├── components
+│       │   └── .gitkeep
+│       ├── config
+│       │   └── .gitkeep
+│       ├── context
+│       │   └── .gitkeep
+│       ├── features
+│       │   └── .gitkeep
+│       ├── hooks
+│       │   └── .gitkeep
+│       ├── main.jsx
+│       ├── pages
+│       │   └── .gitkeep
+│       ├── routes
+│       │   └── .gitkeep
+│       ├── services
+│       │   └── .gitkeep
+│       ├── store
+│       │   └── .gitkeep
+│       ├── styles
+│       │   └── .gitkeep
+│       └── utils
+│           └── .gitkeep
+├── generator
+│   ├── configs
+│   │   └── .gitkeep
+│   ├── outputs
+│   │   └── .gitkeep
+│   ├── prompts
+│   │   └── .gitkeep
+│   ├── scripts
+│   │   └── .gitkeep
+│   └── templates
+│       └── .gitkeep
+├── opencode-ai
+├── package.json
+├── project-tree.txt
+└── scripts
+    ├── README.md
+    ├── deploy
+    │   └── .gitkeep
+    ├── dev
+    │   └── .gitkeep
+    ├── maintenance
+    │   └── .gitkeep
+    ├── test
+    │   └── .gitkeep
+    └── utils
+        └── .gitkeep
+
+253 directories, 523 files

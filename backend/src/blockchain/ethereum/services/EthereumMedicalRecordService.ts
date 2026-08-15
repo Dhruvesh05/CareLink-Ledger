@@ -1,18 +1,17 @@
-import { MedicalRecordContract } from "../contracts/MedicalRecordContract";
-
+import {
+    MedicalRecordContract
+} from "../contracts/MedicalRecordContract";
 
 export class EthereumMedicalRecordService {
 
-    private medicalRecordContract: MedicalRecordContract;
-
+    private readonly medicalRecordContract:
+        MedicalRecordContract;
 
     constructor() {
 
         this.medicalRecordContract =
             new MedicalRecordContract();
-
     }
-
 
     /*
     ==========================================================
@@ -28,16 +27,15 @@ export class EthereumMedicalRecordService {
         emergency: boolean
     ) {
 
-        return await this.medicalRecordContract.createMedicalRecord(
-            patient,
-            ipfsHash,
-            fileHash,
-            category,
-            emergency
-        );
-
+        return this.medicalRecordContract
+            .createMedicalRecord(
+                patient,
+                ipfsHash,
+                fileHash,
+                category,
+                emergency
+            );
     }
-
 
     async updateMedicalRecord(
         recordId: number,
@@ -47,31 +45,29 @@ export class EthereumMedicalRecordService {
         expectedVersion: number
     ) {
 
-        return await this.medicalRecordContract.updateMedicalRecord(
-            recordId,
-            ipfsHash,
-            fileHash,
-            category,
-            expectedVersion
-        );
-
+        return this.medicalRecordContract
+            .updateMedicalRecord(
+                recordId,
+                ipfsHash,
+                fileHash,
+                category,
+                expectedVersion
+            );
     }
-
 
     async deactivateMedicalRecord(
         recordId: number
     ) {
 
-        return await this.medicalRecordContract.deactivateMedicalRecord(
-            recordId
-        );
-
+        return this.medicalRecordContract
+            .deactivateMedicalRecord(
+                recordId
+            );
     }
-
 
     /*
     ==========================================================
-    ACCESS DELEGATION
+    ACCESS CONTROL
     ==========================================================
     */
 
@@ -80,43 +76,40 @@ export class EthereumMedicalRecordService {
         doctor: string
     ) {
 
-        return await this.medicalRecordContract.grantAccess(
-            recordId,
-            doctor
-        );
-
+        return this.medicalRecordContract
+            .grantAccess(
+                recordId,
+                doctor
+            );
     }
-
 
     async revokeAccess(
         recordId: number,
         doctor: string
     ) {
 
-        return await this.medicalRecordContract.revokeAccess(
-            recordId,
-            doctor
-        );
-
+        return this.medicalRecordContract
+            .revokeAccess(
+                recordId,
+                doctor
+            );
     }
-
 
     async isAuthorizedDoctor(
         recordId: number,
         doctor: string
     ) {
 
-        return await this.medicalRecordContract.isAuthorizedDoctor(
-            recordId,
-            doctor
-        );
-
+        return this.medicalRecordContract
+            .isAuthorizedDoctor(
+                recordId,
+                doctor
+            );
     }
-
 
     /*
     ==========================================================
-    READ ACCESS (AUDIT-LOGGING VARIANTS)
+    AUDIT
     ==========================================================
     */
 
@@ -124,27 +117,21 @@ export class EthereumMedicalRecordService {
         recordId: number
     ) {
 
-        return await this.medicalRecordContract.viewRecord(
-            recordId
-        );
-
+        return this.medicalRecordContract
+            .viewRecord(recordId);
     }
-
 
     async logDownload(
         recordId: number
     ) {
 
-        return await this.medicalRecordContract.logDownload(
-            recordId
-        );
-
+        return this.medicalRecordContract
+            .logDownload(recordId);
     }
-
 
     /*
     ==========================================================
-    READ ACCESS (FREE VIEW CALLS)
+    READ
     ==========================================================
     */
 
@@ -152,61 +139,51 @@ export class EthereumMedicalRecordService {
         recordId: number
     ) {
 
-        return await this.medicalRecordContract.getMedicalRecord(
-            recordId
-        );
-
+        return this.medicalRecordContract
+            .getMedicalRecord(recordId);
     }
-
 
     async getPatientRecords(
         patient: string
     ) {
 
-        return await this.medicalRecordContract.getPatientRecords(
-            patient
-        );
-
+        return this.medicalRecordContract
+            .getPatientRecords(patient);
     }
-
 
     async getDoctorRecords(
         doctor: string
     ) {
 
-        return await this.medicalRecordContract.getDoctorRecords(
-            doctor
-        );
-
+        return this.medicalRecordContract
+            .getDoctorRecords(doctor);
     }
-
 
     async getHospitalRecords(
         hospital: string
     ) {
 
-        return await this.medicalRecordContract.getHospitalRecords(
-            hospital
-        );
-
+        return this.medicalRecordContract
+            .getHospitalRecords(hospital);
     }
 
+    /*
+    ==========================================================
+    UTILITIES
+    ==========================================================
+    */
 
     async recordExists(
         recordId: number
     ) {
 
-        return await this.medicalRecordContract.recordExists(
-            recordId
-        );
-
+        return this.medicalRecordContract
+            .recordExists(recordId);
     }
-
 
     async totalRecords() {
 
-        return await this.medicalRecordContract.totalRecords();
-
+        return this.medicalRecordContract
+            .totalRecords();
     }
-
 }

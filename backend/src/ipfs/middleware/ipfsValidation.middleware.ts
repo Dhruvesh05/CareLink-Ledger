@@ -1,251 +1,343 @@
-import { NextFunction, Request, RequestHandler, Response } from "express";
+import {
+    NextFunction,
+    Request,
+    RequestHandler,
+    Response
+} from "express";
 
-type HttpError = Error & { status?: number };
+import { env } from "../../config/env";
+
+type HttpError =
+    Error & {
+        status?: number;
+    };
 
 type UploadBody = {
-	content?: unknown;
-	fileName?: unknown;
-	mimeType?: unknown;
-	uploadedAt?: unknown;
+    content?: unknown;
+    fileName?: unknown;
+    mimeType?: unknown;
+    uploadedAt?: unknown;
 };
 
 type PinBody = {
-	cid?: unknown;
-};
-
-type UploadFileLike = {
-	mimetype?: string;
-	size?: number;
-	originalname?: string;
+    cid?: unknown;
 };
 
 const DEFAULT_ALLOWED_MIME_TYPES = [
-	"application/pdf",
-	"image/jpeg",
-	"image/png",
-	"text/plain",
-	"application/json"
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "text/plain",
+    "application/json"
 ];
 
-const MAX_UPLOAD_SIZE_BYTES = Number(process.env.IPFS_MAX_UPLOAD_SIZE_BYTES) || 10 * 1024 * 1024;
+const MAX_UPLOAD_SIZE_BYTES =
+    env.IPFS_MAX_UPLOAD_SIZE_BYTES;
 
-const ALLOWED_MIME_TYPES = new Set(
-	(process.env.IPFS_ALLOWED_MIME_TYPES || DEFAULT_ALLOWED_MIME_TYPES.join(","))
-		.split(",")
-		.map((type) => type.trim())
-		.filter((type) => type.length > 0)
-);
+const ALLOWED_MIME_TYPES =
+    new Set(
+        (
+            env.IPFS_ALLOWED_MIME_TYPES ||
+            DEFAULT_ALLOWED_MIME_TYPES.join(",")
+        )
+            .split(",")
+            .map(type => type.trim())
+            .filter(Boolean)
+    );
 
-function createHttpError(status: number, message: string): HttpError {
-	const error = new Error(message) as HttpError;
-	error.status = status;
-	return error;
+function httpError(
+    status: number,
+    message: string
+): HttpError {
+
+    const error =
+        new Error(message) as HttpError;
+
+    error.status = status;
+
+    return error;
 }
 
-function isString(value: unknown): value is string {
-	return typeof value === "string";
+function nonEmptyString(
+    value: unknown
+): value is string {
+
+    return (
+        typeof value === "string" &&
+        value.trim().length > 0
+    );
 }
 
-function isNonEmptyString(value: unknown): value is string {
-	return isString(value) && value.trim().length > 0;
+function validateCid(
+    value: unknown
+): string {
+
+    if (!nonEmptyString(value)) {
+        throw httpError(
+            400,
+            "cid is required"
+        );
+    }
+
+    const cid =
+        value.trim();
+
+    if (/\s/.test(cid)) {
+        throw httpError(
+            400,
+            "cid must not contain whitespace"
+        );
+    }
+
+    if (!/^[A-Za-z0-9]+$/.test(cid)) {
+        throw httpError(
+            400,
+            "cid format is invalid"
+        );
+    }
+
+    return cid;
 }
 
-function parseCid(value: unknown): string {
-	if (!isNonEmptyString(value)) {
-		throw createHttpError(400, "cid is required");
-	}
+function getContentSize(
+    content: unknown
+): number {
 
-	const cid = value.trim();
+    if (Buffer.isBuffer(content)) {
+        return content.length;
+    }
 
-	if (/\s/.test(cid)) {
-		throw createHttpError(400, "cid must not contain whitespace");
-	}
+    if (content instanceof Uint8Array) {
+        return content.byteLength;
+    }
 
-	if (!/^[A-Za-z0-9]+$/.test(cid)) {
-		throw createHttpError(400, "cid format is invalid");
-	}
+    if (typeof content === "string") {
+        return Buffer.byteLength(
+            content,
+            "utf8"
+        );
+    }
 
-	return cid;
+    return 0;
 }
 
-function getUploadSourceSize(content: unknown, file?: UploadFileLike): number {
-	if (typeof file?.size === "number") {
-		return file.size;
-	}
+export const validateIpfsFileExistence:
+    RequestHandler =
+        (
+            req: Request,
+            _res: Response,
+            next: NextFunction
+        ) => {
 
-	if (Buffer.isBuffer(content)) {
-		return content.length;
-	}
+            try {
 
-	if (content instanceof Uint8Array) {
-		return content.byteLength;
-	}
+                const body =
+                    req.body as UploadBody;
 
-	if (isString(content)) {
-		return Buffer.byteLength(content, "utf8");
-	}
+                if (
+                    !Buffer.isBuffer(
+                        body.content
+                    ) &&
+                    !(
+                        body.content instanceof
+                        Uint8Array
+                    ) &&
+                    !nonEmptyString(
+                        body.content
+                    )
+                ) {
+                    throw httpError(
+                        400,
+                        "file content is required"
+                    );
+                }
 
-	return 0;
-}
+                next();
 
-function hasUploadContent(content: unknown, file?: UploadFileLike): boolean {
-	if (typeof file?.size === "number") {
-		return file.size > 0;
-	}
+            } catch (error) {
 
-	if (Buffer.isBuffer(content) || content instanceof Uint8Array) {
-		return content.length > 0;
-	}
+                next(error);
+            }
+        };
 
-	if (isString(content)) {
-		return content.trim().length > 0;
-	}
+export const validateIpfsCidParam:
+    RequestHandler =
+        (
+            req,
+            _res,
+            next
+        ) => {
 
-	return false;
-}
+            try {
 
-function getUploadMimeType(body: UploadBody, file?: UploadFileLike): string | undefined {
-	if (isNonEmptyString(file?.mimetype)) {
-		return file.mimetype.trim();
-	}
+                validateCid(
+                    req.params.cid
+                );
 
-	if (isNonEmptyString(body.mimeType)) {
-		return body.mimeType.trim();
-	}
+                next();
 
-	return undefined;
-}
+            } catch (error) {
 
-function getUploadFileName(body: UploadBody, file?: UploadFileLike): string | undefined {
-	if (isNonEmptyString(file?.originalname)) {
-		return file.originalname.trim();
-	}
+                next(error);
+            }
+        };
 
-	if (isNonEmptyString(body.fileName)) {
-		return body.fileName.trim();
-	}
+export const validateIpfsPinBody:
+    RequestHandler =
+        (
+            req,
+            _res,
+            next
+        ) => {
 
-	return undefined;
-}
+            try {
 
-function extractUploadFile(req: Request): UploadFileLike | undefined {
-	const file = (req as Request & { file?: UploadFileLike }).file;
-	if (file && typeof file === "object") {
-		return file;
-	}
+                validateCid(
+                    (req.body as PinBody).cid
+                );
 
-	return undefined;
-}
+                next();
 
-function validateBodyFieldsMiddleware(requiredFields: Array<keyof UploadBody>): RequestHandler {
-	return (req: Request, _res: Response, next: NextFunction) => {
-		try {
-			const body = req.body as UploadBody;
+            } catch (error) {
 
-			for (const field of requiredFields) {
-				if (!isNonEmptyString(body[field])) {
-					throw createHttpError(400, `${String(field)} is required`);
-				}
-			}
+                next(error);
+            }
+        };
 
-			next();
-		}
-		catch (error) {
-			next(error);
-		}
-	};
-}
+export const validateIpfsUploadContentSize:
+    RequestHandler =
+        (
+            req,
+            _res,
+            next
+        ) => {
 
-export const validateIpfsFileExistence: RequestHandler = (req, _res, next) => {
-	try {
-		const body = req.body as UploadBody;
-		const file = extractUploadFile(req);
+            try {
 
-		if (!hasUploadContent(body.content, file)) {
-			throw createHttpError(400, "file content is required");
-		}
+                const size =
+                    getContentSize(
+                        (req.body as UploadBody)
+                            .content
+                    );
 
-		next();
-	}
-	catch (error) {
-		next(error);
-	}
-};
+                if (
+                    size >
+                    MAX_UPLOAD_SIZE_BYTES
+                ) {
+                    throw httpError(
+                        413,
+                        `file exceeds maximum upload size of ${MAX_UPLOAD_SIZE_BYTES} bytes`
+                    );
+                }
 
-export const validateIpfsCidParam: RequestHandler = (req, _res, next) => {
-	try {
-		parseCid(req.params.cid);
-		next();
-	}
-	catch (error) {
-		next(error);
-	}
-};
+                next();
 
-export const validateIpfsPinBody: RequestHandler = (req, _res, next) => {
-	try {
-		const body = req.body as PinBody;
-		parseCid(body.cid);
-		next();
-	}
-	catch (error) {
-		next(error);
-	}
-};
+            } catch (error) {
 
-export const validateIpfsUploadContentSize: RequestHandler = (req, _res, next) => {
-	try {
-		const body = req.body as UploadBody;
-		const size = getUploadSourceSize(body.content, extractUploadFile(req));
+                next(error);
+            }
+        };
 
-		if (size > MAX_UPLOAD_SIZE_BYTES) {
-			throw createHttpError(413, `file exceeds maximum upload size of ${MAX_UPLOAD_SIZE_BYTES} bytes`);
-		}
+export const validateIpfsAllowedMimeType:
+    RequestHandler =
+        (
+            req,
+            _res,
+            next
+        ) => {
 
-		next();
-	}
-	catch (error) {
-		next(error);
-	}
-};
+            try {
 
-export const validateIpfsAllowedMimeType: RequestHandler = (req, _res, next) => {
-	try {
-		const body = req.body as UploadBody;
-		const file = extractUploadFile(req);
-		const mimeType = getUploadMimeType(body, file);
+                const body =
+                    req.body as UploadBody;
 
-		if (!mimeType) {
-			throw createHttpError(400, "mimeType is required");
-		}
+                if (
+                    !nonEmptyString(
+                        body.mimeType
+                    )
+                ) {
+                    throw httpError(
+                        400,
+                        "mimeType is required"
+                    );
+                }
 
-		if (!ALLOWED_MIME_TYPES.has(mimeType)) {
-			throw createHttpError(415, `mimeType '${mimeType}' is not allowed`);
-		}
+                const mimeType =
+                    body.mimeType.trim();
 
-		next();
-	}
-	catch (error) {
-		next(error);
-	}
-};
+                if (
+                    !ALLOWED_MIME_TYPES.has(
+                        mimeType
+                    )
+                ) {
+                    throw httpError(
+                        415,
+                        `mimeType '${mimeType}' is not allowed`
+                    );
+                }
 
-export const validateIpfsRequestBodyFields = validateBodyFieldsMiddleware([
-	"fileName",
-	"mimeType"
-]);
+                next();
+
+            } catch (error) {
+
+                next(error);
+            }
+        };
+
+export const validateIpfsRequestBodyFields:
+    RequestHandler =
+        (
+            req,
+            _res,
+            next
+        ) => {
+
+            try {
+
+                const body =
+                    req.body as UploadBody;
+
+                if (
+                    !nonEmptyString(
+                        body.fileName
+                    )
+                ) {
+                    throw httpError(
+                        400,
+                        "fileName is required"
+                    );
+                }
+
+                if (
+                    !nonEmptyString(
+                        body.mimeType
+                    )
+                ) {
+                    throw httpError(
+                        400,
+                        "mimeType is required"
+                    );
+                }
+
+                next();
+
+            } catch (error) {
+
+                next(error);
+            }
+        };
 
 export const ipfsUploadValidationMiddleware = [
-	validateIpfsRequestBodyFields,
-	validateIpfsFileExistence,
-	validateIpfsAllowedMimeType,
-	validateIpfsUploadContentSize,
+    validateIpfsRequestBodyFields,
+    validateIpfsFileExistence,
+    validateIpfsAllowedMimeType,
+    validateIpfsUploadContentSize
 ];
 
 export const ipfsCidValidationMiddleware = [
-	validateIpfsCidParam
+    validateIpfsCidParam
 ];
 
 export const ipfsPinValidationMiddleware = [
-	validateIpfsPinBody
+    validateIpfsPinBody
 ];

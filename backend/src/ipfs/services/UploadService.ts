@@ -1,50 +1,92 @@
-import { ipfsClient, type IIPFSClient } from "../client/IPFSClient";
-import type { IUploadResult } from "../interfaces/IUploadResult";
+import {
+    ipfsClient,
+    IIPFSClient
+} from "../client/IPFSClient";
 
-export type UploadableContent = Buffer | Uint8Array | string;
-
-export interface IUploadOptions {
-	readonly pin?: boolean;
+export interface UploadOptions {
+    pin?: boolean;
 }
 
-export type IUploadServiceResult = IUploadResult;
+export interface UploadResult {
+    cid: string;
+    path: string;
+    size: number;
+    gatewayUrl: string;
+}
 
-export class UploadServiceError extends Error {
-	constructor(message: string, public readonly cause?: unknown) {
-		super(message);
-		this.name = "UploadServiceError";
-	}
+export class UploadServiceError
+    extends Error {
+
+    constructor(
+        message: string,
+        public readonly cause?: unknown
+    ) {
+        super(message);
+        this.name =
+            "UploadServiceError";
+    }
 }
 
 export class UploadService {
-	private readonly client: IIPFSClient;
 
-	constructor(client: IIPFSClient = ipfsClient) {
-		this.client = client;
-	}
+    private readonly client:
+        IIPFSClient;
 
-	async uploadFile(
-		content: UploadableContent,
-		options: IUploadOptions = {}
-	): Promise<IUploadServiceResult> {
-		try {
-			const result = await this.client.add(content, options.pin ?? false);
+    constructor(
+        client: IIPFSClient =
+            ipfsClient
+    ) {
 
-			return {
-				cid: result.cid,
-				path: result.path,
-				size: result.size,
-				gatewayUrl: this.client.getGatewayUrl(result.cid)
-			};
-		} catch (error: unknown) {
-			throw new UploadServiceError("Failed to upload content to IPFS", error);
-		}
-	}
+        this.client = client;
+    }
 
-	async uploadText(
-		text: string,
-		options: IUploadOptions = {}
-	): Promise<IUploadServiceResult> {
-		return this.uploadFile(text, options);
-	}
+    async uploadFile(
+        content:
+            Buffer |
+            Uint8Array |
+            string,
+
+        options: UploadOptions = {}
+    ): Promise<UploadResult> {
+
+        try {
+
+            const pin =
+                options.pin ?? false;
+
+            const result =
+                await this.client.add(
+                    content,
+                    pin
+                );
+
+            return {
+                cid: result.cid,
+                path: result.path,
+                size: result.size,
+                gatewayUrl:
+                    this.client.getGatewayUrl(
+                        result.cid
+                    )
+            };
+
+        } catch (error) {
+
+            throw new UploadServiceError(
+                "Failed to upload content to IPFS",
+                error
+            );
+        }
+    }
+
+    async uploadText(
+        content: string,
+        options: UploadOptions = {}
+    ) {
+
+        return this.uploadFile(
+            content,
+            options
+        );
+    }
 }

@@ -1,7 +1,41 @@
-import { ethereum } from "../config/ethereum";
+import { ethers } from "ethers";
 
+import { ethereum } from "../config/ethereum";
+import MedicalRecordABI from "../abi/MedicalRecord.json";
+
+const medicalRecordInterface = new ethers.Interface(MedicalRecordABI.abi);
 
 export class MedicalRecordContract {
+
+    private extractRecordCreatedId(receipt: ethers.TransactionReceipt): number | null {
+
+        if (!receipt?.logs) {
+            return null;
+        }
+
+        for (const log of receipt.logs) {
+            try {
+                const parsedLog = medicalRecordInterface.parseLog(log as any);
+
+                if (parsedLog?.name === "RecordCreated") {
+                    const recordId = parsedLog.args[0];
+                    const numericRecordId = Number(recordId);
+
+                    if (Number.isSafeInteger(numericRecordId) && numericRecordId > 0) {
+                        return numericRecordId;
+                    }
+
+                    return null;
+                }
+            }
+            catch {
+                // Ignore unrelated logs.
+            }
+        }
+
+        return null;
+
+    }
 
 
     /*
@@ -28,8 +62,24 @@ export class MedicalRecordContract {
                 emergency
             );
 
+        const receipt = await tx.wait();
 
-        return await tx.wait();
+        if (!receipt) {
+            throw new Error("No transaction receipt returned for medical record creation");
+        }
+
+        const recordId = this.extractRecordCreatedId(receipt);
+
+        if (recordId === null) {
+            throw new Error("Unable to determine the on-chain recordId from the createMedicalRecord transaction receipt");
+        }
+
+        return {
+            ...receipt,
+            hash: receipt.hash,
+            transactionHash: receipt.hash,
+            recordId
+        };
 
     }
 

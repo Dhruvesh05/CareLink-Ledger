@@ -44,9 +44,9 @@ jest.mock("@veramo/kms-local", () => ({
 
 jest.mock("@veramo/kms-web3", () => ({
     KeyManagementSystem: class {}
-}));
+}), { virtual: true });
 
-jest.mock("@veramo/kms-did-resolver", () => ({}));
+jest.mock("@veramo/kms-did-resolver", () => ({}), { virtual: true });
 
 jest.mock("@veramo/data-store", () => ({
     DataStore: class {},

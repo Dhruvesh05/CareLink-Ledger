@@ -1,0 +1,11 @@
+{
+	"name": "carelink-frontend",
+	"version": "1.0.0",
+	"private": true,
+	"description": "CareLink Ledger frontend module",
+	"scripts": {
+		"dev": "echo 'frontend app scaffold present; initialize React runtime in Phase 10'",
+		"build": "echo 'frontend build config pending Phase 10'",
+		"test": "echo 'frontend tests pending Phase 12'"
+	}
+}
