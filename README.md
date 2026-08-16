@@ -90,4 +90,4 @@ carelink/
 - Health checks: expose liveness/readiness endpoints per service.
 ## Development
 
-CareLink Ledger is developed using separate main and develop branches.
+CareLink Ledger is developed using separate main and develop branches and the merge conflicts are resolved using pull-request-branches.
