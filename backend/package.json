@@ -12,7 +12,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "ssi:test": "tsx src/ssi/tests/createAgent.integration.ts",
-    "ssi:credential:test": "tsx src/ssi/tests/credentialLifecycle.integration.ts"
+    "ssi:credential:test": "tsx src/ssi/tests/credentialLifecycle.integration.ts",
+    "ssi:security:test": "tsx src/ssi/tests/credentialSecurity.integration.ts"
   },
   "keywords": [],
   "author": "",
