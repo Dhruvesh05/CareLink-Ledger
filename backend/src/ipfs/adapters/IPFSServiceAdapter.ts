@@ -3,19 +3,38 @@ import {
     IPFSUploadResult
 } from "../../services/ipfs/IPFSService";
 
-import { StorageService } from "../services/StorageService";
+import {
+    StorageService
+} from "../services/StorageService";
+
+import {
+    PinService
+} from "../services/PinService";
 
 export class IPFSServiceAdapter
     implements IPFSService {
 
-    private readonly storageService: StorageService;
+    private readonly storageService:
+        StorageService;
+
+    private readonly pinService:
+        PinService;
 
     constructor(
-        storageService: StorageService =
-            new StorageService()
+        storageService:
+            StorageService =
+                new StorageService(),
+
+        pinService:
+            PinService =
+                new PinService()
     ) {
+
         this.storageService =
             storageService;
+
+        this.pinService =
+            pinService;
     }
 
     async uploadFile(
@@ -39,6 +58,13 @@ export class IPFSServiceAdapter
             gatewayUrl:
                 result.upload.gatewayUrl
         };
+    }
+
+    async unpinFile(
+        cid: string
+    ): Promise<void> {
+
+        await this.pinService.unpinCid(cid);
     }
 }
 

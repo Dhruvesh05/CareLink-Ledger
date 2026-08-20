@@ -127,7 +127,12 @@ describe("StorageService", () => {
 			uploadedAt: "2025-01-15T10:00:00.000Z"
 		});
 
-		expect(mockUploadService.uploadFile).toHaveBeenCalledWith(Buffer.from("record contents"));
+		expect(mockUploadService.uploadFile).toHaveBeenCalledWith(
+			Buffer.from("record contents"),
+			{
+				pin: true
+			}
+		);
 		expect(mockMetadataService.generateMetadata).toHaveBeenCalledWith({
 			cid: "bafy-storage-cid",
 			fileName: "record.pdf",

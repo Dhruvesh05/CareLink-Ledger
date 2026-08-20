@@ -8,14 +8,14 @@ export const storage = multer.memoryStorage();
 const ALLOWED_MIME_TYPES: Record<string, string[]> = {
     "application/pdf": [".pdf"],
     "image/png": [".png"],
-    "image/jpeg": [".jpg", ".jpeg"]
+    "image/jpeg": [".jpg", ".jpeg"],
+    "application/dicom": [".dcm"]
 };
 
 export const upload = multer({
     storage,
     limits: {
-        // 10 MB default limit; adjust as needed
-        fileSize: 10 * 1024 * 1024
+        fileSize: 50 * 1024 * 1024
     },
     fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
         if (!file || !file.mimetype) {

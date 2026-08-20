@@ -254,7 +254,7 @@ contract MedicalRecord {
         _validateCategory(category);
 
         address hospital = doctorRegistry.getDoctorHospital(doctor);
-        //_validateHospital(hospital);
+        _validateHospital(hospital);
 
         bytes32 dedupeKey = keccak256(abi.encodePacked(patient, fileHash));
         if (_fileHashUsed[dedupeKey]) revert DuplicateRecord();

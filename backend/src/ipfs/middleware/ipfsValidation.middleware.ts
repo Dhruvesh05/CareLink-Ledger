@@ -27,8 +27,7 @@ const DEFAULT_ALLOWED_MIME_TYPES = [
     "application/pdf",
     "image/jpeg",
     "image/png",
-    "text/plain",
-    "application/json"
+    "application/dicom"
 ];
 
 const MAX_UPLOAD_SIZE_BYTES =
