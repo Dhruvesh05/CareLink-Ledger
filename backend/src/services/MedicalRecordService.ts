@@ -63,14 +63,18 @@ export class MedicalRecordService {
             file.buffer.length;
 
         /*
-         * SHA-256 is calculated from the exact
-         * bytes that are uploaded to IPFS.
+         * Calculate SHA-256 from the exact bytes
+         * that will be uploaded to IPFS.
          */
         const fileHash =
-            sha256FromBuffer(file.buffer);
+            sha256FromBuffer(
+                file.buffer
+            );
 
         /*
-         * Upload to IPFS first.
+         * ------------------------------------------------------
+         * STEP 1: Upload to IPFS
+         * ------------------------------------------------------
          */
         const uploadResult =
             await this.ipfsService.uploadFile(
@@ -82,68 +86,148 @@ export class MedicalRecordService {
         const cid =
             uploadResult.cid;
 
+        let blockchainCommitted =
+            false;
+
+        let recordId:
+            number | null = null;
+
         /*
-         * Store CID + hash on blockchain.
+         * ------------------------------------------------------
+         * STEP 2: Create blockchain record
+         * ------------------------------------------------------
          */
-        const transaction =
-            await this.blockchainService
-                .createMedicalRecord(
-                    patient,
-                    cid,
-                    fileHash,
-                    category,
-                    emergency
+        try {
+
+            const transaction =
+                await this.blockchainService
+                    .createMedicalRecord(
+                        patient,
+                        cid,
+                        fileHash,
+                        category,
+                        emergency
+                    );
+
+            recordId =
+                Number(
+                    transaction?.recordId ?? 0
                 );
 
-        const recordId =
-            Number(
-                transaction?.recordId ?? 0
-            );
+            if (
+                !Number.isInteger(recordId) ||
+                recordId <= 0
+            ) {
+                throw new Error(
+                    "Blockchain transaction did not return a valid recordId"
+                );
+            }
 
-        if (
-            !Number.isInteger(recordId) ||
-            recordId <= 0
-        ) {
+            blockchainCommitted =
+                true;
+
             /*
-             * The blockchain transaction succeeded
-             * but did not give us a usable record ID.
+             * --------------------------------------------------
+             * STEP 3: Persist searchable metadata in MongoDB
+             * --------------------------------------------------
              */
-            throw new Error(
-                "Blockchain transaction did not return a valid recordId"
-            );
+            try {
+
+                await MedicalRecordModel.create({
+
+                    recordId,
+
+                    patientWallet:
+                        patient,
+
+                    fileName,
+
+                    mimeType,
+
+                    fileSize,
+
+                    fileHash,
+
+                    cid,
+
+                    category,
+
+                    emergency,
+
+                    transactionHash:
+                        transaction?.transactionHash ||
+                        transaction?.hash ||
+                        undefined
+                });
+
+            } catch (mongoError) {
+
+                /*
+                 * Blockchain already references the CID.
+                 *
+                 * NEVER unpin the CID here because doing so would
+                 * leave an on-chain record pointing to unavailable
+                 * content.
+                 *
+                 * Instead, try to deactivate the blockchain record.
+                 */
+                try {
+
+                    await this.blockchainService
+                        .deactivateMedicalRecord(
+                            recordId
+                        );
+
+                } catch (deactivationError) {
+
+                    /*
+                     * Preserve the original MongoDB error.
+                     * Deactivation failure is intentionally not
+                     * allowed to hide the actual persistence error.
+                     */
+                    console.error(
+                        "Failed to deactivate medical record after MongoDB persistence failure",
+                        deactivationError
+                    );
+                }
+
+                throw mongoError;
+            }
+
+            return transaction;
+
+        } catch (error) {
+
+            /*
+             * If blockchain creation never committed,
+             * the CID is not referenced by a medical record.
+             *
+             * It is therefore safe to remove its pin.
+             */
+            if (
+                !blockchainCommitted
+            ) {
+
+                try {
+
+                    await this.ipfsService
+                        .unpinFile(cid);
+
+                } catch (cleanupError) {
+
+                    /*
+                     * Cleanup failure must not hide the original
+                     * blockchain error.
+                     */
+                    console.error(
+                        "Failed to clean up IPFS pin after blockchain failure",
+                        cleanupError
+                    );
+                }
+            }
+
+            throw error;
         }
-
-        /*
-         * Persist searchable metadata in MongoDB.
-         */
-        await MedicalRecordModel.create({
-
-            recordId,
-
-            patientWallet:
-                patient,
-
-            fileName,
-
-            mimeType,
-
-            fileSize,
-
-            fileHash,
-
-            cid,
-
-            category,
-
-            emergency,
-
-            transactionHash:
-                transaction?.transactionHash ||
-                transaction?.hash ||
-                undefined
-        });
-
-        return transaction;
     }
 
     /*
@@ -157,7 +241,9 @@ export class MedicalRecordService {
     ) {
 
         return this.blockchainService
-            .getMedicalRecord(recordId);
+            .getMedicalRecord(
+                recordId
+            );
     }
 
     /*
@@ -191,10 +277,14 @@ export class MedicalRecordService {
             file.buffer.length;
 
         const fileHash =
-            sha256FromBuffer(file.buffer);
+            sha256FromBuffer(
+                file.buffer
+            );
 
         /*
-         * Upload replacement file.
+         * Upload the replacement file first.
+         *
+         * The new CID is pinned automatically by the IPFS layer.
          */
         const uploadResult =
             await this.ipfsService.uploadFile(
@@ -206,63 +296,134 @@ export class MedicalRecordService {
         const cid =
             uploadResult.cid;
 
+        let blockchainCommitted =
+            false;
+
         /*
-         * Update blockchain first.
+         * ------------------------------------------------------
+         * Update blockchain
+         * ------------------------------------------------------
          */
-        const transaction =
-            await this.blockchainService
-                .updateMedicalRecord(
-                    recordId,
-                    cid,
-                    fileHash,
-                    category,
-                    expectedVersion
+        try {
+
+            const transaction =
+                await this.blockchainService
+                    .updateMedicalRecord(
+                        recordId,
+                        cid,
+                        fileHash,
+                        category,
+                        expectedVersion
+                    );
+
+            blockchainCommitted =
+                true;
+
+            /*
+             * --------------------------------------------------
+             * Update MongoDB metadata
+             * --------------------------------------------------
+             */
+            try {
+
+                const existing =
+                    await MedicalRecordModel.findOne({
+                        recordId
+                    });
+
+                if (existing) {
+
+                    await MedicalRecordModel.updateOne(
+                        { recordId },
+
+                        {
+                            $set: {
+
+                                patientWallet:
+                                    existing.patientWallet,
+
+                                fileName,
+
+                                mimeType,
+
+                                fileSize,
+
+                                fileHash,
+
+                                cid,
+
+                                category,
+
+                                emergency:
+                                    existing.emergency,
+
+                                transactionHash:
+                                    transaction?.transactionHash ||
+                                    transaction?.hash ||
+                                    existing.transactionHash
+                            }
+                        }
+                    );
+
+                } else {
+
+                    /*
+                     * Blockchain already succeeded but MongoDB
+                     * has no metadata entry.
+                     *
+                     * Create it from the existing blockchain
+                     * context we already have.
+                     */
+                    throw new Error(
+                        "Medical record metadata not found in MongoDB"
+                    );
+                }
+
+            } catch (mongoError) {
+
+                /*
+                 * DO NOT unpin the new CID.
+                 *
+                 * The blockchain already references it.
+                 */
+                console.error(
+                    "Medical record blockchain update succeeded but MongoDB update failed",
+                    mongoError
                 );
 
-        /*
-         * Then update MongoDB metadata.
-         */
-        const existing =
-            await MedicalRecordModel.findOne({
-                recordId
-            });
+                throw mongoError;
+            }
 
-        if (existing) {
+            return transaction;
 
-            await MedicalRecordModel.updateOne(
-                { recordId },
+        } catch (error) {
 
-                {
-                    $set: {
+            /*
+             * If blockchain update failed, the new CID is not
+             * referenced by the blockchain record.
+             *
+             * It is safe to remove its pin.
+             */
+            if (
+                !blockchainCommitted
+            ) {
 
-                        patientWallet:
-                            existing.patientWallet,
+                try {
 
-                        fileName,
+                    await this.ipfsService
+                        .unpinFile(cid);
 
-                        mimeType,
+                } catch (cleanupError) {
 
-                        fileSize,
-
-                        fileHash,
-
-                        cid,
-
-                        category,
-
-                        emergency:
-                            existing.emergency,
-
-                        transactionHash:
-                            transaction?.transactionHash ||
-                            transaction?.hash ||
-                            existing.transactionHash
-                    }
+                    console.error(
+                        "Failed to clean up replacement IPFS pin after blockchain update failure",
+                        cleanupError
+                    );
                 }
-            );
-        }
+            }
 
-        return transaction;
+            throw error;
+        }
     }
 
     /*
@@ -334,7 +495,9 @@ export class MedicalRecordService {
     ) {
 
         return this.blockchainService
-            .viewRecord(recordId);
+            .viewRecord(
+                recordId
+            );
     }
 
     async getPatientRecords(
@@ -342,7 +505,9 @@ export class MedicalRecordService {
     ) {
 
         return this.blockchainService
-            .getPatientRecords(patient);
+            .getPatientRecords(
+                patient
+            );
     }
 
     async getDoctorRecords(
@@ -350,7 +515,9 @@ export class MedicalRecordService {
     ) {
 
         return this.blockchainService
-            .getDoctorRecords(doctor);
+            .getDoctorRecords(
+                doctor
+            );
     }
 
     async getHospitalRecords(
@@ -358,7 +525,9 @@ export class MedicalRecordService {
     ) {
 
         return this.blockchainService
-            .getHospitalRecords(hospital);
+            .getHospitalRecords(
+                hospital
+            );
     }
 
     /*
@@ -372,7 +541,9 @@ export class MedicalRecordService {
     ) {
 
         return this.blockchainService
-            .logDownload(recordId);
+            .logDownload(
+                recordId
+            );
     }
 
     /*
@@ -386,7 +557,9 @@ export class MedicalRecordService {
     ) {
 
         return this.blockchainService
-            .recordExists(recordId);
+            .recordExists(
+                recordId
+            );
     }
 
     async totalRecords() {
