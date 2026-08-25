@@ -1,0 +1,159 @@
+Organizations:
+
+  - &OrdererOrg
+    Name: OrdererMSP
+    ID: OrdererMSP
+    MSPDir: ../organizations/ordererOrganizations/carelink.com/msp
+
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Writers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Admins:
+        Type: Signature
+        Rule: "OR('OrdererMSP.admin')"
+
+  - &CareLinkOrg
+    Name: CareLinkMSP
+    ID: CareLinkMSP
+    MSPDir: ../organizations/peerOrganizations/carelink.com/msp
+
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('CareLinkMSP.admin', 'CareLinkMSP.peer', 'CareLinkMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('CareLinkMSP.admin', 'CareLinkMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('CareLinkMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('CareLinkMSP.peer')"
+
+Capabilities:
+  Channel: &ChannelCapabilities
+    V2_0: true
+
+  Orderer: &OrdererCapabilities
+    V2_0: true
+
+  Application: &ApplicationCapabilities
+    V2_5: true
+
+Application: &ApplicationDefaults
+  Organizations:
+
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+
+    LifecycleEndorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+
+    Endorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+
+  Capabilities:
+    <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+  OrdererType: etcdraft
+
+  Addresses:
+    - orderer.carelink.com:7050
+
+  EtcdRaft:
+    Consenters:
+      - Host: orderer.carelink.com
+        Port: 7050
+        ClientTLSCert: ../organizations/ordererOrganizations/carelink.com/orderers/orderer.carelink.com/tls/server.crt
+        ServerTLSCert: ../organizations/ordererOrganizations/carelink.com/orderers/orderer.carelink.com/tls/server.crt
+
+  BatchTimeout: 2s
+
+  BatchSize:
+    MaxMessageCount: 10
+    AbsoluteMaxBytes: 99 MB
+    PreferredMaxBytes: 2 MB
+
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+
+    BlockValidation:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+
+  Capabilities:
+    <<: *OrdererCapabilities
+
+Channel: &ChannelDefaults
+
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+
+  Capabilities:
+    <<: *ChannelCapabilities
+
+Profiles:
+
+  CareLinkGenesis:
+    <<: *ChannelDefaults
+
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations:
+        - *OrdererOrg
+
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *CareLinkOrg
+
+  CareLinkChannel:
+    <<: *ChannelDefaults
+
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations:
+        - *OrdererOrg
+
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *CareLinkOrg

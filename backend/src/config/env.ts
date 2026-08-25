@@ -104,7 +104,7 @@ export const env = {
 
     IPFS_MAX_UPLOAD_SIZE_BYTES: getNumber(
         process.env.IPFS_MAX_UPLOAD_SIZE_BYTES,
-        10 * 1024 * 1024
+        50 * 1024 * 1024
     ),
 
     IPFS_ALLOWED_MIME_TYPES: getString(

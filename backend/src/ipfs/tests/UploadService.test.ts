@@ -39,7 +39,7 @@ describe("UploadService", () => {
 		UploadServiceError = module.UploadServiceError;
 	});
 
-	it("uploads content with pin disabled by default and returns normalized result", async () => {
+	it("uploads content with pin enabled by default and returns normalized result", async () => {
 		mockClient.add.mockResolvedValue({
 			cid: "bafy-upload-cid",
 			path: "record.pdf",
@@ -52,7 +52,7 @@ describe("UploadService", () => {
 
 		const result = await service.uploadFile(content);
 
-		expect(mockClient.add).toHaveBeenCalledWith(content, false);
+		expect(mockClient.add).toHaveBeenCalledWith(content, true);
 		expect(mockClient.getGatewayUrl).toHaveBeenCalledWith("bafy-upload-cid");
 		expect(result).toEqual({
 			cid: "bafy-upload-cid",

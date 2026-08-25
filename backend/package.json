@@ -10,7 +10,10 @@
     "clean": "rm -rf dist",
     "test": "jest --runInBand",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "ssi:test": "tsx src/ssi/tests/createAgent.integration.ts",
+    "ssi:credential:test": "tsx src/ssi/tests/credentialLifecycle.integration.ts",
+    "ssi:security:test": "tsx src/ssi/tests/credentialSecurity.integration.ts"
   },
   "keywords": [],
   "author": "",
@@ -65,6 +68,7 @@
     "ts-jest": "^29.4.1",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
+    "tsx": "^4.23.12",
     "typescript": "^5.9.2"
   },
   "directories": {

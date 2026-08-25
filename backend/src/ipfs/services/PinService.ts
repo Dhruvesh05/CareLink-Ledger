@@ -32,6 +32,14 @@ function validateCid(
     cid: string
 ): string {
 
+    if (
+        typeof cid !== "string"
+    ) {
+        throw new InvalidCidError(
+            "CID is required"
+        );
+    }
+
     const value =
         cid.trim();
 
@@ -56,11 +64,13 @@ export class PinService {
         IIPFSClient;
 
     constructor(
-        client: IIPFSClient =
-            ipfsClient
+        client:
+            IIPFSClient =
+                ipfsClient
     ) {
 
-        this.client = client;
+        this.client =
+            client;
     }
 
     async pinCid(
@@ -116,8 +126,9 @@ export class PinService {
 
         try {
 
-            return await this.client
-                .isPinned(normalized);
+            return await this.client.isPinned(
+                normalized
+            );
 
         } catch (error) {
 

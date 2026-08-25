@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { ethers } from "ethers";
 
 import { HospitalService } from "../services/HospitalService";
+import { IBlockchainProvider } from "../blockchain/provider/IBlockchainProvider";
+import { BlockchainFactory } from "../blockchain/provider/BlockchainFactory";
 import { serializeBigInt } from "../utils/bigint";
 
 /**
@@ -85,10 +87,21 @@ function errorResponse(error: any) {
 
 export class HospitalController {
 
-    private hospitalService: HospitalService;
+    private hospitalService?: HospitalService;
 
-    constructor() {
-        this.hospitalService = new HospitalService();
+    constructor(
+        private readonly blockchainService?: IBlockchainProvider
+    ) {}
+
+    private getHospitalService(): HospitalService {
+        if (!this.hospitalService) {
+            this.hospitalService = new HospitalService(
+                this.blockchainService ??
+                BlockchainFactory.getProvider()
+            );
+        }
+
+        return this.hospitalService;
     }
 
     /**
@@ -116,7 +129,7 @@ export class HospitalController {
             }
 
             const transaction =
-                await this.hospitalService.registerHospital(
+                await this.getHospitalService().registerHospital(
                     hospitalNameHash,
                     registrationNumberHash,
                     locationHash
@@ -155,7 +168,7 @@ export class HospitalController {
             }
 
             const hospital =
-                await this.hospitalService.getHospital(wallet);
+                await this.getHospitalService().getHospital(wallet);
 
             return res.json({
                 success: true,
@@ -190,7 +203,7 @@ export class HospitalController {
             }
 
             const active =
-                await this.hospitalService.isHospitalActive(wallet);
+                await this.getHospitalService().isHospitalActive(wallet);
 
             return res.json({
                 success: true,
@@ -225,7 +238,7 @@ export class HospitalController {
             }
 
             const verified =
-                await this.hospitalService.isHospitalVerified(wallet);
+                await this.getHospitalService().isHospitalVerified(wallet);
 
             return res.json({
                 success: true,
@@ -261,10 +274,10 @@ export class HospitalController {
             }
 
             const transaction =
-                await this.hospitalService.verifyHospital(wallet);
+                await this.getHospitalService().verifyHospital(wallet);
 
             const verified =
-                await this.hospitalService.isHospitalVerified(wallet);
+                await this.getHospitalService().isHospitalVerified(wallet);
 
             return res.json({
                 success: true,
@@ -302,10 +315,10 @@ export class HospitalController {
             }
 
             const transaction =
-                await this.hospitalService.revokeVerification(wallet);
+                await this.getHospitalService().revokeVerification(wallet);
 
             const verified =
-                await this.hospitalService.isHospitalVerified(wallet);
+                await this.getHospitalService().isHospitalVerified(wallet);
 
             return res.json({
                 success: true,
@@ -343,10 +356,10 @@ export class HospitalController {
             }
 
             const transaction =
-                await this.hospitalService.reactivateHospital(wallet);
+                await this.getHospitalService().reactivateHospital(wallet);
 
             const active =
-                await this.hospitalService.isHospitalActive(wallet);
+                await this.getHospitalService().isHospitalActive(wallet);
 
             return res.json({
                 success: true,
@@ -380,7 +393,7 @@ export class HospitalController {
         try {
 
             const transaction =
-                await this.hospitalService.deactivateHospital();
+                await this.getHospitalService().deactivateHospital();
 
             return res.json({
                 success: true,
@@ -417,7 +430,7 @@ export class HospitalController {
             }
 
             const transaction =
-                await this.hospitalService.updateLocation(locationHash);
+                await this.getHospitalService().updateLocation(locationHash);
 
             return res.json({
                 success: true,
@@ -442,7 +455,7 @@ export class HospitalController {
         try {
 
             const count =
-                await this.hospitalService.totalHospitals();
+                await this.getHospitalService().totalHospitals();
 
             return res.json({
                 success: true,

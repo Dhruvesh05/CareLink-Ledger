@@ -10,27 +10,47 @@ export interface IIPFSAddResult {
 }
 
 export interface IIPFSClient {
+
     add(
-        content: string | Uint8Array | Buffer,
+        content:
+            string |
+            Uint8Array |
+            Buffer,
+
         pin?: boolean
     ): Promise<IIPFSAddResult>;
 
-    cat(cid: string): Promise<Uint8Array>;
+    cat(
+        cid: string
+    ): Promise<Uint8Array>;
 
-    pin(cid: string): Promise<void>;
+    pin(
+        cid: string
+    ): Promise<void>;
 
-    unpin(cid: string): Promise<void>;
+    unpin(
+        cid: string
+    ): Promise<void>;
 
-    isPinned(cid: string): Promise<boolean>;
+    isPinned(
+        cid: string
+    ): Promise<boolean>;
 
-    getGatewayUrl(cid: string): string;
+    getGatewayUrl(
+        cid: string
+    ): string;
 
     ping(): Promise<boolean>;
 }
 
 interface IPFSClientLike {
+
     add(
-        content: string | Uint8Array | Buffer,
+        content:
+            string |
+            Uint8Array |
+            Buffer,
+
         options?: {
             pin?: boolean;
         }
@@ -38,6 +58,7 @@ interface IPFSClientLike {
         cid: {
             toString(): string;
         };
+
         path: string;
         size: number;
     }>;
@@ -47,11 +68,19 @@ interface IPFSClientLike {
     ): AsyncIterable<Uint8Array>;
 
     pin: {
-        add(cid: string): Promise<unknown>;
-        rm(cid: string): Promise<unknown>;
-        ls(options: {
-            paths: string;
-        }): AsyncIterable<{
+        add(
+            cid: string
+        ): Promise<unknown>;
+
+        rm(
+            cid: string
+        ): Promise<unknown>;
+
+        ls(
+            options: {
+                paths: string;
+            }
+        ): AsyncIterable<{
             cid: {
                 toString(): string;
             };
@@ -68,44 +97,57 @@ type CreateIPFSClient = (
     }
 ) => IPFSClientLike;
 
-export class IPFSClient implements IIPFSClient {
+export class IPFSClient
+    implements IIPFSClient {
 
-    private readonly config: IIpfsConfig;
+    private readonly config:
+        IIpfsConfig;
 
     private clientPromise:
-        Promise<IPFSClientLike> | null = null;
+        Promise<IPFSClientLike> | null =
+            null;
 
     constructor(
-        config: IIpfsConfig = ipfsConfig
+        config:
+            IIpfsConfig =
+                ipfsConfig
     ) {
-        this.config = config;
+        this.config =
+            config;
     }
 
-    private async getClient(): Promise<IPFSClientLike> {
+    private async getClient():
+        Promise<IPFSClientLike> {
 
         if (!this.clientPromise) {
 
             this.clientPromise =
                 import("ipfs-http-client")
-                    .then(
-                        (module) => {
+                    .then((module) => {
 
-                            const create =
-                                module.create as CreateIPFSClient;
+                        const create =
+                            module.create as
+                                CreateIPFSClient;
 
-                            return create({
-                                url: this.config.apiUrl,
-                                timeout: this.config.timeout
-                            });
-                        }
-                    );
+                        return create({
+                            url:
+                                this.config.apiUrl,
+
+                            timeout:
+                                this.config.timeout
+                        });
+                    });
         }
 
         return this.clientPromise;
     }
 
     async add(
-        content: string | Uint8Array | Buffer,
+        content:
+            string |
+            Uint8Array |
+            Buffer,
+
         pin = true
     ): Promise<IIPFSAddResult> {
 
@@ -115,13 +157,20 @@ export class IPFSClient implements IIPFSClient {
         const result =
             await client.add(
                 content,
-                { pin }
+                {
+                    pin
+                }
             );
 
         return {
-            cid: result.cid.toString(),
-            path: result.path,
-            size: result.size
+            cid:
+                result.cid.toString(),
+
+            path:
+                result.path,
+
+            size:
+                result.size
         };
     }
 
@@ -132,7 +181,8 @@ export class IPFSClient implements IIPFSClient {
         const client =
             await this.getClient();
 
-        const chunks: Uint8Array[] = [];
+        const chunks:
+            Uint8Array[] = [];
 
         for await (
             const chunk of client.cat(cid)
@@ -140,7 +190,9 @@ export class IPFSClient implements IIPFSClient {
             chunks.push(chunk);
         }
 
-        if (chunks.length === 0) {
+        if (
+            chunks.length === 0
+        ) {
             return new Uint8Array();
         }
 
@@ -152,18 +204,23 @@ export class IPFSClient implements IIPFSClient {
             );
 
         const result =
-            new Uint8Array(totalLength);
+            new Uint8Array(
+                totalLength
+            );
 
         let offset = 0;
 
-        for (const chunk of chunks) {
+        for (
+            const chunk of chunks
+        ) {
 
             result.set(
                 chunk,
                 offset
             );
 
-            offset += chunk.length;
+            offset +=
+                chunk.length;
         }
 
         return result;
@@ -201,7 +258,8 @@ export class IPFSClient implements IIPFSClient {
 
         const listing =
             client.pin.ls({
-                paths: trimmedCid
+                paths:
+                    trimmedCid
             });
 
         for await (

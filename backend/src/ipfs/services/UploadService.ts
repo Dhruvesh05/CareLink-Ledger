@@ -51,8 +51,12 @@ export class UploadService {
 
         try {
 
+            /*
+             * Medical records must remain available after upload.
+             * Therefore pinning is enabled by default.
+             */
             const pin =
-                options.pin ?? false;
+                options.pin ?? true;
 
             const result =
                 await this.client.add(
@@ -82,7 +86,7 @@ export class UploadService {
     async uploadText(
         content: string,
         options: UploadOptions = {}
-    ) {
+    ): Promise<UploadResult> {
 
         return this.uploadFile(
             content,

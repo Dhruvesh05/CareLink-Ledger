@@ -12,6 +12,9 @@ import {
 import IPFSServiceAdapter
     from "../ipfs/adapters/IPFSServiceAdapter";
 
+import { BlockchainFactory } from "../blockchain/provider/BlockchainFactory";
+import { IBlockchainProvider } from "../blockchain/provider/IBlockchainProvider";
+
 import {
     serializeBigInt
 } from "../utils/bigint";
@@ -232,18 +235,26 @@ function sendError(
 
 export class MedicalRecordController {
 
-    private readonly medicalRecordService:
-        MedicalRecordService;
+    private medicalRecordService?: MedicalRecordService;
 
     constructor(
-        medicalRecordService?: MedicalRecordService
+        medicalRecordService?: MedicalRecordService,
+        private readonly blockchainService?: IBlockchainProvider
     ) {
+        this.medicalRecordService = medicalRecordService;
+    }
 
-        this.medicalRecordService =
-            medicalRecordService ||
-            new MedicalRecordService(
-                new IPFSServiceAdapter()
-            );
+    private getMedicalRecordService(): MedicalRecordService {
+        if (!this.medicalRecordService) {
+            this.medicalRecordService =
+                new MedicalRecordService(
+                    new IPFSServiceAdapter(),
+                    this.blockchainService ??
+                    BlockchainFactory.getProvider()
+                );
+        }
+
+        return this.medicalRecordService;
     }
 
     async createMedicalRecord(
@@ -282,7 +293,7 @@ export class MedicalRecordController {
             }
 
             const transaction =
-                await this.medicalRecordService
+                await this.getMedicalRecordService()
                     .createMedicalRecord(
                         patient,
                         file,
@@ -324,7 +335,7 @@ export class MedicalRecordController {
                 );
 
             const record =
-                await this.medicalRecordService
+                await this.getMedicalRecordService()
                     .getMedicalRecord(recordId);
 
             return res.json({
@@ -353,7 +364,7 @@ export class MedicalRecordController {
                 );
 
             const record =
-                await this.medicalRecordService
+                await this.getMedicalRecordService()
                     .viewRecord(recordId);
 
             return res.json({
@@ -402,7 +413,7 @@ export class MedicalRecordController {
             }
 
             const transaction =
-                await this.medicalRecordService
+                await this.getMedicalRecordService()
                     .updateMedicalRecord(
                         recordId,
                         req.file,
@@ -436,7 +447,7 @@ export class MedicalRecordController {
                 );
 
             const transaction =
-                await this.medicalRecordService
+                await this.getMedicalRecordService()
                     .deactivateMedicalRecord(
                         recordId
                     );
@@ -473,7 +484,7 @@ export class MedicalRecordController {
                 );
 
             const transaction =
-                await this.medicalRecordService
+                await this.getMedicalRecordService()
                     .grantAccess(
                         recordId,
                         doctor
@@ -511,7 +522,7 @@ export class MedicalRecordController {
                 );
 
             const transaction =
-                await this.medicalRecordService
+                await this.getMedicalRecordService()
                     .revokeAccess(
                         recordId,
                         doctor
@@ -549,7 +560,7 @@ export class MedicalRecordController {
                 );
 
             const authorized =
-                await this.medicalRecordService
+                await this.getMedicalRecordService()
                     .isAuthorizedDoctor(
                         recordId,
                         wallet
@@ -580,7 +591,7 @@ export class MedicalRecordController {
                 );
 
             const records =
-                await this.medicalRecordService
+                await this.getMedicalRecordService()
                     .getPatientRecords(wallet);
 
             return res.json({
@@ -609,7 +620,7 @@ export class MedicalRecordController {
                 );
 
             const records =
-                await this.medicalRecordService
+                await this.getMedicalRecordService()
                     .getDoctorRecords(wallet);
 
             return res.json({
@@ -638,7 +649,7 @@ export class MedicalRecordController {
                 );
 
             const records =
-                await this.medicalRecordService
+                await this.getMedicalRecordService()
                     .getHospitalRecords(wallet);
 
             return res.json({
@@ -667,7 +678,7 @@ export class MedicalRecordController {
                 );
 
             const transaction =
-                await this.medicalRecordService
+                await this.getMedicalRecordService()
                     .logDownload(recordId);
 
             return res.json({
@@ -696,7 +707,7 @@ export class MedicalRecordController {
                 );
 
             const exists =
-                await this.medicalRecordService
+                await this.getMedicalRecordService()
                     .recordExists(recordId);
 
             return res.json({
@@ -718,7 +729,7 @@ export class MedicalRecordController {
         try {
 
             const total =
-                await this.medicalRecordService
+                await this.getMedicalRecordService()
                     .totalRecords();
 
             return res.json({

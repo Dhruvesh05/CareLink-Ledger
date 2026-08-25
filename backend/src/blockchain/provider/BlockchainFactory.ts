@@ -1,43 +1,54 @@
 import { IBlockchainProvider } from "./IBlockchainProvider";
-import { BlockchainType } from "./BlockchainType";
-
-import { EthereumProvider } from "../ethereum/EthereumProvider";
 
 /*
 |--------------------------------------------------------------------------
 | Blockchain Factory
 |--------------------------------------------------------------------------
 |
-| This class is responsible for selecting the correct blockchain provider.
-| Services should NEVER instantiate EthereumProvider directly.
+| Selects the blockchain provider configured for the application.
+|
+| IMPORTANT:
+| Provider implementations are loaded lazily.
+| This prevents importing Ethereum configuration during controller/test
+| module initialization when Ethereum is not actually being used.
 |
 */
 
 export class BlockchainFactory {
 
-public static getProvider(): IBlockchainProvider {
+    public static getProvider(): IBlockchainProvider {
 
-    const provider =
-        process.env.BLOCKCHAIN_PROVIDER?.toLowerCase();
+        const provider =
+            process.env.BLOCKCHAIN_PROVIDER?.toLowerCase();
 
         switch (provider) {
 
-            case "ethereum":
-            return new EthereumProvider();
+            case "ethereum": {
+                const { EthereumProvider } =
+                    require("../ethereum/provider/EthereumProvider");
+
+                return new EthereumProvider();
+            }
 
             case "fabric":
-            throw new Error("Fabric provider not implemented.");
+                throw new Error(
+                    "Fabric provider not implemented."
+                );
 
             case "polygon":
-            throw new Error("Polygon provider not implemented.");
+                throw new Error(
+                    "Polygon provider not implemented."
+                );
 
             case "bridge":
-            throw new Error("Bridge provider not implemented.");
+                throw new Error(
+                    "Bridge provider not implemented."
+                );
 
             default:
-            throw new Error(
-                `Unsupported blockchain provider: ${provider}`
-            );
+                throw new Error(
+                    `Unsupported blockchain provider: ${provider}`
+                );
         }
-    } 
+    }
 }

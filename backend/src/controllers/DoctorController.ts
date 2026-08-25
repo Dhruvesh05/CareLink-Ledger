@@ -1,10 +1,27 @@
 import { Request, Response } from "express";
 import { serializeBigInt } from "../utils/bigint";
 import { DoctorService } from "../services/DoctorService";
+import { IBlockchainProvider } from "../blockchain/provider/IBlockchainProvider";
+import { BlockchainFactory } from "../blockchain/provider/BlockchainFactory";
 
 export class DoctorController {
 
-    private doctorService = new DoctorService();
+    private doctorService?: DoctorService;
+
+    constructor(
+        private readonly blockchainService?: IBlockchainProvider
+    ) {}
+
+    private getDoctorService(): DoctorService {
+        if (!this.doctorService) {
+            this.doctorService = new DoctorService(
+                this.blockchainService ??
+                BlockchainFactory.getProvider()
+            );
+        }
+
+        return this.doctorService;
+    }
 
     /*
     ==========================================================
@@ -43,7 +60,7 @@ export class DoctorController {
                 });
             }
 
-            const transaction = await this.doctorService.registerDoctor(
+            const transaction = await this.getDoctorService().registerDoctor(
                 fullNameHashStr,
                 licenseNumberHashStr,
                 specializationStr,
@@ -86,7 +103,7 @@ export class DoctorController {
                 return res.status(400).json({ success: false, message: "wallet param is required" });
             }
 
-            const doctor = await this.doctorService.getDoctor(wallet);
+            const doctor = await this.getDoctorService().getDoctor(wallet);
 
             return res.json({
                 success: true,
@@ -124,7 +141,7 @@ export class DoctorController {
                 return res.status(400).json({ success: false, message: "wallet param is required" });
             }
 
-            const active = await this.doctorService.isDoctorActive(wallet2);
+            const active = await this.getDoctorService().isDoctorActive(wallet2);
 
             return res.json({
                 success: true,
@@ -162,7 +179,7 @@ export class DoctorController {
                 return res.status(400).json({ success: false, message: "wallet param is required" });
             }
 
-            const verified = await this.doctorService.isDoctorVerified(wallet3);
+            const verified = await this.getDoctorService().isDoctorVerified(wallet3);
 
             return res.json({
                 success: true,
@@ -200,7 +217,7 @@ export class DoctorController {
                 return res.status(400).json({ success: false, message: "wallet param is required" });
             }
 
-            const hospital = await this.doctorService.getDoctorHospital(wallet4);
+            const hospital = await this.getDoctorService().getDoctorHospital(wallet4);
 
             return res.json({
                 success: true,
@@ -243,9 +260,9 @@ export class DoctorController {
                 });
             }
 
-            const transaction = await this.doctorService.verifyDoctor(walletStr);
+            const transaction = await this.getDoctorService().verifyDoctor(walletStr);
 
-            const verified = await this.doctorService.isDoctorVerified(walletStr);
+            const verified = await this.getDoctorService().isDoctorVerified(walletStr);
 
             return res.json({
                 success: true,
@@ -290,9 +307,9 @@ export class DoctorController {
                 });
             }
 
-            const transaction = await this.doctorService.revokeVerification(walletStr);
+            const transaction = await this.getDoctorService().revokeVerification(walletStr);
 
-            const verified = await this.doctorService.isDoctorVerified(walletStr);
+            const verified = await this.getDoctorService().isDoctorVerified(walletStr);
 
             return res.json({
                 success: true,
@@ -329,7 +346,7 @@ export class DoctorController {
         try {
 
             const transaction =
-                await this.doctorService.deactivateDoctor();
+                await this.getDoctorService().deactivateDoctor();
 
             return res.json({
                 success: true,
@@ -372,7 +389,7 @@ export class DoctorController {
                 });
             }
 
-            const transaction = await this.doctorService.reactivateDoctor(walletStr);
+            const transaction = await this.getDoctorService().reactivateDoctor(walletStr);
 
             return res.json({
                 success: true,
@@ -417,7 +434,7 @@ export class DoctorController {
                 });
             }
 
-            const transaction = await this.doctorService.updateSpecialization(specializationStr);
+            const transaction = await this.getDoctorService().updateSpecialization(specializationStr);
 
             return res.json({
                 success: true,
@@ -450,7 +467,7 @@ export class DoctorController {
         try {
 
             const total =
-                await this.doctorService.totalDoctors();
+                await this.getDoctorService().totalDoctors();
 
             return res.json({
                 success: true,

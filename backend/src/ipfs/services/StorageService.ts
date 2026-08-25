@@ -1,9 +1,4 @@
 import {
-    ipfsClient,
-    IIPFSClient
-} from "../client/IPFSClient";
-
-import {
     IStorageOptions
 } from "../interfaces/IStorageOptions";
 
@@ -72,22 +67,33 @@ export class StorageService {
 
         try {
 
+            /*
+             * Medical-record content must be pinned.
+             * This prevents the file from becoming unavailable
+             * when it is not referenced by an active IPFS pin.
+             */
             const upload =
-                await this.uploadService
-                    .uploadFile(
-                        input.content
-                    );
+                await this.uploadService.uploadFile(
+                    input.content,
+                    {
+                        pin: true
+                    }
+                );
 
             const metadata =
                 this.metadataService
                     .generateMetadata({
                         cid: upload.cid,
+
                         fileName:
                             input.fileName,
+
                         mimeType:
                             input.mimeType,
+
                         fileSize:
                             upload.size,
+
                         uploadedAt:
                             input.uploadedAt
                     });
@@ -99,9 +105,15 @@ export class StorageService {
 
         } catch (error) {
 
+            /*
+             * Metadata validation errors are intentionally
+             * propagated unchanged so callers can distinguish
+             * invalid metadata from infrastructure failures.
+             */
             if (
-                error?.constructor?.name ===
-                "InvalidMetadataInputError"
+                error instanceof Error &&
+                error.name ===
+                    "InvalidMetadataInputError"
             ) {
                 throw error;
             }

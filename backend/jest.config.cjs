@@ -8,7 +8,7 @@ module.exports = {
 	setupFiles: ["<rootDir>/src/jest.setup.ts"],
 	clearMocks: true,
 	restoreMocks: true,
-	resetMocks: true,
+	resetMocks: false,
 	collectCoverageFrom: [
 		"src/ipfs/**/*.ts",
 		"!src/ipfs/tests/**/*.ts",
