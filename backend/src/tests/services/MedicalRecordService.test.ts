@@ -17,19 +17,6 @@ const mockMongoFindOne = jest.fn() as AnyMock;
 const mockMongoUpdateOne = jest.fn() as AnyMock;
 
 jest.mock(
-    "../../blockchain/ethereum/services/EthereumMedicalRecordService",
-    () => ({
-        EthereumMedicalRecordService: jest
-            .fn()
-            .mockImplementation(() => ({
-                createMedicalRecord: mockCreateMedicalRecord,
-                updateMedicalRecord: mockUpdateMedicalRecord,
-                deactivateMedicalRecord: mockDeactivateMedicalRecord
-            }))
-    })
-);
-
-jest.mock(
     "../../models/MedicalRecordModel",
     () => ({
         __esModule: true,
@@ -66,6 +53,12 @@ describe("MedicalRecordService IPFS transaction flow", () => {
         unpinFile: AnyMock;
     };
 
+    let mockBlockchainProvider: {
+        createMedicalRecord: AnyMock;
+        updateMedicalRecord: AnyMock;
+        deactivateMedicalRecord: AnyMock;
+    };
+
     let service: MedicalRecordService;
 
     beforeEach(() => {
@@ -85,8 +78,15 @@ describe("MedicalRecordService IPFS transaction flow", () => {
             unpinFile: jest.fn() as AnyMock
         };
 
+        mockBlockchainProvider = {
+            createMedicalRecord: mockCreateMedicalRecord,
+            updateMedicalRecord: mockUpdateMedicalRecord,
+            deactivateMedicalRecord: mockDeactivateMedicalRecord
+        };
+
         service = new MedicalRecordService(
-            mockIpfsService as any
+            mockIpfsService as any,
+            mockBlockchainProvider as any
         );
     });
 

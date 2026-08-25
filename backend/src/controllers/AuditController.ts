@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { ethers } from "ethers";
 
 import { AuditService } from "../services/AuditService";
+import { IBlockchainProvider } from "../blockchain/provider/IBlockchainProvider";
+import { BlockchainFactory } from "../blockchain/provider/BlockchainFactory";
 import { serializeBigInt } from "../utils/bigint";
 
 /**
@@ -103,7 +105,22 @@ function parseRecordId(value: any): number | null {
 
 export class AuditController {
 
-    private auditService = new AuditService();
+    private auditService?: AuditService;
+
+    constructor(
+        private readonly blockchainService?: IBlockchainProvider
+    ) {}
+
+    private getAuditService(): AuditService {
+        if (!this.auditService) {
+            this.auditService = new AuditService(
+                this.blockchainService ??
+                BlockchainFactory.getProvider()
+            );
+        }
+
+        return this.auditService;
+    }
 
     /*
     ==========================================================
@@ -129,7 +146,7 @@ export class AuditController {
             }
 
             const audit =
-                await this.auditService.getAudit(
+                await this.getAuditService().getAudit(
                     logId
                 );
 
@@ -174,7 +191,7 @@ export class AuditController {
             }
 
             const logs =
-                await this.auditService.getRecordAuditLogs(
+                await this.getAuditService().getRecordAuditLogs(
                     recordId
                 );
 
@@ -210,7 +227,7 @@ export class AuditController {
         try {
 
             const total =
-                await this.auditService.totalAuditLogs();
+                await this.getAuditService().totalAuditLogs();
 
             return res.json({
                 success: true,

@@ -1,6 +1,4 @@
-import {
-    EthereumMedicalRecordService
-} from "../blockchain/ethereum/services/EthereumMedicalRecordService";
+import { IBlockchainProvider } from "../blockchain/provider/IBlockchainProvider";
 
 import {
     IPFSService
@@ -16,17 +14,18 @@ import MedicalRecordModel
 export class MedicalRecordService {
 
     private readonly blockchainService:
-        EthereumMedicalRecordService;
+        IBlockchainProvider;
 
     private readonly ipfsService:
         IPFSService;
 
     constructor(
-        ipfsService: IPFSService
+        ipfsService: IPFSService,
+        blockchainService: IBlockchainProvider
     ) {
 
         this.blockchainService =
-            new EthereumMedicalRecordService();
+            blockchainService;
 
         this.ipfsService =
             ipfsService;
