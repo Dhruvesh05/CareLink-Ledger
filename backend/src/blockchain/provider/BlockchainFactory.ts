@@ -30,10 +30,12 @@ export class BlockchainFactory {
                 return new EthereumProvider();
             }
 
-            case "fabric":
-                throw new Error(
-                    "Fabric provider not implemented."
-                );
+            case "fabric": {
+                const { FabricProvider } =
+                    require("../fabric/provider/FabricProvider");
+
+                return new FabricProvider();
+            }
 
             case "polygon":
                 throw new Error(

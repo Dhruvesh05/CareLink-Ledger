@@ -10,7 +10,6 @@ services:
       # General orderer configuration
       - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
       - ORDERER_GENERAL_LISTENPORT=7050
-
       - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
       - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
 
@@ -39,8 +38,8 @@ services:
     volumes:
       - ../organizations/ordererOrganizations/carelink.com/orderers/orderer.carelink.com/msp:/var/hyperledger/orderer/msp
       - ../organizations/ordererOrganizations/carelink.com/orderers/orderer.carelink.com/tls:/var/hyperledger/orderer/tls
-      - ../organizations/ordererOrganizations/carelink.com/orderers/orderer.carelink.com/msp:/var/hyperledger/orderer/orderer/msp
-      - orderer-data:/var/hyperledger/production/orderer
+      - ../artifacts:/channel-artifacts:ro
+      - orderer-data:/var/hyperledger/production
 
     ports:
       - "7050:7050"
@@ -88,6 +87,9 @@ services:
       - /var/run/docker.sock:/host/var/run/docker.sock
       - ../organizations/peerOrganizations/carelink.com/peers/peer0.carelink.com/msp:/etc/hyperledger/fabric/msp
       - ../organizations/peerOrganizations/carelink.com/peers/peer0.carelink.com/tls:/etc/hyperledger/fabric/tls
+      - ../organizations/peerOrganizations/carelink.com/users/Admin@carelink.com/msp:/etc/hyperledger/fabric/adminmsp:ro
+      - ../organizations/ordererOrganizations/carelink.com/orderers/orderer.carelink.com/tls/ca.crt:/etc/hyperledger/fabric/orderer-tls/ca.crt:ro
+      - ../artifacts:/channel-artifacts:ro
       - peer0-data:/var/hyperledger/production
 
     ports:
