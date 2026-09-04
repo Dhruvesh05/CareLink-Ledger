@@ -149,6 +149,30 @@ export const env = {
         "amoy"
     ),
 
+    POLYGON_ACCESS_CONTROL_ADDRESS: getString(
+    process.env.POLYGON_ACCESS_CONTROL_ADDRESS
+),
+
+POLYGON_PATIENT_REGISTRY_ADDRESS: getString(
+    process.env.POLYGON_PATIENT_REGISTRY_ADDRESS
+),
+
+POLYGON_DOCTOR_REGISTRY_ADDRESS: getString(
+    process.env.POLYGON_DOCTOR_REGISTRY_ADDRESS
+),
+
+POLYGON_HOSPITAL_REGISTRY_ADDRESS: getString(
+    process.env.POLYGON_HOSPITAL_REGISTRY_ADDRESS
+),
+
+POLYGON_AUDIT_LOG_ADDRESS: getString(
+    process.env.POLYGON_AUDIT_LOG_ADDRESS
+),
+
+POLYGON_MEDICAL_RECORD_ADDRESS: getString(
+    process.env.POLYGON_MEDICAL_RECORD_ADDRESS
+),
+
     /*
     ==========================================================
     FABRIC
