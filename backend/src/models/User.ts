@@ -12,7 +12,7 @@ export type UserRole =
 export interface IUser extends Document {
     walletAddress: string;
     role: UserRole;
-    passwordHash: string;
+    passwordHash?: string;
     active: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -42,7 +42,7 @@ const UserSchema = new Schema<IUser>(
 
         passwordHash: {
             type: String,
-            required: true,
+            required: false,
             select: false
         },
 

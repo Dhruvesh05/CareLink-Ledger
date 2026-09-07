@@ -9,6 +9,14 @@ import {
     MedicalRecordService
 } from "../services/MedicalRecordService";
 
+import {
+    MedicalRecordTransactionPreparationService
+} from "../services/blockchain/MedicalRecordTransactionPreparationService";
+
+import {
+    MedicalRecordTransactionConfirmationService
+} from "../services/blockchain/MedicalRecordTransactionConfirmationService";
+
 import IPFSServiceAdapter
     from "../ipfs/adapters/IPFSServiceAdapter";
 
@@ -237,11 +245,36 @@ export class MedicalRecordController {
 
     private medicalRecordService?: MedicalRecordService;
 
+    private readonly blockchainService?: IBlockchainProvider;
+
+    private readonly transactionPreparationService:
+        MedicalRecordTransactionPreparationService;
+
+    private readonly transactionConfirmationService:
+        MedicalRecordTransactionConfirmationService;
+
     constructor(
         medicalRecordService?: MedicalRecordService,
-        private readonly blockchainService?: IBlockchainProvider
+        blockchainService?: IBlockchainProvider,
+        transactionPreparationService?:
+            MedicalRecordTransactionPreparationService,
+        transactionConfirmationService?:
+            MedicalRecordTransactionConfirmationService
     ) {
         this.medicalRecordService = medicalRecordService;
+        this.blockchainService = blockchainService;
+
+        this.transactionPreparationService =
+            transactionPreparationService ??
+            new MedicalRecordTransactionPreparationService(
+                new IPFSServiceAdapter(),
+                blockchainService ??
+                BlockchainFactory.getProvider()
+            );
+
+        this.transactionConfirmationService =
+            transactionConfirmationService ??
+            new MedicalRecordTransactionConfirmationService();
     }
 
     private getMedicalRecordService(): MedicalRecordService {
@@ -255,6 +288,132 @@ export class MedicalRecordController {
         }
 
         return this.medicalRecordService;
+    }
+
+    async prepareMedicalRecord(
+        req: Request,
+        res: Response
+    ) {
+
+        try {
+
+            if (!req.auth?.walletAddress) {
+                return res.status(401).json({
+                    success: false,
+                    message:
+                        "Authenticated wallet is required"
+                });
+            }
+
+            const patientWallet =
+                requireAddress(
+                    req.body.patient,
+                    "patient"
+                );
+
+            const category =
+                requireString(
+                    req.body.category,
+                    "category"
+                );
+
+            const emergency =
+                parseEmergency(
+                    req.body.emergency
+                );
+
+            const file =
+                req.file;
+
+            if (!file) {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Missing file upload"
+                });
+            }
+
+            const prepared =
+                await this.transactionPreparationService.prepare({
+                    doctorWallet:
+                        req.auth.walletAddress,
+                    patientWallet,
+                    file,
+                    category,
+                    emergency
+                });
+
+            return res.status(200).json({
+                success: true,
+                data: prepared
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Prepare Medical Record Error:",
+                error
+            );
+
+            return sendError(
+                res,
+                error
+            );
+        }
+    }
+
+    async confirmMedicalRecord(
+        req: Request,
+        res: Response
+    ) {
+
+        try {
+
+            if (!req.auth?.walletAddress) {
+                return res.status(401).json({
+                    success: false,
+                    message:
+                        "Authenticated wallet is required"
+                });
+            }
+
+            const preparationId =
+                requireString(
+                    req.body.preparationId,
+                    "preparationId"
+                );
+
+            const transactionHash =
+                requireString(
+                    req.body.transactionHash,
+                    "transactionHash"
+                );
+
+            const confirmed =
+                await this.transactionConfirmationService.confirm({
+                    preparationId,
+                    transactionHash,
+                    doctorWallet:
+                        req.auth.walletAddress
+                });
+
+            return res.status(200).json({
+                success: true,
+                data: confirmed
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Confirm Medical Record Error:",
+                error
+            );
+
+            return sendError(
+                res,
+                error
+            );
+        }
     }
 
     async createMedicalRecord(
