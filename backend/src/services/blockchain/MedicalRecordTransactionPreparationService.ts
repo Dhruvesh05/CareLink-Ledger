@@ -17,8 +17,8 @@ import {
 } from "./MedicalRecordPreflightService";
 
 import {
-    PolygonTransactionBuilder
-} from "../../blockchain/polygon/transactions/PolygonTransactionBuilder";
+    MedicalRecordTransactionBuilder
+} from "../../blockchain/common/MedicalRecordTransactionBuilder";
 
 import {
     IBlockchainProvider
@@ -66,7 +66,7 @@ export class MedicalRecordTransactionPreparationService {
         MedicalRecordPreflightService;
 
     private readonly transactionBuilder:
-        PolygonTransactionBuilder;
+        MedicalRecordTransactionBuilder;
 
     private readonly ipfsService:
         IPFSService;
@@ -81,8 +81,14 @@ export class MedicalRecordTransactionPreparationService {
             MedicalRecordPreflightService =
                 new MedicalRecordPreflightService(),
         transactionBuilder:
-            PolygonTransactionBuilder =
-                new PolygonTransactionBuilder()
+            MedicalRecordTransactionBuilder =
+                new MedicalRecordTransactionBuilder(
+                    new ethers.JsonRpcProvider(
+                        process.env.BLOCKCHAIN_PROVIDER?.toLowerCase() === "polygon"
+                            ? env.POLYGON_RPC
+                            : env.ETHEREUM_RPC
+                    )
+                )
     ) {
         this.ipfsService = ipfsService;
         this.blockchainService = blockchainService;
@@ -187,7 +193,7 @@ export class MedicalRecordTransactionPreparationService {
          * No blockchain transaction is submitted.
          */
         const transaction =
-            this.transactionBuilder
+            await this.transactionBuilder
                 .buildCreateMedicalRecordTransaction(
                     patientWallet,
                     uploadResult.cid,

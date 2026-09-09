@@ -15,8 +15,8 @@ export interface IIpfsConfig {
     readonly apiUrl: string;
     readonly gatewayUrl: string;
 
-    readonly pinningEndpoint?: string;
-}
+readonly pinataApiUrl?: string;
+readonly pinataUploadUrl?: string;}
 
 const DEFAULT_IPFS_HOST = "127.0.0.1";
 const DEFAULT_IPFS_PORT = 5001;
@@ -99,9 +99,14 @@ export const ipfsConfig: IIpfsConfig = {
                 ipfsPort
             ),
 
-    pinningEndpoint:
+    pinataApiUrl:
         provider === "pinata"
             ? "https://api.pinata.cloud"
+            : undefined,
+
+    pinataUploadUrl:
+        provider === "pinata"
+            ? "https://uploads.pinata.cloud"
             : undefined
 };
 

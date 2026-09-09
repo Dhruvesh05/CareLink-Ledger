@@ -1,72 +1,35 @@
 import { ethers } from "ethers";
 
-import { BlockchainRoleService } from "./BlockchainRoleService";
-import { env } from "../../config/env";
+import {
+    BlockchainRoleService
+} from "./BlockchainRoleService";
 
-import DoctorRegistryABI from "../../blockchain/polygon/abi/DoctorRegistry.json";
-import HospitalRegistryABI from "../../blockchain/polygon/abi/HospitalRegistry.json";
+import {
+    BlockchainFactory
+} from "../../blockchain/provider/BlockchainFactory";
 
 export interface MedicalRecordPreflightResult {
     doctor: string;
     hospital: string;
-    doctorRole: "Doctor";
-    doctorActive: true;
-    doctorVerified: true;
-    hospitalActive: true;
-    hospitalVerified: true;
+    doctorActive: boolean;
+    doctorVerified: boolean;
+    hospitalActive: boolean;
+    hospitalVerified: boolean;
 }
 
 export class MedicalRecordPreflightService {
 
-    private readonly provider: ethers.JsonRpcProvider;
+    private readonly blockchainService =
+        BlockchainFactory.getProvider();
 
-    private readonly doctorRegistry: ethers.Contract;
+    private readonly roleService:
+        BlockchainRoleService;
 
-    private readonly hospitalRegistry: ethers.Contract;
-
-    private readonly roleService: BlockchainRoleService;
-
-    constructor() {
-
-        if (!env.POLYGON_RPC) {
-            throw new Error(
-                "Polygon RPC is not configured"
-            );
-        }
-
-        if (!env.POLYGON_DOCTOR_REGISTRY_ADDRESS) {
-            throw new Error(
-                "Polygon DoctorRegistry contract address is not configured"
-            );
-        }
-
-        if (!env.POLYGON_HOSPITAL_REGISTRY_ADDRESS) {
-            throw new Error(
-                "Polygon HospitalRegistry contract address is not configured"
-            );
-        }
-
-        this.provider =
-            new ethers.JsonRpcProvider(
-                env.POLYGON_RPC
-            );
-
-        this.doctorRegistry =
-            new ethers.Contract(
-                env.POLYGON_DOCTOR_REGISTRY_ADDRESS,
-                DoctorRegistryABI.abi,
-                this.provider
-            );
-
-        this.hospitalRegistry =
-            new ethers.Contract(
-                env.POLYGON_HOSPITAL_REGISTRY_ADDRESS,
-                HospitalRegistryABI.abi,
-                this.provider
-            );
-
-        this.roleService =
-            new BlockchainRoleService();
+    constructor(
+        roleService: BlockchainRoleService =
+            new BlockchainRoleService()
+    ) {
+        this.roleService = roleService;
     }
 
     async validateDoctor(
@@ -80,54 +43,68 @@ export class MedicalRecordPreflightService {
         }
 
         const doctor =
-            ethers.getAddress(doctorWallet);
+            ethers.getAddress(
+                doctorWallet
+            );
 
         const role =
-            await this.roleService.getRole(doctor);
+            await this.roleService.getRole(
+                doctor
+            );
 
         if (role !== "Doctor") {
             throw new Error(
-                "Authenticated wallet is not assigned the Doctor role"
+                "Wallet is not registered as a Doctor"
             );
         }
 
         const doctorActive =
-            await this.doctorRegistry.isDoctorActive(
-                doctor
-            );
+            await this.blockchainService
+                .isDoctorActive(
+                    doctor
+                );
 
         if (!doctorActive) {
             throw new Error(
-                "Doctor account is inactive"
+                "Doctor is inactive"
             );
         }
 
         const doctorVerified =
-            await this.doctorRegistry.isDoctorVerified(
-                doctor
-            );
+            await this.blockchainService
+                .isDoctorVerified(
+                    doctor
+                );
 
         if (!doctorVerified) {
             throw new Error(
-                "Doctor account is not verified"
+                "Doctor is not verified"
             );
         }
 
         const hospital =
-            await this.doctorRegistry.getDoctorHospital(
-                doctor
-            );
+            await this.blockchainService
+                .getDoctorHospital(
+                    doctor
+                );
 
-        if (!hospital || hospital === ethers.ZeroAddress) {
+        if (!hospital ||
+            !ethers.isAddress(hospital)) {
             throw new Error(
                 "Doctor is not associated with a valid hospital"
             );
         }
 
-        const hospitalActive =
-            await this.hospitalRegistry.isHospitalActive(
+        const hospitalWallet =
+            ethers.getAddress(
                 hospital
             );
+
+        const hospitalActive =
+            await this.blockchainService
+                .isHospitalActive(
+                    hospitalWallet
+                );
 
         if (!hospitalActive) {
             throw new Error(
@@ -136,9 +113,10 @@ export class MedicalRecordPreflightService {
         }
 
         const hospitalVerified =
-            await this.hospitalRegistry.isHospitalVerified(
-                hospital
-            );
+            await this.blockchainService
+                .isHospitalVerified(
+                    hospitalWallet
+                );
 
         if (!hospitalVerified) {
             throw new Error(
@@ -148,8 +126,7 @@ export class MedicalRecordPreflightService {
 
         return {
             doctor,
-            hospital: ethers.getAddress(hospital),
-            doctorRole: "Doctor",
+            hospital: hospitalWallet,
             doctorActive: true,
             doctorVerified: true,
             hospitalActive: true,
