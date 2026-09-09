@@ -1,8 +1,12 @@
 import { Router } from "express";
+import { authenticate } from "../middleware/auth";
 
 import { PatientController } from "../controllers/PatientController";
 
 const router = Router();
+
+// All business routes require JWT authentication.
+router.use(authenticate);
 
 const controller = new PatientController();
 

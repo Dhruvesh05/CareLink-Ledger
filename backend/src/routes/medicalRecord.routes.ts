@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { authenticate } from "../middleware/auth";
 
 import {
     MedicalRecordController
@@ -10,6 +11,9 @@ import upload, {
 
 const router = Router();
 
+// All business routes require JWT authentication.
+router.use(authenticate);
+
 const controller =
     new MedicalRecordController();
 
@@ -20,10 +24,44 @@ CREATE
 */
 
 router.post(
-    "/create",
+    "/prepare",
     upload.single("file"),
     requireFile,
-    controller.createMedicalRecord.bind(controller)
+    controller.prepareMedicalRecord.bind(controller)
+);
+
+router.post(
+    "/confirm",
+    controller.confirmMedicalRecord.bind(controller)
+);
+
+/*
+==========================================================
+LEGACY CREATE — DISABLED
+
+Medical-record creation must now use:
+
+    POST /prepare
+        ↓
+    Doctor wallet signs transaction
+        ↓
+    POST /confirm
+
+The legacy /create endpoint previously submitted the
+blockchain transaction using the backend signer, which
+would make msg.sender equal to the backend wallet rather
+than the authenticated doctor's wallet.
+==========================================================
+*/
+router.post(
+    "/create",
+    (_req, res) => {
+        return res.status(410).json({
+            success: false,
+            message:
+                "Legacy medical record creation is disabled. Use /prepare and /confirm with the authenticated doctor's wallet."
+        });
+    }
 );
 
 /*

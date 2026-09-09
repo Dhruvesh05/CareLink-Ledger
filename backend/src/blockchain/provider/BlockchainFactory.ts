@@ -7,10 +7,9 @@ import { IBlockchainProvider } from "./IBlockchainProvider";
 |
 | Selects the blockchain provider configured for the application.
 |
-| IMPORTANT:
-| Provider implementations are loaded lazily.
-| This prevents importing Ethereum configuration during controller/test
-| module initialization when Ethereum is not actually being used.
+| Provider implementations are loaded lazily using require().
+| This prevents unnecessary blockchain configuration from being loaded
+| during application/test initialization.
 |
 */
 
@@ -30,15 +29,19 @@ export class BlockchainFactory {
                 return new EthereumProvider();
             }
 
-            case "fabric":
-                throw new Error(
-                    "Fabric provider not implemented."
-                );
+            case "polygon": {
+                const { PolygonProvider } =
+                    require("../polygon/provider/PolygonProvider");
 
-            case "polygon":
-                throw new Error(
-                    "Polygon provider not implemented."
-                );
+                return new PolygonProvider();
+            }
+
+            case "fabric": {
+                const { FabricProvider } =
+                    require("../fabric/provider/FabricProvider");
+
+                return new FabricProvider();
+            }
 
             case "bridge":
                 throw new Error(
