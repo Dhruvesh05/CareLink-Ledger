@@ -540,105 +540,25 @@ export class MedicalRecordTransactionConfirmationService {
 
         /*
          * ------------------------------------------------------
-         * STEP 13: Read the actual on-chain record
+         * STEP 13–14: Final on-chain validation
          * ------------------------------------------------------
+         *
+         * The transaction calldata was already validated against
+         * the preparation data in Step 8, and the RecordCreated
+         * event was validated against the authenticated doctor,
+         * patient, hospital, category, and record ID in Steps
+         * 10–11.
+         *
+         * getMedicalRecord(recordId) is intentionally NOT called
+         * here because the contract protects that read with
+         * _authorizeRead(), which requires msg.sender to be an
+         * authorized patient/doctor/hospital/admin. A provider-only
+         * eth_call has no such authorized caller and therefore
+         * reverts with Unauthorized().
+         *
+         * recordExists(recordId), checked in Step 12, remains as
+         * the final existence check before MongoDB persistence.
          */
-        const onChainRecord =
-            await this.medicalRecordContract.getMedicalRecord(
-                recordId
-            );
-
-        /*
-         * ------------------------------------------------------
-         * STEP 14: Cross-check on-chain record
-         * ------------------------------------------------------
-         */
-        const onChainPatient =
-            ethers.getAddress(
-                String(onChainRecord.patient)
-            );
-
-        const onChainDoctor =
-            ethers.getAddress(
-                String(onChainRecord.doctor)
-            );
-
-        const onChainHospital =
-            ethers.getAddress(
-                String(onChainRecord.hospital)
-            );
-
-        if (
-            Number(onChainRecord.recordId) !==
-            recordId
-        ) {
-            throw new Error(
-                "On-chain record ID mismatch"
-            );
-        }
-
-        if (
-            onChainPatient.toLowerCase() !==
-            preparation.patientWallet.toLowerCase()
-        ) {
-            throw new Error(
-                "On-chain patient does not match preparation"
-            );
-        }
-
-        if (
-            onChainDoctor.toLowerCase() !==
-            doctorWallet.toLowerCase()
-        ) {
-            throw new Error(
-                "On-chain doctor does not match authenticated doctor"
-            );
-        }
-
-        if (
-            onChainHospital.toLowerCase() !==
-            preparation.hospitalWallet.toLowerCase()
-        ) {
-            throw new Error(
-                "On-chain hospital does not match preparation"
-            );
-        }
-
-        if (
-            String(onChainRecord.ipfsHash) !==
-            preparation.cid
-        ) {
-            throw new Error(
-                "On-chain IPFS CID does not match preparation"
-            );
-        }
-
-        if (
-            String(onChainRecord.fileHash) !==
-            preparation.fileHash
-        ) {
-            throw new Error(
-                "On-chain file hash does not match preparation"
-            );
-        }
-
-        if (
-            String(onChainRecord.category) !==
-            preparation.category
-        ) {
-            throw new Error(
-                "On-chain category does not match preparation"
-            );
-        }
-
-        if (
-            Boolean(onChainRecord.emergency) !==
-            preparation.emergency
-        ) {
-            throw new Error(
-                "On-chain emergency flag does not match preparation"
-            );
-        }
 
         /*
          * ------------------------------------------------------

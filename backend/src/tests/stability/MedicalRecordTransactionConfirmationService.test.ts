@@ -7,8 +7,7 @@ const mockProvider = {
 };
 
 const mockContract = {
-    recordExists: jest.fn(),
-    getMedicalRecord: jest.fn()
+    recordExists: jest.fn()
 };
 
 jest.mock("ethers", () => {
@@ -488,44 +487,6 @@ describe(
                     true
                 );
 
-                contract.getMedicalRecord.mockResolvedValue({
-                    recordId:
-                        42n,
-
-                    patient:
-                        PATIENT,
-
-                    doctor:
-                        DOCTOR,
-
-                    hospital:
-                        HOSPITAL,
-
-                    ipfsHash:
-                        CID,
-
-                    fileHash:
-                        FILE_HASH,
-
-                    category:
-                        "General",
-
-                    createdAt:
-                        1234567890n,
-
-                    updatedAt:
-                        1234567890n,
-
-                    version:
-                        1n,
-
-                    active:
-                        true,
-
-                    emergency:
-                        false
-                });
-
                 medicalRecordModel.create.mockResolvedValue({
                     recordId:
                         42
@@ -602,12 +563,6 @@ describe(
 
                 expect(
                     contract.recordExists
-                ).toHaveBeenCalledWith(
-                    42
-                );
-
-                expect(
-                    contract.getMedicalRecord
                 ).toHaveBeenCalledWith(
                     42
                 );
@@ -739,21 +694,6 @@ describe(
                     true
                 );
 
-                contract.getMedicalRecord.mockResolvedValue({
-                    recordId: 42n,
-                    patient: PATIENT,
-                    doctor: DOCTOR,
-                    hospital: HOSPITAL,
-                    ipfsHash: CID,
-                    fileHash: FILE_HASH,
-                    category: "General",
-                    createdAt: 1234567890n,
-                    updatedAt: 1234567890n,
-                    version: 1n,
-                    active: true,
-                    emergency: false
-                });
-
                 const duplicateError =
                     Object.assign(
                         new Error(
@@ -855,21 +795,6 @@ describe(
                 contract.recordExists.mockResolvedValue(
                     true
                 );
-
-                contract.getMedicalRecord.mockResolvedValue({
-                    recordId: 42n,
-                    patient: PATIENT,
-                    doctor: DOCTOR,
-                    hospital: HOSPITAL,
-                    ipfsHash: CID,
-                    fileHash: FILE_HASH,
-                    category: "General",
-                    createdAt: 1234567890n,
-                    updatedAt: 1234567890n,
-                    version: 1n,
-                    active: true,
-                    emergency: false
-                });
 
                 medicalRecordModel.create.mockResolvedValue({
                     recordId: 42
