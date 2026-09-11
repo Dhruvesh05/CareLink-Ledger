@@ -97,6 +97,39 @@ func (c *CareLinkContract) GetPatient(
 	return &patient, nil
 }
 
+func (c *CareLinkContract) UpdateBloodGroup(
+	ctx contractapi.TransactionContextInterface,
+	id string,
+	bloodGroup string,
+) error {
+
+	if id == "" {
+		return fmt.Errorf("patient id is required")
+	}
+
+	if strings.TrimSpace(bloodGroup) == "" {
+		return fmt.Errorf("blood group is required")
+	}
+
+	patient, err := c.GetPatient(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	patient.BloodGroup = bloodGroup
+
+	data, err := json.Marshal(patient)
+	if err != nil {
+		return fmt.Errorf("failed to serialize patient: %w", err)
+	}
+
+	if err := ctx.GetStub().PutState(patientKey(id), data); err != nil {
+		return fmt.Errorf("failed to update patient: %w", err)
+	}
+
+	return nil
+}
+
 func (c *CareLinkContract) IsPatientActive(
 	ctx contractapi.TransactionContextInterface,
 	id string,
@@ -263,6 +296,64 @@ func (c *CareLinkContract) GetDoctor(
 	return &doctor, nil
 }
 
+func (c *CareLinkContract) VerifyDoctor(
+	ctx contractapi.TransactionContextInterface,
+	id string,
+) error {
+	doctor, err := c.GetDoctor(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if doctor.Verified {
+		return fmt.Errorf("doctor %s is already verified", id)
+	}
+
+	doctor.Verified = true
+
+	data, err := json.Marshal(doctor)
+	if err != nil {
+		return fmt.Errorf("failed to serialize doctor: %w", err)
+	}
+
+	return ctx.GetStub().PutState(doctorKey(id), data)
+}
+
+func (c *CareLinkContract) RevokeDoctorVerification(
+	ctx contractapi.TransactionContextInterface,
+	id string,
+) error {
+	doctor, err := c.GetDoctor(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if !doctor.Verified {
+		return fmt.Errorf("doctor %s is not verified", id)
+	}
+
+	doctor.Verified = false
+
+	data, err := json.Marshal(doctor)
+	if err != nil {
+		return fmt.Errorf("failed to serialize doctor: %w", err)
+	}
+
+	return ctx.GetStub().PutState(doctorKey(id), data)
+}
+
+func (c *CareLinkContract) IsDoctorVerified(
+	ctx contractapi.TransactionContextInterface,
+	id string,
+) (bool, error) {
+	doctor, err := c.GetDoctor(ctx, id)
+	if err != nil {
+		return false, err
+	}
+
+	return doctor.Verified, nil
+}
+
 func (c *CareLinkContract) IsDoctorActive(
 	ctx contractapi.TransactionContextInterface,
 	id string,
@@ -406,6 +497,120 @@ func (c *CareLinkContract) GetHospital(
 	}
 
 	return &hospital, nil
+}
+
+func (c *CareLinkContract) UpdateSpecialization(
+	ctx contractapi.TransactionContextInterface,
+	id string,
+	specialization string,
+) error {
+	if id == "" {
+		return fmt.Errorf("doctor id is required")
+	}
+
+	if strings.TrimSpace(specialization) == "" {
+		return fmt.Errorf("specialization is required")
+	}
+
+	doctor, err := c.GetDoctor(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	doctor.Specialization = specialization
+
+	data, err := json.Marshal(doctor)
+	if err != nil {
+		return fmt.Errorf("failed to serialize doctor: %w", err)
+	}
+
+	return ctx.GetStub().PutState(doctorKey(id), data)
+}
+
+func (c *CareLinkContract) UpdateLocation(
+	ctx contractapi.TransactionContextInterface,
+	id string,
+	location string,
+) error {
+	if id == "" {
+		return fmt.Errorf("hospital id is required")
+	}
+
+	if strings.TrimSpace(location) == "" {
+		return fmt.Errorf("location is required")
+	}
+
+	hospital, err := c.GetHospital(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	hospital.Address = location
+
+	data, err := json.Marshal(hospital)
+	if err != nil {
+		return fmt.Errorf("failed to serialize hospital: %w", err)
+	}
+
+	return ctx.GetStub().PutState(hospitalKey(id), data)
+}
+
+func (c *CareLinkContract) VerifyHospital(
+	ctx contractapi.TransactionContextInterface,
+	id string,
+) error {
+	hospital, err := c.GetHospital(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if hospital.Verified {
+		return fmt.Errorf("hospital %s is already verified", id)
+	}
+
+	hospital.Verified = true
+
+	data, err := json.Marshal(hospital)
+	if err != nil {
+		return fmt.Errorf("failed to serialize hospital: %w", err)
+	}
+
+	return ctx.GetStub().PutState(hospitalKey(id), data)
+}
+
+func (c *CareLinkContract) RevokeHospitalVerification(
+	ctx contractapi.TransactionContextInterface,
+	id string,
+) error {
+	hospital, err := c.GetHospital(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if !hospital.Verified {
+		return fmt.Errorf("hospital %s is not verified", id)
+	}
+
+	hospital.Verified = false
+
+	data, err := json.Marshal(hospital)
+	if err != nil {
+		return fmt.Errorf("failed to serialize hospital: %w", err)
+	}
+
+	return ctx.GetStub().PutState(hospitalKey(id), data)
+}
+
+func (c *CareLinkContract) IsHospitalVerified(
+	ctx contractapi.TransactionContextInterface,
+	id string,
+) (bool, error) {
+	hospital, err := c.GetHospital(ctx, id)
+	if err != nil {
+		return false, err
+	}
+
+	return hospital.Verified, nil
 }
 
 func (c *CareLinkContract) IsHospitalActive(
@@ -625,6 +830,9 @@ func (c *CareLinkContract) UpdateMedicalRecord(
 	category string,
 	emergency bool,
 ) error {
+	if id == "" {
+		return fmt.Errorf("medical record id is required")
+	}
 
 	record, err := c.GetMedicalRecord(ctx, id)
 	if err != nil {
@@ -635,39 +843,67 @@ func (c *CareLinkContract) UpdateMedicalRecord(
 		return fmt.Errorf("medical record %s is inactive", id)
 	}
 
-	if cid == "" {
-		return fmt.Errorf("record CID is required")
+	if strings.TrimSpace(cid) == "" {
+		return fmt.Errorf("cid is required")
 	}
 
-	if fileHash == "" {
-		return fmt.Errorf("record file hash is required")
+	if strings.TrimSpace(fileHash) == "" {
+		return fmt.Errorf("file hash is required")
 	}
 
-	if category == "" {
-		return fmt.Errorf("record category is required")
-	}
-
-	txTimestamp, err := ctx.GetStub().GetTxTimestamp()
-	if err != nil {
-		return fmt.Errorf("failed to get transaction timestamp: %w", err)
+	if strings.TrimSpace(category) == "" {
+		return fmt.Errorf("category is required")
 	}
 
 	record.CID = cid
 	record.FileHash = fileHash
 	record.Category = category
 	record.Emergency = emergency
-	record.UpdatedAt = txTimestamp.AsTime().UTC().Format("2006-01-02T15:04:05.000Z")
+
+	txTimestamp, err := ctx.GetStub().GetTxTimestamp()
+	if err != nil {
+		return fmt.Errorf("failed to get transaction timestamp: %w", err)
+	}
+	record.UpdatedAt = txTimestamp.String()
 
 	data, err := json.Marshal(record)
 	if err != nil {
 		return fmt.Errorf("failed to serialize medical record: %w", err)
 	}
 
-	if err := ctx.GetStub().PutState(medicalRecordKey(id), data); err != nil {
-		return fmt.Errorf("failed to update medical record: %w", err)
+	return ctx.GetStub().PutState(medicalRecordKey(id), data)
+}
+
+func (c *CareLinkContract) DeactivateMedicalRecord(
+	ctx contractapi.TransactionContextInterface,
+	id string,
+) error {
+	if id == "" {
+		return fmt.Errorf("medical record id is required")
 	}
 
-	return nil
+	record, err := c.GetMedicalRecord(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if !record.Active {
+		return fmt.Errorf("medical record %s is already inactive", id)
+	}
+
+	record.Active = false
+	txTimestamp, err := ctx.GetStub().GetTxTimestamp()
+	if err != nil {
+		return fmt.Errorf("failed to get transaction timestamp: %w", err)
+	}
+	record.UpdatedAt = txTimestamp.String()
+
+	data, err := json.Marshal(record)
+	if err != nil {
+		return fmt.Errorf("failed to serialize medical record: %w", err)
+	}
+
+	return ctx.GetStub().PutState(medicalRecordKey(id), data)
 }
 
 func (c *CareLinkContract) GrantAccess(
@@ -825,6 +1061,86 @@ func (c *CareLinkContract) GetAccess(
 	}
 
 	return &grant, nil
+}
+
+func (c *CareLinkContract) IsAuthorizedDoctor(
+	ctx contractapi.TransactionContextInterface,
+	patientID string,
+	doctorID string,
+) (bool, error) {
+	if patientID == "" {
+		return false, fmt.Errorf("patient id is required")
+	}
+
+	if doctorID == "" {
+		return false, fmt.Errorf("doctor id is required")
+	}
+
+	if _, err := c.GetPatient(ctx, patientID); err != nil {
+		return false, err
+	}
+
+	if _, err := c.GetDoctor(ctx, doctorID); err != nil {
+		return false, err
+	}
+
+	grant, err := c.GetAccess(ctx, patientID, doctorID)
+	if err != nil {
+		return false, nil
+	}
+
+	return grant.Active, nil
+}
+
+func (c *CareLinkContract) ViewRecord(
+	ctx contractapi.TransactionContextInterface,
+	id string,
+) (*models.MedicalRecord, error) {
+	if id == "" {
+		return nil, fmt.Errorf("medical record id is required")
+	}
+
+	record, err := c.GetMedicalRecord(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if !record.Active {
+		return nil, fmt.Errorf("medical record %s is inactive", id)
+	}
+
+	return record, nil
+}
+
+func (c *CareLinkContract) LogDownload(
+	ctx contractapi.TransactionContextInterface,
+	id string,
+) error {
+	if id == "" {
+		return fmt.Errorf("medical record id is required")
+	}
+
+	if _, err := c.GetMedicalRecord(ctx, id); err != nil {
+		return err
+	}
+
+	actorID, err := ctx.GetClientIdentity().GetID()
+	if err != nil {
+		return fmt.Errorf("failed to get actor identity: %w", err)
+	}
+
+	auditID := fmt.Sprintf("download_%s_%s", id, ctx.GetStub().GetTxID())
+
+	return c.CreateAudit(
+		ctx,
+		auditID,
+		"DOWNLOAD",
+		actorID,
+		"FABRIC",
+		id,
+		"MEDICAL_RECORD",
+		"Medical record downloaded",
+	)
 }
 
 func (c *CareLinkContract) CreateAudit(

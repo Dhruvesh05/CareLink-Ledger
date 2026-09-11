@@ -21,7 +21,7 @@ describe("AuthController", () => {
             message: "Auth module available",
             data: {
                 module: "auth",
-                implemented: false
+                implemented: true
             }
         });
     });

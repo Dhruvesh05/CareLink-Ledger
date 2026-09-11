@@ -7,4 +7,5 @@ type Doctor struct {
 	HospitalID     string `json:"hospitalId"`
 	Wallet         string `json:"wallet"`
 	Active         bool   `json:"active"`
+	Verified       bool   `json:"verified"`
 }

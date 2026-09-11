@@ -4,7 +4,7 @@ Domain model representing a dataset uploaded by a registered hospital.
 from dataclasses import dataclass,field
 from datetime import datetime
 
-from apps.common.enums import (
+from app.common.enums import (
     DatasetStatus,
     FileType,
 )

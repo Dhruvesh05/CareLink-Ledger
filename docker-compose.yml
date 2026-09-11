@@ -1,45 +1,65 @@
 services:
-	mongo:
-		image: mongo:7
-		container_name: carelink-mongo
-		restart: unless-stopped
-		ports:
-			- "27017:27017"
-		environment:
-			MONGO_INITDB_DATABASE: carelink
-		volumes:
-			- mongo_data:/data/db
-		healthcheck:
-			test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-			interval: 15s
-			timeout: 5s
-			retries: 8
+  mongo:
+    image: mongo:7
+    container_name: carelink-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: carelink
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
 
-	ipfs:
-		image: ipfs/kubo:latest
-		container_name: carelink-ipfs
-		restart: unless-stopped
-		ports:
-			- "4001:4001"
-			- "5001:5001"
-			- "8080:8080"
-		volumes:
-			- ipfs_staging:/export
-			- ipfs_data:/data/ipfs
+  ipfs:
+    image: ipfs/kubo@sha256:63f5502f7a01b82a675e45bae81b2f5dfa90248ec4a86cd0a58c218347e1f2d2
+    container_name: carelink-ipfs
+    restart: unless-stopped
+    ports:
+      - "4001:4001"
+      - "5001:5001"
+      - "8080:8080"
+    volumes:
+      - ipfs_staging:/export
+      - ipfs_data:/data/ipfs
 
-	fhir:
-		image: hapiproject/hapi:latest
-		container_name: carelink-fhir
-		restart: unless-stopped
-		ports:
-			- "8090:8080"
-		healthcheck:
-			test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8080/fhir/metadata"]
-			interval: 20s
-			timeout: 8s
-			retries: 8
+  fhir:
+    image: hapiproject/hapi@sha256:d7f38d3676900b07e8a7d3500426eaf8d90ea9ced9a6726416f080f68e230fb0
+    container_name: carelink-fhir
+    restart: unless-stopped
+    ports:
+      - "8090:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8080/fhir/metadata"]
+      interval: 20s
+      timeout: 8s
+      retries: 8
+
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: carelink-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./blockchain/fabric/network/organizations:/app/blockchain/fabric/network/organizations:ro
+      - ./backend/ssi.sqlite:/app/backend/ssi.sqlite
+    depends_on:
+      mongo:
+        condition: service_healthy
+      ipfs:
+        condition: service_healthy
 
 volumes:
-	mongo_data:
-	ipfs_staging:
-	ipfs_data:
+  mongo_data:
+  ipfs_staging:
+  ipfs_data:

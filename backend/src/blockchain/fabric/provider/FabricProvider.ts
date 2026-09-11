@@ -173,10 +173,13 @@ export class FabricProvider implements IBlockchainProvider {
     }
 
     async isDoctorVerified(
-        _wallet: string
+        wallet: string
     ): Promise<boolean> {
-        return this.unsupported(
-            "Fabric chaincode does not implement doctor verification"
+        return Boolean(
+            await this.evaluate(
+                "IsDoctorVerified",
+                wallet
+            )
         );
     }
 
@@ -199,18 +202,20 @@ export class FabricProvider implements IBlockchainProvider {
     }
 
     async verifyDoctor(
-        _wallet: string
+        wallet: string
     ): Promise<any> {
-        return this.unsupported(
-            "Fabric chaincode does not implement doctor verification"
+        return await this.submit(
+            "VerifyDoctor",
+            wallet
         );
     }
 
     async revokeDoctorVerification(
-        _wallet: string
+        wallet: string
     ): Promise<any> {
-        return this.unsupported(
-            "Fabric chaincode does not implement doctor verification"
+        return await this.submit(
+            "RevokeDoctorVerification",
+            wallet
         );
     }
 
@@ -265,18 +270,20 @@ export class FabricProvider implements IBlockchainProvider {
     }
 
     async verifyHospital(
-        _wallet: string
+        wallet: string
     ): Promise<any> {
-        return this.unsupported(
-            "Fabric chaincode does not implement hospital verification"
+        return await this.submit(
+            "VerifyHospital",
+            wallet
         );
     }
 
     async revokeHospitalVerification(
-        _wallet: string
+        wallet: string
     ): Promise<any> {
-        return this.unsupported(
-            "Fabric chaincode does not implement hospital verification"
+        return await this.submit(
+            "RevokeHospitalVerification",
+            wallet
         );
     }
 
@@ -318,10 +325,13 @@ export class FabricProvider implements IBlockchainProvider {
     }
 
     async isHospitalVerified(
-        _wallet: string
+        wallet: string
     ): Promise<boolean> {
-        return this.unsupported(
-            "Fabric chaincode does not implement hospital verification"
+        return Boolean(
+            await this.evaluate(
+                "IsHospitalVerified",
+                wallet
+            )
         );
     }
 

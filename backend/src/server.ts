@@ -3,6 +3,7 @@ dotenv.config();
 
 import app from "./app";
 import { connectDatabase } from "./config/database";
+import { startEventSynchronizers } from "./blockchain/events/EventSyncInitializer";
 
 const PORT = Number(process.env.PORT) || 5000;
 
@@ -17,4 +18,6 @@ app.listen(PORT, () => {
   console.log(`Health : http://localhost:${PORT}/health`);
   console.log(`Readiness : http://localhost:${PORT}/api/health/ready`);
   console.log("=================================");
+
+  startEventSynchronizers();
 });

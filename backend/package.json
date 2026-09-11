@@ -19,6 +19,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@fhir-toolkit/r4-specs": "^0.1.0",
+    "@fhir-toolkit/yafv": "^2.0.0",
     "@grpc/grpc-js": "^1.14.4",
     "@hyperledger/fabric-gateway": "^1.12.0",
     "@veramo/core": "^7.0.0",
@@ -53,6 +55,7 @@
     "winston": "^3.19.0"
   },
   "devDependencies": {
+    "@medplum/fhirtypes": "^5.1.37",
     "@types/bcrypt": "^6.0.0",
     "@types/better-sqlite3": "^9.6.0",
     "@types/compression": "^1.8.1",

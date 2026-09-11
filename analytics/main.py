@@ -1,3 +1,5 @@
+from app.api.analytics import router as analytics_router
+
 from fastapi import FastAPI
 
 app = FastAPI(
@@ -20,3 +22,5 @@ def health():
     return {
         "status": "healthy"
     }
+
+app.include_router(analytics_router)
