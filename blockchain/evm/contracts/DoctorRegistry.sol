@@ -45,6 +45,10 @@ contract DoctorRegistry is IDoctorRegistry {
 
     uint256 private _nextDoctorId = 1;
 
+    /// @notice Prevents the same authenticated cross-chain message from
+    ///         being executed more than once on this chain.
+    mapping(bytes32 => bool) private _processedBridgeMessages;
+
     mapping(address => Doctor) private _doctors;
 
     // ---------------------------------------------------------------------
@@ -57,6 +61,45 @@ contract DoctorRegistry is IDoctorRegistry {
     event DoctorUpdated(address indexed wallet, uint256 timestamp);
     event DoctorDeactivated(address indexed wallet, uint256 timestamp);
     event DoctorReactivated(address indexed wallet, uint256 timestamp);
+
+    event DoctorRegisteredFromBridge(
+        bytes32 indexed messageId,
+        address indexed wallet,
+        uint256 doctorId,
+        address indexed hospital,
+        uint256 timestamp
+    );
+
+    event DoctorVerifiedFromBridge(
+        bytes32 indexed messageId,
+        address indexed wallet,
+        uint256 timestamp
+    );
+
+    event DoctorVerificationRevokedFromBridge(
+        bytes32 indexed messageId,
+        address indexed wallet,
+        uint256 timestamp
+    );
+
+    event DoctorUpdatedFromBridge(
+        bytes32 indexed messageId,
+        address indexed wallet,
+        string specialization,
+        uint256 timestamp
+    );
+
+    event DoctorDeactivatedFromBridge(
+        bytes32 indexed messageId,
+        address indexed wallet,
+        uint256 timestamp
+    );
+
+    event DoctorReactivatedFromBridge(
+        bytes32 indexed messageId,
+        address indexed wallet,
+        uint256 timestamp
+    );
 
     // ---------------------------------------------------------------------
     // CUSTOM ERRORS
@@ -71,6 +114,8 @@ contract DoctorRegistry is IDoctorRegistry {
     error DoctorAlreadyActive();
     error AlreadyVerified();
     error NotVerified();
+    error InvalidBridgeMessage();
+    error BridgeMessageAlreadyProcessed();
 
     // ---------------------------------------------------------------------
     // MODIFIERS
@@ -83,6 +128,21 @@ contract DoctorRegistry is IDoctorRegistry {
 
     modifier doctorRegistered(address wallet) {
         if (_doctors[wallet].wallet == address(0)) revert DoctorNotFound();
+        _;
+    }
+
+    modifier onlyBridgeExecutor() {
+        if (!accessControl.isBridgeExecutor(msg.sender)) revert Unauthorized();
+        _;
+    }
+
+    modifier consumeBridgeMessage(bytes32 messageId) {
+        if (messageId == bytes32(0)) revert InvalidBridgeMessage();
+        if (_processedBridgeMessages[messageId]) {
+            revert BridgeMessageAlreadyProcessed();
+        }
+
+        _processedBridgeMessages[messageId] = true;
         _;
     }
 
@@ -194,6 +254,177 @@ contract DoctorRegistry is IDoctorRegistry {
         _doctors[msg.sender].updatedAt = block.timestamp;
 
         emit DoctorDeactivated(msg.sender, block.timestamp);
+    }
+
+    // ---------------------------------------------------------------------
+    // BRIDGE OPERATIONS
+    // ---------------------------------------------------------------------
+
+    /// @notice Registers a doctor mirrored from a trusted source chain.
+    /// @dev The source wallet remains the doctor's identity on this chain.
+    function registerDoctorFromBridge(
+        bytes32 messageId,
+        address wallet,
+        string calldata fullNameHash,
+        string calldata licenseNumberHash,
+        string calldata specialization,
+        address hospital
+    )
+        external
+        onlyBridgeExecutor
+        consumeBridgeMessage(messageId)
+    {
+        if (wallet == address(0) || hospital == address(0)) {
+            revert ZeroAddress();
+        }
+
+        if (_doctors[wallet].wallet != address(0)) {
+            revert DoctorAlreadyExists();
+        }
+
+        if (
+            bytes(fullNameHash).length == 0 ||
+            bytes(licenseNumberHash).length == 0 ||
+            bytes(specialization).length == 0
+        ) {
+            revert EmptyField();
+        }
+
+        uint256 doctorId = _nextDoctorId++;
+
+        _doctors[wallet] = Doctor({
+            doctorId: doctorId,
+            wallet: wallet,
+            fullNameHash: fullNameHash,
+            licenseNumberHash: licenseNumberHash,
+            specialization: specialization,
+            hospital: hospital,
+            verified: false,
+            active: true,
+            createdAt: block.timestamp,
+            updatedAt: block.timestamp
+        });
+
+        emit DoctorRegisteredFromBridge(
+            messageId,
+            wallet,
+            doctorId,
+            hospital,
+            block.timestamp
+        );
+    }
+
+    /// @notice Verifies a mirrored doctor.
+    function verifyDoctorFromBridge(
+        bytes32 messageId,
+        address wallet
+    )
+        external
+        onlyBridgeExecutor
+        consumeBridgeMessage(messageId)
+        doctorRegistered(wallet)
+    {
+        if (_doctors[wallet].verified) revert AlreadyVerified();
+
+        _doctors[wallet].verified = true;
+        _doctors[wallet].updatedAt = block.timestamp;
+
+        emit DoctorVerifiedFromBridge(
+            messageId,
+            wallet,
+            block.timestamp
+        );
+    }
+
+    /// @notice Revokes verification of a mirrored doctor.
+    function revokeVerificationFromBridge(
+        bytes32 messageId,
+        address wallet
+    )
+        external
+        onlyBridgeExecutor
+        consumeBridgeMessage(messageId)
+        doctorRegistered(wallet)
+    {
+        if (!_doctors[wallet].verified) revert NotVerified();
+
+        _doctors[wallet].verified = false;
+        _doctors[wallet].updatedAt = block.timestamp;
+
+        emit DoctorVerificationRevokedFromBridge(
+            messageId,
+            wallet,
+            block.timestamp
+        );
+    }
+
+    /// @notice Updates a mirrored doctor's specialization.
+    function updateSpecializationFromBridge(
+        bytes32 messageId,
+        address wallet,
+        string calldata specialization
+    )
+        external
+        onlyBridgeExecutor
+        consumeBridgeMessage(messageId)
+        doctorRegistered(wallet)
+    {
+        if (!_doctors[wallet].active) revert DoctorInactive();
+        if (bytes(specialization).length == 0) revert EmptyField();
+
+        _doctors[wallet].specialization = specialization;
+        _doctors[wallet].updatedAt = block.timestamp;
+
+        emit DoctorUpdatedFromBridge(
+            messageId,
+            wallet,
+            specialization,
+            block.timestamp
+        );
+    }
+
+    /// @notice Deactivates a mirrored doctor.
+    function deactivateDoctorFromBridge(
+        bytes32 messageId,
+        address wallet
+    )
+        external
+        onlyBridgeExecutor
+        consumeBridgeMessage(messageId)
+        doctorRegistered(wallet)
+    {
+        if (!_doctors[wallet].active) revert DoctorInactive();
+
+        _doctors[wallet].active = false;
+        _doctors[wallet].updatedAt = block.timestamp;
+
+        emit DoctorDeactivatedFromBridge(
+            messageId,
+            wallet,
+            block.timestamp
+        );
+    }
+
+    /// @notice Reactivates a mirrored doctor.
+    function reactivateDoctorFromBridge(
+        bytes32 messageId,
+        address wallet
+    )
+        external
+        onlyBridgeExecutor
+        consumeBridgeMessage(messageId)
+        doctorRegistered(wallet)
+    {
+        if (_doctors[wallet].active) revert DoctorAlreadyActive();
+
+        _doctors[wallet].active = true;
+        _doctors[wallet].updatedAt = block.timestamp;
+
+        emit DoctorReactivatedFromBridge(
+            messageId,
+            wallet,
+            block.timestamp
+        );
     }
 
     // ---------------------------------------------------------------------

@@ -45,6 +45,9 @@ contract HospitalRegistry is IHospitalRegistry {
 
     mapping(address => Hospital) private _hospitals;
 
+    // Prevents the same cross-chain message from being executed twice.
+    mapping(bytes32 => bool) private _processedBridgeMessages;
+
     // ---------------------------------------------------------------------
     // EVENTS
     // ---------------------------------------------------------------------
@@ -55,6 +58,43 @@ contract HospitalRegistry is IHospitalRegistry {
     event HospitalUpdated(address indexed wallet, uint256 timestamp);
     event HospitalDeactivated(address indexed wallet, uint256 timestamp);
     event HospitalReactivated(address indexed wallet, uint256 timestamp);
+
+    event HospitalRegisteredFromBridge(
+        bytes32 indexed messageId,
+        address indexed wallet,
+        uint256 hospitalId,
+        uint256 timestamp
+    );
+
+    event HospitalVerifiedFromBridge(
+        bytes32 indexed messageId,
+        address indexed wallet,
+        uint256 timestamp
+    );
+
+    event HospitalVerificationRevokedFromBridge(
+        bytes32 indexed messageId,
+        address indexed wallet,
+        uint256 timestamp
+    );
+
+    event HospitalUpdatedFromBridge(
+        bytes32 indexed messageId,
+        address indexed wallet,
+        uint256 timestamp
+    );
+
+    event HospitalDeactivatedFromBridge(
+        bytes32 indexed messageId,
+        address indexed wallet,
+        uint256 timestamp
+    );
+
+    event HospitalReactivatedFromBridge(
+        bytes32 indexed messageId,
+        address indexed wallet,
+        uint256 timestamp
+    );
 
     // ---------------------------------------------------------------------
     // CUSTOM ERRORS
@@ -69,6 +109,8 @@ contract HospitalRegistry is IHospitalRegistry {
     error HospitalAlreadyActive();
     error AlreadyVerified();
     error NotVerified();
+    error InvalidBridgeMessage();
+    error BridgeMessageAlreadyProcessed();
 
     // ---------------------------------------------------------------------
     // MODIFIERS
@@ -81,6 +123,21 @@ contract HospitalRegistry is IHospitalRegistry {
 
     modifier hospitalRegistered(address wallet) {
         if (_hospitals[wallet].wallet == address(0)) revert HospitalNotFound();
+        _;
+    }
+
+    modifier onlyBridgeExecutor() {
+        if (!accessControl.isBridgeExecutor(msg.sender)) revert Unauthorized();
+        _;
+    }
+
+    modifier consumeBridgeMessage(bytes32 messageId) {
+        if (messageId == bytes32(0)) revert InvalidBridgeMessage();
+        if (_processedBridgeMessages[messageId]) {
+            revert BridgeMessageAlreadyProcessed();
+        }
+
+        _processedBridgeMessages[messageId] = true;
         _;
     }
 
@@ -184,6 +241,167 @@ contract HospitalRegistry is IHospitalRegistry {
         _hospitals[msg.sender].updatedAt = block.timestamp;
 
         emit HospitalDeactivated(msg.sender, block.timestamp);
+    }
+
+    // ---------------------------------------------------------------------
+    // BRIDGE FUNCTIONS
+    // ---------------------------------------------------------------------
+
+    /// @notice Creates a mirrored hospital from a trusted bridge message.
+    function registerHospitalFromBridge(
+        bytes32 messageId,
+        address wallet,
+        string calldata hospitalNameHash,
+        string calldata registrationNumberHash,
+        string calldata locationHash
+    )
+        external
+        onlyBridgeExecutor
+        consumeBridgeMessage(messageId)
+    {
+        if (wallet == address(0)) revert ZeroAddress();
+        if (_hospitals[wallet].wallet != address(0)) {
+            revert HospitalAlreadyExists();
+        }
+
+        if (
+            bytes(hospitalNameHash).length == 0 ||
+            bytes(registrationNumberHash).length == 0 ||
+            bytes(locationHash).length == 0
+        ) revert EmptyField();
+
+        uint256 hospitalId = _nextHospitalId++;
+
+        _hospitals[wallet] = Hospital({
+            hospitalId: hospitalId,
+            wallet: wallet,
+            hospitalNameHash: hospitalNameHash,
+            registrationNumberHash: registrationNumberHash,
+            locationHash: locationHash,
+            verified: false,
+            active: true,
+            createdAt: block.timestamp,
+            updatedAt: block.timestamp
+        });
+
+        emit HospitalRegisteredFromBridge(
+            messageId,
+            wallet,
+            hospitalId,
+            block.timestamp
+        );
+    }
+
+    /// @notice Verifies a mirrored hospital.
+    function verifyHospitalFromBridge(
+        bytes32 messageId,
+        address wallet
+    )
+        external
+        onlyBridgeExecutor
+        consumeBridgeMessage(messageId)
+        hospitalRegistered(wallet)
+    {
+        if (_hospitals[wallet].verified) revert AlreadyVerified();
+
+        _hospitals[wallet].verified = true;
+        _hospitals[wallet].updatedAt = block.timestamp;
+
+        emit HospitalVerifiedFromBridge(
+            messageId,
+            wallet,
+            block.timestamp
+        );
+    }
+
+    /// @notice Revokes verification of a mirrored hospital.
+    function revokeVerificationFromBridge(
+        bytes32 messageId,
+        address wallet
+    )
+        external
+        onlyBridgeExecutor
+        consumeBridgeMessage(messageId)
+        hospitalRegistered(wallet)
+    {
+        if (!_hospitals[wallet].verified) revert NotVerified();
+
+        _hospitals[wallet].verified = false;
+        _hospitals[wallet].updatedAt = block.timestamp;
+
+        emit HospitalVerificationRevokedFromBridge(
+            messageId,
+            wallet,
+            block.timestamp
+        );
+    }
+
+    /// @notice Updates a mirrored hospital's location.
+    function updateLocationFromBridge(
+        bytes32 messageId,
+        address wallet,
+        string calldata newLocationHash
+    )
+        external
+        onlyBridgeExecutor
+        consumeBridgeMessage(messageId)
+        hospitalRegistered(wallet)
+    {
+        if (!_hospitals[wallet].active) revert HospitalInactive();
+        if (bytes(newLocationHash).length == 0) revert EmptyField();
+
+        _hospitals[wallet].locationHash = newLocationHash;
+        _hospitals[wallet].updatedAt = block.timestamp;
+
+        emit HospitalUpdatedFromBridge(
+            messageId,
+            wallet,
+            block.timestamp
+        );
+    }
+
+    /// @notice Deactivates a mirrored hospital.
+    function deactivateHospitalFromBridge(
+        bytes32 messageId,
+        address wallet
+    )
+        external
+        onlyBridgeExecutor
+        consumeBridgeMessage(messageId)
+        hospitalRegistered(wallet)
+    {
+        if (!_hospitals[wallet].active) revert HospitalInactive();
+
+        _hospitals[wallet].active = false;
+        _hospitals[wallet].updatedAt = block.timestamp;
+
+        emit HospitalDeactivatedFromBridge(
+            messageId,
+            wallet,
+            block.timestamp
+        );
+    }
+
+    /// @notice Reactivates a mirrored hospital.
+    function reactivateHospitalFromBridge(
+        bytes32 messageId,
+        address wallet
+    )
+        external
+        onlyBridgeExecutor
+        consumeBridgeMessage(messageId)
+        hospitalRegistered(wallet)
+    {
+        if (_hospitals[wallet].active) revert HospitalAlreadyActive();
+
+        _hospitals[wallet].active = true;
+        _hospitals[wallet].updatedAt = block.timestamp;
+
+        emit HospitalReactivatedFromBridge(
+            messageId,
+            wallet,
+            block.timestamp
+        );
     }
 
     // ---------------------------------------------------------------------

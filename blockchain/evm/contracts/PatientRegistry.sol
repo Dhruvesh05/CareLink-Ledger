@@ -52,6 +52,10 @@ contract PatientRegistry is IPatientRegistry {
 
     uint256 private _nextPatientId = 1;
 
+    /// @notice Prevents the same authenticated cross-chain message from
+    ///         being executed more than once on this chain.
+    mapping(bytes32 => bool) private _processedBridgeMessages;
+
     mapping(address => Patient) private _patients;
 
     // ---------------------------------------------------------------------
@@ -62,6 +66,33 @@ contract PatientRegistry is IPatientRegistry {
     event BloodGroupUpdated(address indexed patient, string newBloodGroup, uint256 timestamp);
     event PatientDeactivated(address indexed patient, uint256 timestamp);
     event PatientReactivated(address indexed patient, uint256 timestamp);
+
+    event PatientRegisteredFromBridge(
+        bytes32 indexed messageId,
+        address indexed patient,
+        uint256 patientId,
+        uint256 timestamp
+    );
+
+    event BloodGroupUpdatedFromBridge(
+        bytes32 indexed messageId,
+        address indexed patient,
+        string newBloodGroup,
+        uint256 timestamp
+    );
+
+    event PatientDeactivatedFromBridge(
+        bytes32 indexed messageId,
+        address indexed patient,
+        uint256 timestamp
+    );
+
+    event PatientReactivatedFromBridge(
+        bytes32 indexed messageId,
+        address indexed patient,
+        uint256 timestamp
+    );
+
     event RecordCountIncremented(address indexed patient, uint256 totalRecords);
     event MedicalRecordContractUpdated(address indexed previous, address indexed current);
 
@@ -77,6 +108,8 @@ contract PatientRegistry is IPatientRegistry {
     error PatientInactive();
     error PatientAlreadyActive();
     error MedicalRecordContractNotSet();
+    error InvalidBridgeMessage();
+    error BridgeMessageAlreadyProcessed();
 
     // ---------------------------------------------------------------------
     // MODIFIERS
@@ -95,6 +128,21 @@ contract PatientRegistry is IPatientRegistry {
 
     modifier patientRegistered(address wallet) {
         if (_patients[wallet].wallet == address(0)) revert PatientNotFound();
+        _;
+    }
+
+    modifier onlyBridgeExecutor() {
+        if (!accessControl.isBridgeExecutor(msg.sender)) revert Unauthorized();
+        _;
+    }
+
+    modifier consumeBridgeMessage(bytes32 messageId) {
+        if (messageId == bytes32(0)) revert InvalidBridgeMessage();
+        if (_processedBridgeMessages[messageId]) {
+            revert BridgeMessageAlreadyProcessed();
+        }
+
+        _processedBridgeMessages[messageId] = true;
         _;
     }
 
@@ -199,6 +247,130 @@ contract PatientRegistry is IPatientRegistry {
         _patients[msg.sender].updatedAt = block.timestamp;
 
         emit PatientDeactivated(msg.sender, block.timestamp);
+    }
+
+    // ---------------------------------------------------------------------
+    // BRIDGE OPERATIONS
+    // ---------------------------------------------------------------------
+
+    /// @notice Registers a patient mirrored from a trusted source chain.
+    /// @dev The source wallet is preserved as the patient identity.
+    function registerPatientFromBridge(
+        bytes32 messageId,
+        address wallet,
+        string calldata fullNameHash,
+        string calldata dobHash,
+        string calldata bloodGroup,
+        string calldata gender
+    )
+        external
+        onlyBridgeExecutor
+        consumeBridgeMessage(messageId)
+    {
+        if (wallet == address(0)) revert ZeroAddress();
+        if (_patients[wallet].wallet != address(0)) {
+            revert PatientAlreadyExists();
+        }
+
+        if (
+            bytes(fullNameHash).length == 0 ||
+            bytes(dobHash).length == 0 ||
+            bytes(bloodGroup).length == 0 ||
+            bytes(gender).length == 0
+        ) {
+            revert EmptyField();
+        }
+
+        uint256 patientId = _nextPatientId++;
+
+        _patients[wallet] = Patient({
+            patientId: patientId,
+            wallet: wallet,
+            fullNameHash: fullNameHash,
+            dobHash: dobHash,
+            bloodGroup: bloodGroup,
+            gender: gender,
+            recordCount: 0,
+            createdAt: block.timestamp,
+            updatedAt: block.timestamp,
+            active: true
+        });
+
+        emit PatientRegisteredFromBridge(
+            messageId,
+            wallet,
+            patientId,
+            block.timestamp
+        );
+    }
+
+    /// @notice Updates a mirrored patient's blood group.
+    function updateBloodGroupFromBridge(
+        bytes32 messageId,
+        address wallet,
+        string calldata newBloodGroup
+    )
+        external
+        onlyBridgeExecutor
+        consumeBridgeMessage(messageId)
+        patientRegistered(wallet)
+    {
+        if (!_patients[wallet].active) revert PatientInactive();
+        if (bytes(newBloodGroup).length == 0) revert EmptyField();
+
+        _patients[wallet].bloodGroup = newBloodGroup;
+        _patients[wallet].updatedAt = block.timestamp;
+
+        emit BloodGroupUpdatedFromBridge(
+            messageId,
+            wallet,
+            newBloodGroup,
+            block.timestamp
+        );
+    }
+
+    /// @notice Deactivates a mirrored patient.
+    function deactivatePatientFromBridge(
+        bytes32 messageId,
+        address wallet
+    )
+        external
+        onlyBridgeExecutor
+        consumeBridgeMessage(messageId)
+        patientRegistered(wallet)
+    {
+        if (!_patients[wallet].active) revert PatientInactive();
+
+        _patients[wallet].active = false;
+        _patients[wallet].updatedAt = block.timestamp;
+
+        emit PatientDeactivatedFromBridge(
+            messageId,
+            wallet,
+            block.timestamp
+        );
+    }
+
+    /// @notice Reactivates a mirrored patient.
+    function reactivatePatientFromBridge(
+        bytes32 messageId,
+        address wallet
+    )
+        external
+        onlyBridgeExecutor
+        consumeBridgeMessage(messageId)
+        patientRegistered(wallet)
+    {
+        if (_patients[wallet].active) revert PatientAlreadyActive();
+
+        _patients[wallet].active = true;
+        _patients[wallet].updatedAt = block.timestamp;
+
+        emit PatientReactivatedFromBridge(
+            messageId,
+            wallet,
+            block.timestamp
+        );
     }
 
     // ---------------------------------------------------------------------

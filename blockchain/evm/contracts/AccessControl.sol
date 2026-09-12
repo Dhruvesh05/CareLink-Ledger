@@ -18,6 +18,7 @@ interface IAccessControl {
     function isDoctor(address account) external view returns (bool);
     function isHospital(address account) external view returns (bool);
     function isPatient(address account) external view returns (bool);
+    function isBridgeExecutor(address account) external view returns (bool);
 }
 
 /// @title AccessControl
@@ -42,6 +43,12 @@ contract AccessControl is IAccessControl {
 
     mapping(address => Role) private _roles;
 
+    /// @notice Addresses authorized to execute authenticated cross-chain
+    ///         bridge operations. This permission is independent of Role,
+    ///         so a bridge executor may remain Admin without becoming a
+    ///         Patient, Doctor, or Hospital.
+    mapping(address => bool) private _bridgeExecutors;
+
     /// @dev Number of accounts currently holding the Admin role.
     uint256 private _adminCount;
 
@@ -52,6 +59,7 @@ contract AccessControl is IAccessControl {
     event RoleAssigned(address indexed account, Role role);
     event RoleUpdated(address indexed account, Role oldRole, Role newRole);
     event RoleRevoked(address indexed account, Role previousRole);
+    event BridgeExecutorUpdated(address indexed account, bool authorized);
 
     // ---------------------------------------------------------------------
     // CUSTOM ERRORS
@@ -164,6 +172,32 @@ contract AccessControl is IAccessControl {
 
         _roles[account] = Role.None;
         emit RoleRevoked(account, previousRole);
+    }
+
+    // ---------------------------------------------------------------------
+    // BRIDGE AUTHORIZATION
+    // ---------------------------------------------------------------------
+
+    /// @notice Grants or removes permission to execute bridge-originated
+    ///         operations on behalf of a trusted cross-chain relay.
+    /// @dev This does not change the account's normal CareLink role.
+    function setBridgeExecutor(address account, bool authorized)
+        external
+        onlyAdmin
+        notZeroAddress(account)
+    {
+        _bridgeExecutors[account] = authorized;
+        emit BridgeExecutorUpdated(account, authorized);
+    }
+
+    /// @notice Returns whether an address may execute bridge-originated
+    ///         operations.
+    function isBridgeExecutor(address account)
+        external
+        view
+        returns (bool)
+    {
+        return _bridgeExecutors[account];
     }
 
     // ---------------------------------------------------------------------
