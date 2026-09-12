@@ -96,6 +96,14 @@ contract MedicalRecord {
     ///      record may grant or revoke this.
     mapping(uint256 => mapping(address => bool)) private _authorizedDoctors;
 
+    /// @dev Maps a source-chain record identity to this chain's local record ID.
+    ///      The source chain is included because record IDs are only unique
+    ///      within an individual chain.
+    mapping(bytes32 => uint256) private _sourceRecordToLocalRecord;
+
+    /// @dev Prevents the same cross-chain message from being executed twice.
+    mapping(bytes32 => bool) private _processedBridgeMessages;
+
     // ---------------------------------------------------------------------
     // EVENTS
     // ---------------------------------------------------------------------
@@ -149,6 +157,55 @@ contract MedicalRecord {
         uint256 timestamp
     );
 
+    event RecordCreatedFromBridge(
+        bytes32 indexed messageId,
+        bytes32 indexed sourceChain,
+        uint256 indexed sourceRecordId,
+        uint256 destinationRecordId,
+        address patient,
+        address doctor,
+        address hospital,
+        uint256 timestamp
+    );
+
+    event RecordUpdatedFromBridge(
+        bytes32 indexed messageId,
+        bytes32 indexed sourceChain,
+        uint256 indexed sourceRecordId,
+        uint256 destinationRecordId,
+        uint256 newVersion,
+        uint256 timestamp
+    );
+
+    event RecordDeactivatedFromBridge(
+        bytes32 indexed messageId,
+        bytes32 indexed sourceChain,
+        uint256 indexed sourceRecordId,
+        uint256 destinationRecordId,
+        address actor,
+        uint256 timestamp
+    );
+
+    event AccessGrantedFromBridge(
+        bytes32 indexed messageId,
+        bytes32 indexed sourceChain,
+        uint256 indexed sourceRecordId,
+        uint256 destinationRecordId,
+        address patient,
+        address doctor,
+        uint256 timestamp
+    );
+
+    event AccessRevokedFromBridge(
+        bytes32 indexed messageId,
+        bytes32 indexed sourceChain,
+        uint256 indexed sourceRecordId,
+        uint256 destinationRecordId,
+        address patient,
+        address doctor,
+        uint256 timestamp
+    );
+
     // ---------------------------------------------------------------------
     // CUSTOM ERRORS
     // ---------------------------------------------------------------------
@@ -180,12 +237,33 @@ contract MedicalRecord {
     error AccessAlreadyGranted();
     error AccessNotGranted();
 
+    error InvalidBridgeMessage();
+    error BridgeMessageAlreadyProcessed();
+    error InvalidSourceChain();
+    error SourceRecordAlreadyMapped();
+    error SourceRecordNotMapped();
+
     // ---------------------------------------------------------------------
     // MODIFIERS
     // ---------------------------------------------------------------------
 
     modifier existingRecord(uint256 recordId) {
         if (_records[recordId].patient == address(0)) revert RecordNotFound();
+        _;
+    }
+
+    modifier onlyBridgeExecutor() {
+        if (!accessControl.isBridgeExecutor(msg.sender)) revert Unauthorized();
+        _;
+    }
+
+    modifier consumeBridgeMessage(bytes32 messageId) {
+        if (messageId == bytes32(0)) revert InvalidBridgeMessage();
+        if (_processedBridgeMessages[messageId]) {
+            revert BridgeMessageAlreadyProcessed();
+        }
+
+        _processedBridgeMessages[messageId] = true;
         _;
     }
 
@@ -354,6 +432,319 @@ contract MedicalRecord {
         emit RecordDeactivated(recordId, msg.sender, block.timestamp);
 
         auditLog.createAudit(recordId, msg.sender, IAuditLog.Action.DEACTIVATE_RECORD, "Medical record deactivated");
+    }
+
+    // ---------------------------------------------------------------------
+    // BRIDGE FUNCTIONS
+    // ---------------------------------------------------------------------
+
+    /// @notice Creates a mirrored medical record from a trusted bridge
+    ///         message. The source record identity is preserved through
+    ///         sourceChain + sourceRecordId mapping.
+    function createMedicalRecordFromBridge(
+        bytes32 messageId,
+        bytes32 sourceChain,
+        uint256 sourceRecordId,
+        address patient,
+        address doctor,
+        address hospital,
+        string calldata ipfsHash,
+        string calldata fileHash,
+        string calldata category,
+        bool emergency
+    )
+        external
+        onlyBridgeExecutor
+        consumeBridgeMessage(messageId)
+        returns (uint256 recordId)
+    {
+        if (sourceChain == bytes32(0)) revert InvalidSourceChain();
+        if (sourceRecordId == 0) revert RecordNotFound();
+
+        bytes32 sourceKey = keccak256(
+            abi.encode(sourceChain, sourceRecordId)
+        );
+
+        if (_sourceRecordToLocalRecord[sourceKey] != 0) {
+            revert SourceRecordAlreadyMapped();
+        }
+
+        _validatePatient(patient);
+        _validateDoctor(doctor);
+        _validateHashes(ipfsHash, fileHash);
+        _validateCategory(category);
+        _validateHospital(hospital);
+
+        if (doctorRegistry.getDoctorHospital(doctor) != hospital) {
+            revert InvalidHospital();
+        }
+
+        bytes32 dedupeKey = keccak256(
+            abi.encodePacked(patient, fileHash)
+        );
+
+        if (_fileHashUsed[dedupeKey]) revert DuplicateRecord();
+
+        recordId = _nextRecordId++;
+
+        _records[recordId] = StoredRecord({
+            patient: patient,
+            active: true,
+            emergency: emergency,
+            doctor: doctor,
+            version: 1,
+            hospital: hospital,
+            createdAt: uint40(block.timestamp),
+            updatedAt: uint40(block.timestamp),
+            ipfsHash: ipfsHash,
+            fileHash: fileHash,
+            category: category
+        });
+
+        _fileHashUsed[dedupeKey] = true;
+
+        _patientRecordIds[patient].push(recordId);
+        _doctorRecordIds[doctor].push(recordId);
+        _hospitalRecordIds[hospital].push(recordId);
+
+        _sourceRecordToLocalRecord[sourceKey] = recordId;
+
+        emit RecordCreatedFromBridge(
+            messageId,
+            sourceChain,
+            sourceRecordId,
+            recordId,
+            patient,
+            doctor,
+            hospital,
+            block.timestamp
+        );
+
+        patientRegistry.incrementRecordCount(patient);
+
+        auditLog.createAudit(
+            recordId,
+            doctor,
+            IAuditLog.Action.CREATE_RECORD,
+            "Medical record mirrored from another chain"
+        );
+    }
+
+    /// @notice Updates a mirrored medical record.
+    function updateMedicalRecordFromBridge(
+        bytes32 messageId,
+        bytes32 sourceChain,
+        uint256 sourceRecordId,
+        string calldata newIpfsHash,
+        string calldata newFileHash,
+        string calldata newCategory,
+        uint256 expectedVersion
+    )
+        external
+        onlyBridgeExecutor
+        consumeBridgeMessage(messageId)
+    {
+        uint256 recordId = _resolveSourceRecord(
+            sourceChain,
+            sourceRecordId
+        );
+
+        StoredRecord storage record = _records[recordId];
+
+        if (!record.active) revert InactiveRecord();
+        if (expectedVersion != record.version) revert VersionMismatch();
+
+        _validateDoctor(record.doctor);
+        _validateHospital(record.hospital);
+        _validateHashes(newIpfsHash, newFileHash);
+        _validateCategory(newCategory);
+
+        bytes32 dedupeKey = keccak256(
+            abi.encodePacked(record.patient, newFileHash)
+        );
+        bytes32 oldDedupeKey = keccak256(
+            abi.encodePacked(record.patient, record.fileHash)
+        );
+
+        if (
+            dedupeKey != oldDedupeKey &&
+            _fileHashUsed[dedupeKey]
+        ) {
+            revert DuplicateRecord();
+        }
+
+        record.ipfsHash = newIpfsHash;
+        record.fileHash = newFileHash;
+        record.category = newCategory;
+        record.version += 1;
+        record.updatedAt = uint40(block.timestamp);
+
+        if (dedupeKey != oldDedupeKey) {
+            _fileHashUsed[oldDedupeKey] = false;
+            _fileHashUsed[dedupeKey] = true;
+        }
+
+        emit RecordUpdatedFromBridge(
+            messageId,
+            sourceChain,
+            sourceRecordId,
+            recordId,
+            record.version,
+            block.timestamp
+        );
+
+        auditLog.createAudit(
+            recordId,
+            record.doctor,
+            IAuditLog.Action.UPDATE_RECORD,
+            "Medical record update mirrored from another chain"
+        );
+    }
+
+    /// @notice Deactivates a mirrored medical record.
+    function deactivateMedicalRecordFromBridge(
+        bytes32 messageId,
+        bytes32 sourceChain,
+        uint256 sourceRecordId,
+        address actor
+    )
+        external
+        onlyBridgeExecutor
+        consumeBridgeMessage(messageId)
+    {
+        uint256 recordId = _resolveSourceRecord(
+            sourceChain,
+            sourceRecordId
+        );
+
+        StoredRecord storage record = _records[recordId];
+
+        if (!record.active) revert AlreadyInactive();
+
+        if (actor == address(0)) revert ZeroAddress();
+
+        record.active = false;
+        record.updatedAt = uint40(block.timestamp);
+
+        emit RecordDeactivatedFromBridge(
+            messageId,
+            sourceChain,
+            sourceRecordId,
+            recordId,
+            actor,
+            block.timestamp
+        );
+
+        auditLog.createAudit(
+            recordId,
+            actor,
+            IAuditLog.Action.DEACTIVATE_RECORD,
+            "Medical record deactivation mirrored from another chain"
+        );
+    }
+
+    /// @notice Mirrors patient-granted doctor access.
+    function grantAccessFromBridge(
+        bytes32 messageId,
+        bytes32 sourceChain,
+        uint256 sourceRecordId,
+        address doctor
+    )
+        external
+        onlyBridgeExecutor
+        consumeBridgeMessage(messageId)
+    {
+        uint256 recordId = _resolveSourceRecord(
+            sourceChain,
+            sourceRecordId
+        );
+
+        StoredRecord storage record = _records[recordId];
+
+        _validateDoctor(doctor);
+
+        if (_authorizedDoctors[recordId][doctor]) {
+            revert AccessAlreadyGranted();
+        }
+
+        _authorizedDoctors[recordId][doctor] = true;
+
+        emit AccessGrantedFromBridge(
+            messageId,
+            sourceChain,
+            sourceRecordId,
+            recordId,
+            record.patient,
+            doctor,
+            block.timestamp
+        );
+
+        auditLog.createAudit(
+            recordId,
+            record.patient,
+            IAuditLog.Action.GRANT_ACCESS,
+            "Doctor access grant mirrored from another chain"
+        );
+    }
+
+    /// @notice Mirrors patient-revoked doctor access.
+    function revokeAccessFromBridge(
+        bytes32 messageId,
+        bytes32 sourceChain,
+        uint256 sourceRecordId,
+        address doctor
+    )
+        external
+        onlyBridgeExecutor
+        consumeBridgeMessage(messageId)
+    {
+        uint256 recordId = _resolveSourceRecord(
+            sourceChain,
+            sourceRecordId
+        );
+
+        StoredRecord storage record = _records[recordId];
+
+        if (!_authorizedDoctors[recordId][doctor]) {
+            revert AccessNotGranted();
+        }
+
+        _authorizedDoctors[recordId][doctor] = false;
+
+        emit AccessRevokedFromBridge(
+            messageId,
+            sourceChain,
+            sourceRecordId,
+            recordId,
+            record.patient,
+            doctor,
+            block.timestamp
+        );
+
+        auditLog.createAudit(
+            recordId,
+            record.patient,
+            IAuditLog.Action.REVOKE_ACCESS,
+            "Doctor access revocation mirrored from another chain"
+        );
+    }
+
+    // ---------------------------------------------------------------------
+    // BRIDGE HELPERS
+    // ---------------------------------------------------------------------
+
+    function _resolveSourceRecord(
+        bytes32 sourceChain,
+        uint256 sourceRecordId
+    ) internal view returns (uint256 recordId) {
+        if (sourceChain == bytes32(0)) revert InvalidSourceChain();
+        if (sourceRecordId == 0) revert RecordNotFound();
+
+        recordId = _sourceRecordToLocalRecord[
+            keccak256(abi.encode(sourceChain, sourceRecordId))
+        ];
+
+        if (recordId == 0) revert SourceRecordNotMapped();
     }
 
     // ---------------------------------------------------------------------
