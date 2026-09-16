@@ -137,6 +137,51 @@ export interface IBlockchainProvider {
         emergency: boolean
     ): Promise<any>;
 
+    createMedicalRecordFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        patient: string,
+        doctor: string,
+        hospital: string,
+        ipfsHash: string,
+        fileHash: string,
+        category: string,
+        emergency: boolean
+    ): Promise<any>;
+
+
+    updateMedicalRecordFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        newIpfsHash: string,
+        newFileHash: string,
+        newCategory: string,
+        expectedVersion: number
+    ): Promise<any>;
+
+    deactivateMedicalRecordFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        actor: string
+    ): Promise<any>;
+
+    grantAccessFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        doctor: string
+    ): Promise<any>;
+
+    revokeAccessFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        doctor: string
+    ): Promise<any>;
+
     updateMedicalRecord(
         recordId: number,
         ipfsHash: string,

@@ -21,6 +21,94 @@ export class PolygonMedicalRecordService {
         );
     }
 
+    async createMedicalRecordFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        patient: string,
+        doctor: string,
+        hospital: string,
+        ipfsHash: string,
+        fileHash: string,
+        category: string,
+        emergency: boolean
+    ) {
+        return await this.medicalRecordContract.createMedicalRecordFromBridge(
+            messageId,
+            sourceChain,
+            sourceRecordId,
+            patient,
+            doctor,
+            hospital,
+            ipfsHash,
+            fileHash,
+            category,
+            emergency
+        );
+    }
+
+    async updateMedicalRecordFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        newIpfsHash: string,
+        newFileHash: string,
+        newCategory: string,
+        expectedVersion: number
+    ) {
+        return await this.medicalRecordContract.updateMedicalRecordFromBridge(
+            messageId,
+            sourceChain,
+            sourceRecordId,
+            newIpfsHash,
+            newFileHash,
+            newCategory,
+            expectedVersion
+        );
+    }
+
+    async deactivateMedicalRecordFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        actor: string
+    ) {
+        return await this.medicalRecordContract.deactivateMedicalRecordFromBridge(
+            messageId,
+            sourceChain,
+            sourceRecordId,
+            actor
+        );
+    }
+
+    async grantAccessFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        doctor: string
+    ) {
+        return await this.medicalRecordContract.grantAccessFromBridge(
+            messageId,
+            sourceChain,
+            sourceRecordId,
+            doctor
+        );
+    }
+
+    async revokeAccessFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        doctor: string
+    ) {
+        return await this.medicalRecordContract.revokeAccessFromBridge(
+            messageId,
+            sourceChain,
+            sourceRecordId,
+            doctor
+        );
+    }
+
     async updateMedicalRecord(
         recordId: number,
         ipfsHash: string,

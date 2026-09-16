@@ -274,6 +274,94 @@ export class EthereumProvider implements IBlockchainProvider {
         );
     }
 
+    async createMedicalRecordFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        patient: string,
+        doctor: string,
+        hospital: string,
+        ipfsHash: string,
+        fileHash: string,
+        category: string,
+        emergency: boolean
+    ): Promise<any> {
+        return await this.medicalRecordService.createMedicalRecordFromBridge(
+            messageId,
+            sourceChain,
+            sourceRecordId,
+            patient,
+            doctor,
+            hospital,
+            ipfsHash,
+            fileHash,
+            category,
+            emergency
+        );
+    }
+
+    async updateMedicalRecordFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        newIpfsHash: string,
+        newFileHash: string,
+        newCategory: string,
+        expectedVersion: number
+    ): Promise<any> {
+        return await this.medicalRecordService.updateMedicalRecordFromBridge(
+            messageId,
+            sourceChain,
+            sourceRecordId,
+            newIpfsHash,
+            newFileHash,
+            newCategory,
+            expectedVersion
+        );
+    }
+
+    async deactivateMedicalRecordFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        actor: string
+    ): Promise<any> {
+        return await this.medicalRecordService.deactivateMedicalRecordFromBridge(
+            messageId,
+            sourceChain,
+            sourceRecordId,
+            actor
+        );
+    }
+
+    async grantAccessFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        doctor: string
+    ): Promise<any> {
+        return await this.medicalRecordService.grantAccessFromBridge(
+            messageId,
+            sourceChain,
+            sourceRecordId,
+            doctor
+        );
+    }
+
+    async revokeAccessFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        doctor: string
+    ): Promise<any> {
+        return await this.medicalRecordService.revokeAccessFromBridge(
+            messageId,
+            sourceChain,
+            sourceRecordId,
+            doctor
+        );
+    }
+
     async updateMedicalRecord(
         recordId: number,
         ipfsHash: string,

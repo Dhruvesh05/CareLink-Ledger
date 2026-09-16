@@ -14,6 +14,39 @@ import {
     CrossChainAuditService
 } from "../../services/CrossChainAuditService";
 
+interface FabricBridgeProvider
+    extends IBlockchainProvider {
+
+    registerPatientFromBridge(
+        messageId: string,
+        sourceChain: string,
+        wallet: string,
+        fullNameHash: string,
+        dobHash: string,
+        bloodGroup: string,
+        gender: string
+    ): Promise<any>;
+
+    registerDoctorFromBridge(
+        messageId: string,
+        sourceChain: string,
+        wallet: string,
+        fullNameHash: string,
+        licenseNumberHash: string,
+        specialization: string,
+        hospitalWallet: string
+    ): Promise<any>;
+
+    registerHospitalFromBridge(
+        messageId: string,
+        sourceChain: string,
+        wallet: string,
+        hospitalNameHash: string,
+        registrationNumberHash: string,
+        locationHash: string
+    ): Promise<any>;
+}
+
 export interface RelayResult {
     messageId: string;
     sourceChain: BlockchainType;
@@ -28,6 +61,9 @@ export interface RelayResult {
 }
 
 type RelayableEvent =
+    | "PatientRegistered"
+    | "DoctorRegistered"
+    | "HospitalRegistered"
     | "PatientReactivated"
     | "DoctorVerified"
     | "DoctorVerificationRevoked"
@@ -38,6 +74,9 @@ type RelayableEvent =
 
 const RELAYABLE_EVENTS =
     new Set<RelayableEvent>([
+        "PatientRegistered",
+        "DoctorRegistered",
+        "HospitalRegistered",
         "PatientReactivated",
         "DoctorVerified",
         "DoctorVerificationRevoked",
@@ -53,7 +92,8 @@ function extractTransactionHash(
 
     return (
         result?.hash ??
-        result?.transactionHash
+        result?.transactionHash ??
+        result?.transactionId
     );
 }
 
@@ -211,6 +251,15 @@ export class BridgeService {
                     break;
                 }
 
+                case BlockchainType.FABRIC: {
+                    const { FabricProvider } =
+                        require("../fabric/provider/FabricProvider");
+
+                    destinationProvider =
+                        new FabricProvider();
+                    break;
+                }
+
                 default:
                     break;
             }
@@ -244,6 +293,107 @@ export class BridgeService {
             let result: any;
 
             switch (eventName as RelayableEvent) {
+
+                case "PatientRegistered": {
+                    if (
+                        message.destinationChain !==
+                        BlockchainType.FABRIC
+                    ) {
+                        throw new Error(
+                            `PatientRegistered relay to ${message.destinationChain} is not supported`
+                        );
+                    }
+
+                    const record =
+                        (message.payload as any).sourceRecord;
+
+                    if (!record) {
+                        throw new Error(
+                            "PatientRegistered event is missing sourceRecord"
+                        );
+                    }
+
+                    result =
+                        await (
+                            destinationProvider as FabricBridgeProvider
+                        ).registerPatientFromBridge(
+                                message.messageId,
+                                message.sourceChain,
+                                record.wallet,
+                                record.fullNameHash,
+                                record.dobHash,
+                                record.bloodGroup,
+                                record.gender
+                            );
+                    break;
+                }
+
+                case "HospitalRegistered": {
+                    if (
+                        message.destinationChain !==
+                        BlockchainType.FABRIC
+                    ) {
+                        throw new Error(
+                            `HospitalRegistered relay to ${message.destinationChain} is not supported`
+                        );
+                    }
+
+                    const record =
+                        (message.payload as any).sourceRecord;
+
+                    if (!record) {
+                        throw new Error(
+                            "HospitalRegistered event is missing sourceRecord"
+                        );
+                    }
+
+                    result =
+                        await (
+                            destinationProvider as FabricBridgeProvider
+                        ).registerHospitalFromBridge(
+                                message.messageId,
+                                message.sourceChain,
+                                record.wallet,
+                                record.hospitalNameHash,
+                                record.registrationNumberHash,
+                                record.locationHash
+                            );
+                    break;
+                }
+
+                case "DoctorRegistered": {
+                    if (
+                        message.destinationChain !==
+                        BlockchainType.FABRIC
+                    ) {
+                        throw new Error(
+                            `DoctorRegistered relay to ${message.destinationChain} is not supported`
+                        );
+                    }
+
+                    const record =
+                        (message.payload as any).sourceRecord;
+
+                    if (!record) {
+                        throw new Error(
+                            "DoctorRegistered event is missing sourceRecord"
+                        );
+                    }
+
+                    result =
+                        await (
+                            destinationProvider as FabricBridgeProvider
+                        ).registerDoctorFromBridge(
+                                message.messageId,
+                                message.sourceChain,
+                                record.wallet,
+                                record.fullNameHash,
+                                record.licenseNumberHash,
+                                record.specialization,
+                                record.hospital
+                            );
+                    break;
+                }
 
                 case "PatientReactivated":
                     result =
@@ -313,6 +463,12 @@ export class BridgeService {
             };
 
         } catch (error: any) {
+
+            console.error(
+                "[bridge] RELAY FAILED",
+                message.messageId,
+                error
+            );
 
             const errorMessage =
                 error?.shortMessage ??

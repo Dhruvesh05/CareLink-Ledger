@@ -35,17 +35,34 @@ const polygonToEthereum = new EventSynchronizer({
     bridge,
 });
 
+const polygonToFabric = new EventSynchronizer({
+    sourceChain: BlockchainType.POLYGON,
+    destinationChain: BlockchainType.FABRIC,
+    contracts: {
+        accessControl: polygon.accessControl,
+        patientRegistry: polygon.patientRegistry,
+        doctorRegistry: polygon.doctorRegistry,
+        hospitalRegistry: polygon.hospitalRegistry,
+        medicalRecord: polygon.medicalRecord,
+        auditLog: polygon.auditLog,
+    },
+    bridge,
+});
+
 export function startEventSynchronizers(): void {
     ethereumToPolygon.start();
     polygonToEthereum.start();
+    polygonToFabric.start();
 
     console.log("[events] Ethereum → Polygon synchronizer started");
     console.log("[events] Polygon → Ethereum synchronizer started");
+    console.log("[events] Polygon → Fabric synchronizer started");
 }
 
 export async function stopEventSynchronizers(): Promise<void> {
     await ethereumToPolygon.stop();
     await polygonToEthereum.stop();
+    await polygonToFabric.stop();
 
     console.log("[events] Event synchronizers stopped");
 }

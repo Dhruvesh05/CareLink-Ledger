@@ -17,6 +17,18 @@ export interface EventSynchronizerContract {
         eventName: string,
         listener: (...args: any[]) => void
     ): Promise<unknown> | unknown;
+
+    getPatient?(
+        wallet: string
+    ): Promise<unknown>;
+
+    getDoctor?(
+        wallet: string
+    ): Promise<unknown>;
+
+    getHospital?(
+        wallet: string
+    ): Promise<unknown>;
 }
 
 export interface EventSynchronizerConfig {
@@ -89,6 +101,15 @@ function serializeArgument(value: unknown): unknown {
         return value.map(serializeArgument);
     }
 
+    if (value !== null && typeof value === "object") {
+        return Object.fromEntries(
+            Object.entries(value).map(([key, entry]) => [
+                key,
+                serializeArgument(entry),
+            ])
+        );
+    }
+
     return value;
 }
 
@@ -153,6 +174,10 @@ export class EventSynchronizer {
                 }
 
                 const listener = async (...args: any[]) => {
+                    console.log(
+                        `[events-debug] RECEIVED ${this.sourceChain} -> ${this.destinationChain} ${contractName}:${eventName}`
+                    );
+
                     await this.handleEvent(
                         contractName,
                         eventName,
@@ -161,6 +186,10 @@ export class EventSynchronizer {
                 };
 
                 contract.on(eventName, listener);
+
+                console.log(
+                    `[events-debug] attached ${this.sourceChain} -> ${this.destinationChain} ${key}`
+                );
 
                 this.listeners.set(key, listener);
             }
@@ -194,34 +223,84 @@ export class EventSynchronizer {
         this.listeners.clear();
     }
 
+    private async enrichRegistrationEvent(
+        contractName: string,
+        eventName: string,
+        eventArgs: unknown[]
+    ): Promise<unknown> {
+        if (
+            eventName !== "PatientRegistered" &&
+            eventName !== "DoctorRegistered" &&
+            eventName !== "HospitalRegistered"
+        ) {
+            return undefined;
+        }
+
+        const wallet = eventArgs[1];
+
+        if (typeof wallet !== "string") {
+            return undefined;
+        }
+
+        let record: unknown;
+
+        if (eventName === "PatientRegistered") {
+            record = await this.contracts.patientRegistry?.getPatient?.(
+                wallet
+            );
+        } else if (eventName === "DoctorRegistered") {
+            record = await this.contracts.doctorRegistry?.getDoctor?.(
+                wallet
+            );
+        } else {
+            record = await this.contracts.hospitalRegistry?.getHospital?.(
+                wallet
+            );
+        }
+
+        if (record === undefined) {
+            return undefined;
+        }
+
+        return serializeArgument(record);
+    }
+
     private async handleEvent(
         contractName: string,
         eventName: string,
         args: unknown[]
     ): Promise<SynchronizedEvent | null> {
+        console.log(
+            `[events-debug] HANDLE START ${this.sourceChain} -> ${this.destinationChain} ${contractName}:${eventName}`
+        );
         const event = args.at(-1) as
             | {
                   transactionHash?: string;
                   index?: number;
                   logIndex?: number;
+                  log?: {
+                      transactionHash?: string;
+                      index?: number;
+                      logIndex?: number;
+                  };
               }
             | undefined;
 
-        const eventArgs =
-            event &&
-            (
-                event.transactionHash !== undefined ||
-                event.index !== undefined ||
-                event.logIndex !== undefined
-            )
-                ? args.slice(0, -1)
-                : args;
-
         const transactionHash =
-            event?.transactionHash;
+            event?.transactionHash ??
+            event?.log?.transactionHash;
 
         const logIndex =
-            event?.index ?? event?.logIndex;
+            event?.index ??
+            event?.logIndex ??
+            event?.log?.index ??
+            event?.log?.logIndex;
+
+        const eventArgs =
+            event &&
+            transactionHash !== undefined
+                ? args.slice(0, -1)
+                : args;
 
         if (
             transactionHash &&
@@ -239,12 +318,31 @@ export class EventSynchronizer {
                       eventArgs.map(serializeArgument)
                   )}`;
 
+        console.log(
+            `[events-debug] BEFORE ENRICH ${this.sourceChain} -> ${this.destinationChain} ${contractName}:${eventName}`
+        );
+
+        const enrichedRecord =
+            await this.enrichRegistrationEvent(
+                contractName,
+                eventName,
+                eventArgs
+            );
+
+        console.log(
+            `[events-debug] AFTER ENRICH ${this.sourceChain} -> ${this.destinationChain} ${contractName}:${eventName}`,
+            enrichedRecord !== undefined ? "record-present" : "record-missing"
+        );
+
         const payload = {
             ...buildEventPayload(
                 contractName,
                 eventName,
                 eventArgs
             ),
+            ...(enrichedRecord !== undefined
+                ? { sourceRecord: enrichedRecord }
+                : {}),
             ...(transactionHash !== undefined
                 ? { transactionHash }
                 : {}),
@@ -263,7 +361,15 @@ export class EventSynchronizer {
             payload,
         });
 
+        console.log(
+            `[events-debug] BEFORE RELAY ${this.sourceChain} -> ${this.destinationChain} ${contractName}:${eventName}`
+        );
+
         await this.bridge.relay(message);
+
+        console.log(
+            `[events-debug] AFTER RELAY ${this.sourceChain} -> ${this.destinationChain} ${contractName}:${eventName}`
+        );
 
         return {
             contract: contractName,

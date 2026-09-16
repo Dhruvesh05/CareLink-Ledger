@@ -87,6 +87,114 @@ export class MedicalRecordContract {
 
 
 
+    async createMedicalRecordFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        patient: string,
+        doctor: string,
+        hospital: string,
+        ipfsHash: string,
+        fileHash: string,
+        category: string,
+        emergency: boolean
+    ) {
+
+        const tx =
+            await ethereum.medicalRecord.createMedicalRecordFromBridge(
+                messageId,
+                sourceChain,
+                sourceRecordId,
+                patient,
+                doctor,
+                hospital,
+                ipfsHash,
+                fileHash,
+                category,
+                emergency
+            );
+
+        return await tx.wait();
+    }
+
+    async updateMedicalRecordFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        newIpfsHash: string,
+        newFileHash: string,
+        newCategory: string,
+        expectedVersion: number
+    ) {
+
+        const tx =
+            await ethereum.medicalRecord.updateMedicalRecordFromBridge(
+                messageId,
+                sourceChain,
+                sourceRecordId,
+                newIpfsHash,
+                newFileHash,
+                newCategory,
+                expectedVersion
+            );
+
+        return await tx.wait();
+    }
+
+    async deactivateMedicalRecordFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        actor: string
+    ) {
+
+        const tx =
+            await ethereum.medicalRecord.deactivateMedicalRecordFromBridge(
+                messageId,
+                sourceChain,
+                sourceRecordId,
+                actor
+            );
+
+        return await tx.wait();
+    }
+
+    async grantAccessFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        doctor: string
+    ) {
+
+        const tx =
+            await ethereum.medicalRecord.grantAccessFromBridge(
+                messageId,
+                sourceChain,
+                sourceRecordId,
+                doctor
+            );
+
+        return await tx.wait();
+    }
+
+    async revokeAccessFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        doctor: string
+    ) {
+
+        const tx =
+            await ethereum.medicalRecord.revokeAccessFromBridge(
+                messageId,
+                sourceChain,
+                sourceRecordId,
+                doctor
+            );
+
+        return await tx.wait();
+    }
+
     async updateMedicalRecord(
         recordId: number,
         newIpfsHash: string,

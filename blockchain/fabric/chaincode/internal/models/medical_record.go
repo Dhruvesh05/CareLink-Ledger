@@ -9,6 +9,7 @@ type MedicalRecord struct {
 	FileHash   string `json:"fileHash"`
 	Category   string `json:"category"`
 	Emergency  bool   `json:"emergency"`
+	Version    uint64 `json:"version"`
 	CreatedAt  string `json:"createdAt"`
 	UpdatedAt  string `json:"updatedAt"`
 	Active     bool   `json:"active"`

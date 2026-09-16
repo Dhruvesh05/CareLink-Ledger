@@ -48,8 +48,11 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+      - backend/.env
     ports:
       - "5000:5000"
+    networks:
+      - carelink
     volumes:
       - ./blockchain/fabric/network/organizations:/app/blockchain/fabric/network/organizations:ro
       - ./backend/ssi.sqlite:/app/backend/ssi.sqlite
@@ -63,3 +66,8 @@ volumes:
   mongo_data:
   ipfs_staging:
   ipfs_data:
+
+
+networks:
+  carelink:
+    external: true

@@ -35,6 +35,70 @@ export class FabricProvider implements IBlockchainProvider {
         }
     }
 
+    private async submitWithTransactionId(
+        transaction: string,
+        ...args: string[]
+    ): Promise<any> {
+        const contract = this.contract();
+
+        console.log("[fabric-debug] SUBMIT START", transaction, args);
+
+        const submitted = await contract.submitAsync(
+            transaction,
+            {
+                arguments: args,
+                endorsingOrganizations: ["CareLinkMSP"],
+            }
+        );
+
+        console.log("[fabric-debug] SUBMIT ASYNC RETURNED");
+
+        const transactionId = submitted.getTransactionId();
+        console.log("[fabric-debug] TX ID", transactionId);
+
+        const result = submitted.getResult();
+        console.log("[fabric-debug] RESULT RECEIVED", result?.length ?? 0);
+
+        const status = await submitted.getStatus();
+        console.log("[fabric-debug] STATUS", status);
+
+        if (!status.successful) {
+            throw new Error(
+                `Fabric transaction ${transactionId} failed with status code ${status.code}`
+            );
+        }
+
+        if (!result || result.length === 0) {
+            return {
+                success: true,
+                transactionId,
+            };
+        }
+
+        const text = Buffer.from(result).toString("utf8");
+
+        try {
+            const parsed = JSON.parse(text);
+
+            if (parsed && typeof parsed === "object") {
+                return {
+                    ...parsed,
+                    transactionId,
+                };
+            }
+
+            return {
+                result: parsed,
+                transactionId,
+            };
+        } catch {
+            return {
+                result: text,
+                transactionId,
+            };
+        }
+    }
+
     private async evaluate(
         transaction: string,
         ...args: string[]
@@ -97,6 +161,27 @@ export class FabricProvider implements IBlockchainProvider {
         );
     }
 
+    async registerPatientFromBridge(
+        messageId: string,
+        sourceChain: string,
+        wallet: string,
+        fullNameHash: string,
+        dobHash: string,
+        bloodGroup: string,
+        gender: string
+    ): Promise<any> {
+        return await this.submitWithTransactionId(
+            "RegisterPatientFromBridge",
+            messageId,
+            sourceChain,
+            wallet,
+            fullNameHash,
+            dobHash,
+            bloodGroup,
+            gender
+        );
+    }
+
     async getPatient(wallet: string): Promise<any> {
         return await this.evaluate("GetPatient", wallet);
     }
@@ -125,9 +210,9 @@ export class FabricProvider implements IBlockchainProvider {
     }
 
     async reactivatePatient(wallet: string): Promise<any> {
-        return await this.submit(
+        return await this.submitWithTransactionId(
             "ReactivatePatient",
-            wallet
+            `polygon_${wallet}`
         );
     }
 
@@ -153,6 +238,27 @@ export class FabricProvider implements IBlockchainProvider {
             specialization,
             hospital,
             wallet
+        );
+    }
+
+    async registerDoctorFromBridge(
+        messageId: string,
+        sourceChain: string,
+        wallet: string,
+        fullNameHash: string,
+        licenseNumberHash: string,
+        specialization: string,
+        hospitalWallet: string
+    ): Promise<any> {
+        return await this.submitWithTransactionId(
+            "RegisterDoctorFromBridge",
+            messageId,
+            sourceChain,
+            wallet,
+            fullNameHash,
+            licenseNumberHash,
+            specialization,
+            hospitalWallet
         );
     }
 
@@ -266,6 +372,25 @@ export class FabricProvider implements IBlockchainProvider {
             hospitalNameHash,
             locationHash,
             wallet
+        );
+    }
+
+    async registerHospitalFromBridge(
+        messageId: string,
+        sourceChain: string,
+        wallet: string,
+        hospitalNameHash: string,
+        registrationNumberHash: string,
+        locationHash: string
+    ): Promise<any> {
+        return await this.submitWithTransactionId(
+            "RegisterHospitalFromBridge",
+            messageId,
+            sourceChain,
+            wallet,
+            hospitalNameHash,
+            registrationNumberHash,
+            locationHash
         );
     }
 
@@ -487,6 +612,99 @@ export class FabricProvider implements IBlockchainProvider {
     async totalRecords(): Promise<any> {
         return this.unsupported(
             "Fabric chaincode does not implement TotalRecords"
+        );
+    }
+
+    async createMedicalRecordFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        patient: string,
+        doctor: string,
+        hospital: string,
+        ipfsHash: string,
+        fileHash: string,
+        category: string,
+        emergency: boolean
+    ): Promise<any> {
+        return await this.submitWithTransactionId(
+            "CreateMedicalRecordFromBridge",
+            messageId,
+            sourceChain,
+            String(sourceRecordId),
+            patient,
+            doctor,
+            hospital,
+            ipfsHash,
+            fileHash,
+            category,
+            String(emergency)
+        );
+    }
+
+    async updateMedicalRecordFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        newIpfsHash: string,
+        newFileHash: string,
+        newCategory: string,
+        expectedVersion: number
+    ): Promise<any> {
+        return await this.submitWithTransactionId(
+            "UpdateMedicalRecordFromBridge",
+            messageId,
+            sourceChain,
+            String(sourceRecordId),
+            newIpfsHash,
+            newFileHash,
+            newCategory,
+            String(expectedVersion)
+        );
+    }
+
+    async deactivateMedicalRecordFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        actor: string
+    ): Promise<any> {
+        return await this.submitWithTransactionId(
+            "DeactivateMedicalRecordFromBridge",
+            messageId,
+            sourceChain,
+            String(sourceRecordId),
+            actor
+        );
+    }
+
+    async grantAccessFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        doctor: string
+    ): Promise<any> {
+        return await this.submitWithTransactionId(
+            "GrantAccessFromBridge",
+            messageId,
+            sourceChain,
+            String(sourceRecordId),
+            doctor
+        );
+    }
+
+    async revokeAccessFromBridge(
+        messageId: string,
+        sourceChain: string,
+        sourceRecordId: number,
+        doctor: string
+    ): Promise<any> {
+        return await this.submitWithTransactionId(
+            "RevokeAccessFromBridge",
+            messageId,
+            sourceChain,
+            String(sourceRecordId),
+            doctor
         );
     }
 
