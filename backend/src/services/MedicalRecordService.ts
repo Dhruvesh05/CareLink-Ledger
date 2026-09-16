@@ -5,7 +5,8 @@ import {
 } from "./ipfs/IPFSService";
 
 import {
-    sha256FromBuffer
+    sha256FromBuffer,
+    verifySha256
 } from "../utils/hash";
 
 import MedicalRecordModel
@@ -243,6 +244,74 @@ export class MedicalRecordService {
             .getMedicalRecord(
                 recordId
             );
+    }
+
+    async getMedicalRecordContent(
+        recordId: number
+    ) {
+
+        const record =
+            await this.getMedicalRecord(
+                recordId
+            );
+
+        const cid =
+            String(
+                record?.ipfsHash ??
+                record?.cid ??
+                ""
+            ).trim();
+
+        if (!cid) {
+            throw new Error(
+                "Medical record CID is missing"
+            );
+        }
+
+        const metadata =
+            await MedicalRecordModel.findOne({
+                recordId
+            });
+
+        const fileHash =
+            String(
+                record?.fileHash ??
+                metadata?.fileHash ??
+                ""
+            ).trim();
+
+        if (!/^[a-f0-9]{64}$/i.test(fileHash)) {
+            throw new Error(
+                "Medical record file hash is missing or invalid"
+            );
+        }
+
+        const content =
+            await this.ipfsService
+                .downloadFile(cid);
+
+        if (!verifySha256(content, fileHash)) {
+            throw new Error(
+                "Medical record content integrity verification failed"
+            );
+        }
+
+        return {
+            content,
+            cid,
+            fileHash,
+            record,
+            ...(metadata
+                ? {
+                      fileName:
+                          metadata.fileName,
+                      mimeType:
+                          metadata.mimeType,
+                      fileSize:
+                          metadata.fileSize
+                  }
+                : {})
+        };
     }
 
     /*

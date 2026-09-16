@@ -28,9 +28,21 @@ type MockPinService = {
     >;
 };
 
+type MockDownloadService = {
+    downloadFile: jest.MockedFunction<
+        (cid: string) => Promise<Buffer>
+    >;
+};
+
 function createMockPinService(): MockPinService {
     return {
         unpinCid: jest.fn()
+    };
+}
+
+function createMockDownloadService(): MockDownloadService {
+    return {
+        downloadFile: jest.fn()
     };
 }
 
@@ -47,6 +59,9 @@ describe("IPFSServiceAdapter", () => {
     let mockPinService:
         MockPinService;
 
+    let mockDownloadService:
+        MockDownloadService;
+
     beforeEach(async () => {
 
         jest.resetModules();
@@ -56,6 +71,9 @@ describe("IPFSServiceAdapter", () => {
 
         mockPinService =
             createMockPinService();
+
+        mockDownloadService =
+            createMockDownloadService();
 
         const module =
             await import(
@@ -227,6 +245,73 @@ describe("IPFSServiceAdapter", () => {
                 mockPinService.unpinCid
             ).toHaveBeenCalledWith(
                 "bafy-test-cid"
+            );
+        }
+    );
+
+    it(
+        "downloads content through DownloadService",
+        async () => {
+
+            const expected =
+                Buffer.from(
+                    "downloaded content"
+                );
+
+            mockDownloadService.downloadFile
+                .mockResolvedValue(
+                    expected
+                );
+
+            const adapter =
+                new IPFSServiceAdapter(
+                    mockStorage as any,
+                    mockPinService as any,
+                    mockDownloadService as any
+                );
+
+            const result =
+                await adapter.downloadFile(
+                    "bafy-download-cid"
+                );
+
+            expect(
+                mockDownloadService.downloadFile
+            ).toHaveBeenCalledWith(
+                "bafy-download-cid"
+            );
+
+            expect(result).toBe(expected);
+        }
+    );
+
+    it(
+        "propagates DownloadService errors",
+        async () => {
+
+            const underlying =
+                new Error(
+                    "download failure"
+                );
+
+            mockDownloadService.downloadFile
+                .mockRejectedValue(
+                    underlying
+                );
+
+            const adapter =
+                new IPFSServiceAdapter(
+                    mockStorage as any,
+                    mockPinService as any,
+                    mockDownloadService as any
+                );
+
+            await expect(
+                adapter.downloadFile(
+                    "bafy-download-cid"
+                )
+            ).rejects.toBe(
+                underlying
             );
         }
     );

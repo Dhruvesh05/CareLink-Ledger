@@ -11,6 +11,7 @@ type AnyMock = jest.Mock<(...args: any[]) => any>;
 const mockCreateMedicalRecord = jest.fn() as AnyMock;
 const mockUpdateMedicalRecord = jest.fn() as AnyMock;
 const mockDeactivateMedicalRecord = jest.fn() as AnyMock;
+const mockGetMedicalRecord = jest.fn() as AnyMock;
 
 const mockMongoCreate = jest.fn() as AnyMock;
 const mockMongoFindOne = jest.fn() as AnyMock;
@@ -36,6 +37,7 @@ jest.mock(
 );
 
 import { MedicalRecordService } from "../../services/MedicalRecordService";
+import { sha256FromBuffer } from "../../utils/hash";
 
 describe("MedicalRecordService IPFS transaction flow", () => {
 
@@ -51,12 +53,14 @@ describe("MedicalRecordService IPFS transaction flow", () => {
     let mockIpfsService: {
         uploadFile: AnyMock;
         unpinFile: AnyMock;
+        downloadFile: AnyMock;
     };
 
     let mockBlockchainProvider: {
         createMedicalRecord: AnyMock;
         updateMedicalRecord: AnyMock;
         deactivateMedicalRecord: AnyMock;
+        getMedicalRecord: AnyMock;
     };
 
     let service: MedicalRecordService;
@@ -68,6 +72,7 @@ describe("MedicalRecordService IPFS transaction flow", () => {
         mockCreateMedicalRecord.mockReset();
         mockUpdateMedicalRecord.mockReset();
         mockDeactivateMedicalRecord.mockReset();
+        mockGetMedicalRecord.mockReset();
 
         mockMongoCreate.mockReset();
         mockMongoFindOne.mockReset();
@@ -75,13 +80,15 @@ describe("MedicalRecordService IPFS transaction flow", () => {
 
         mockIpfsService = {
             uploadFile: jest.fn() as AnyMock,
-            unpinFile: jest.fn() as AnyMock
+            unpinFile: jest.fn() as AnyMock,
+            downloadFile: jest.fn() as AnyMock
         };
 
         mockBlockchainProvider = {
             createMedicalRecord: mockCreateMedicalRecord,
             updateMedicalRecord: mockUpdateMedicalRecord,
-            deactivateMedicalRecord: mockDeactivateMedicalRecord
+            deactivateMedicalRecord: mockDeactivateMedicalRecord,
+            getMedicalRecord: mockGetMedicalRecord
         };
 
         service = new MedicalRecordService(
@@ -263,6 +270,188 @@ describe("MedicalRecordService IPFS transaction flow", () => {
 
                 expect(
                     mockIpfsService.unpinFile
+                ).not.toHaveBeenCalled();
+            }
+        );
+    });
+
+    describe("getMedicalRecordContent", () => {
+
+        it(
+            "downloads content using the CID from the medical record",
+            async () => {
+
+                const content =
+                    Buffer.from(
+                        "medical-record-content"
+                    );
+
+                mockGetMedicalRecord.mockResolvedValue({
+                    ipfsHash: "bafy-record-cid",
+                    fileHash: sha256FromBuffer(content),
+                    category: "diagnostic"
+                });
+
+                mockIpfsService.downloadFile
+                    .mockResolvedValue(
+                        content
+                    );
+
+                mockMongoFindOne.mockResolvedValue({
+                    fileName: "report.pdf",
+                    mimeType: "application/pdf",
+                    fileSize: content.length
+                });
+
+                const result =
+                    await service.getMedicalRecordContent(42);
+
+                expect(
+                    mockGetMedicalRecord
+                ).toHaveBeenCalledWith(42);
+
+                expect(
+                    mockIpfsService.downloadFile
+                ).toHaveBeenCalledWith(
+                    "bafy-record-cid"
+                );
+
+                expect(result).toEqual({
+                    content,
+                    cid: "bafy-record-cid",
+                    fileHash: sha256FromBuffer(content),
+                    record: {
+                        ipfsHash: "bafy-record-cid",
+                        fileHash: sha256FromBuffer(content),
+                        category: "diagnostic"
+                    },
+                    fileName: "report.pdf",
+                    mimeType: "application/pdf",
+                    fileSize: content.length
+                });
+            }
+        );
+
+        it(
+            "propagates a missing medical-record error",
+            async () => {
+
+                const underlying =
+                    new Error(
+                        "Medical record not found"
+                    );
+
+                mockGetMedicalRecord.mockRejectedValue(
+                    underlying
+                );
+
+                await expect(
+                    service.getMedicalRecordContent(42)
+                ).rejects.toBe(
+                    underlying
+                );
+
+                expect(
+                    mockIpfsService.downloadFile
+                ).not.toHaveBeenCalled();
+            }
+        );
+
+        it(
+            "rejects a medical record with no CID",
+            async () => {
+
+                mockGetMedicalRecord.mockResolvedValue({
+                    fileHash: "stored-file-hash"
+                });
+
+                await expect(
+                    service.getMedicalRecordContent(42)
+                ).rejects.toThrow(
+                    "Medical record CID is missing"
+                );
+
+                expect(
+                    mockIpfsService.downloadFile
+                ).not.toHaveBeenCalled();
+            }
+        );
+
+        it(
+            "propagates IPFS download failures",
+            async () => {
+
+                const underlying =
+                    new Error(
+                        "IPFS download failed"
+                    );
+
+                mockGetMedicalRecord.mockResolvedValue({
+                    ipfsHash: "bafy-record-cid",
+                    fileHash: sha256FromBuffer(
+                        Buffer.from("different-content")
+                    )
+                });
+
+                mockIpfsService.downloadFile
+                    .mockRejectedValue(
+                        underlying
+                    );
+
+                await expect(
+                    service.getMedicalRecordContent(42)
+                ).rejects.toBe(
+                    underlying
+                );
+            }
+        );
+
+        it(
+            "rejects content when the downloaded hash does not match",
+            async () => {
+
+                const downloaded =
+                    Buffer.from(
+                        "altered-content"
+                    );
+
+                mockGetMedicalRecord.mockResolvedValue({
+                    ipfsHash: "bafy-record-cid",
+                    fileHash: sha256FromBuffer(
+                        Buffer.from("original-content")
+                    )
+                });
+
+                mockIpfsService.downloadFile
+                    .mockResolvedValue(
+                        downloaded
+                    );
+
+                await expect(
+                    service.getMedicalRecordContent(42)
+                ).rejects.toThrow(
+                    "Medical record content integrity verification failed"
+                );
+            }
+        );
+
+        it(
+            "rejects content when the stored file hash is missing or invalid",
+            async () => {
+
+                mockGetMedicalRecord.mockResolvedValue({
+                    ipfsHash: "bafy-record-cid",
+                    fileHash: "stored-file-hash"
+                });
+
+                await expect(
+                    service.getMedicalRecordContent(42)
+                ).rejects.toThrow(
+                    "Medical record file hash is missing or invalid"
+                );
+
+                expect(
+                    mockIpfsService.downloadFile
                 ).not.toHaveBeenCalled();
             }
         );

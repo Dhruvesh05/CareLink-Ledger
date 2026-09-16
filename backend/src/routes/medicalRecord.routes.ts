@@ -76,6 +76,11 @@ router.get(
 );
 
 router.get(
+    "/:recordId/content",
+    controller.getMedicalRecordContent.bind(controller)
+);
+
+router.get(
     "/patient/:wallet",
     controller.getPatientRecords.bind(controller)
 );
