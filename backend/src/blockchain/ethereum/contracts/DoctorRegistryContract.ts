@@ -1,4 +1,5 @@
 import { ethereum } from "../config/ethereum";
+import { ethers } from "ethers";
 
 
 export class DoctorRegistryContract {
@@ -158,4 +159,26 @@ export class DoctorRegistryContract {
     }
 
 
+
+    async registerDoctorFromBridge(
+        messageId: string,
+        wallet: string,
+        fullNameHash: string,
+        licenseNumberHash: string,
+        specialization: string,
+        hospital: string
+    ): Promise<any> {
+        const tx =
+            await ethereum.doctorRegistry.registerDoctorFromBridge(
+                ethers.id(messageId),
+                wallet,
+                fullNameHash,
+                licenseNumberHash,
+                specialization,
+                hospital
+            );
+
+        await tx.wait();
+        return tx;
+    }
 }

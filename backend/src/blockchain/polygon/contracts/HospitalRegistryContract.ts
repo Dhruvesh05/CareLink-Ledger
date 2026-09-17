@@ -1,4 +1,5 @@
 import { polygon } from "../config/polygon";
+import { ethers } from "ethers";
 
 export class HospitalRegistryContract {
     private readonly contract = polygon.hospitalRegistry;
@@ -64,5 +65,25 @@ export class HospitalRegistryContract {
 
     async totalHospitals() {
         return await this.contract.totalHospitals();
+    }
+
+    async registerHospitalFromBridge(
+        messageId: string,
+        wallet: string,
+        hospitalNameHash: string,
+        registrationNumberHash: string,
+        locationHash: string
+    ): Promise<any> {
+        const tx =
+            await this.contract.registerHospitalFromBridge(
+                ethers.id(messageId),
+                wallet,
+                hospitalNameHash,
+                registrationNumberHash,
+                locationHash
+            );
+
+        await tx.wait();
+        return tx;
     }
 }

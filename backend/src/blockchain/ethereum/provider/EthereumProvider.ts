@@ -501,4 +501,55 @@ export class EthereumProvider implements IBlockchainProvider {
     async totalAuditLogs(): Promise<any> {
         return await this.auditService.totalAuditLogs();
     }
+    async registerPatientFromBridge(
+        messageId: string,
+        wallet: string,
+        fullNameHash: string,
+        dobHash: string,
+        bloodGroup: string,
+        gender: string
+    ): Promise<any> {
+        return await this.patientService.registerPatientFromBridge(
+            messageId,
+            wallet,
+            fullNameHash,
+            dobHash,
+            bloodGroup,
+            gender
+        );
+    }
+
+    async registerDoctorFromBridge(
+        messageId: string,
+        wallet: string,
+        fullNameHash: string,
+        licenseNumberHash: string,
+        specialization: string,
+        hospital: string
+    ): Promise<any> {
+        return await this.doctorService.registerDoctorFromBridge(
+            messageId,
+            wallet,
+            fullNameHash,
+            licenseNumberHash,
+            specialization,
+            hospital
+        );
+    }
+
+    async registerHospitalFromBridge(
+        messageId: string,
+        wallet: string,
+        hospitalNameHash: string,
+        registrationNumberHash: string,
+        locationHash: string
+    ): Promise<any> {
+        return await this.hospitalService.registerHospitalFromBridge(
+            messageId,
+            wallet,
+            hospitalNameHash,
+            registrationNumberHash,
+            locationHash
+        );
+    }
 }

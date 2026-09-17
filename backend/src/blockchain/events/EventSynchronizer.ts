@@ -355,7 +355,7 @@ export class EventSynchronizer {
             messageId: `${this.sourceChain}:${contractName}:${eventIdentity}`,
             sourceChain: this.sourceChain,
             destinationChain: this.destinationChain,
-            messageType: `blockchain.${eventName}`,
+            messageType: eventName,
             timestamp: new Date().toISOString(),
             nonce: eventIdentity,
             payload,

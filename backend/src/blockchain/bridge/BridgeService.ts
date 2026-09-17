@@ -295,15 +295,6 @@ export class BridgeService {
             switch (eventName as RelayableEvent) {
 
                 case "PatientRegistered": {
-                    if (
-                        message.destinationChain !==
-                        BlockchainType.FABRIC
-                    ) {
-                        throw new Error(
-                            `PatientRegistered relay to ${message.destinationChain} is not supported`
-                        );
-                    }
-
                     const record =
                         (message.payload as any).sourceRecord;
 
@@ -313,10 +304,14 @@ export class BridgeService {
                         );
                     }
 
-                    result =
-                        await (
-                            destinationProvider as FabricBridgeProvider
-                        ).registerPatientFromBridge(
+                    if (
+                        message.destinationChain ===
+                        BlockchainType.FABRIC
+                    ) {
+                        result =
+                            await (
+                                destinationProvider as FabricBridgeProvider
+                            ).registerPatientFromBridge(
                                 message.messageId,
                                 message.sourceChain,
                                 record.wallet,
@@ -325,19 +320,33 @@ export class BridgeService {
                                 record.bloodGroup,
                                 record.gender
                             );
+                    } else if (
+                        message.destinationChain ===
+                        BlockchainType.ETHEREUM ||
+                        message.destinationChain ===
+                        BlockchainType.POLYGON
+                    ) {
+                        result =
+                            await (
+                                destinationProvider as any
+                            ).registerPatientFromBridge(
+                                message.messageId,
+                                record.wallet,
+                                record.fullNameHash,
+                                record.dobHash,
+                                record.bloodGroup,
+                                record.gender
+                            );
+                    } else {
+                        throw new Error(
+                            `PatientRegistered relay to ${message.destinationChain} is not supported`
+                        );
+                    }
+
                     break;
                 }
 
                 case "HospitalRegistered": {
-                    if (
-                        message.destinationChain !==
-                        BlockchainType.FABRIC
-                    ) {
-                        throw new Error(
-                            `HospitalRegistered relay to ${message.destinationChain} is not supported`
-                        );
-                    }
-
                     const record =
                         (message.payload as any).sourceRecord;
 
@@ -347,10 +356,14 @@ export class BridgeService {
                         );
                     }
 
-                    result =
-                        await (
-                            destinationProvider as FabricBridgeProvider
-                        ).registerHospitalFromBridge(
+                    if (
+                        message.destinationChain ===
+                        BlockchainType.FABRIC
+                    ) {
+                        result =
+                            await (
+                                destinationProvider as FabricBridgeProvider
+                            ).registerHospitalFromBridge(
                                 message.messageId,
                                 message.sourceChain,
                                 record.wallet,
@@ -358,19 +371,32 @@ export class BridgeService {
                                 record.registrationNumberHash,
                                 record.locationHash
                             );
+                    } else if (
+                        message.destinationChain ===
+                        BlockchainType.ETHEREUM ||
+                        message.destinationChain ===
+                        BlockchainType.POLYGON
+                    ) {
+                        result =
+                            await (
+                                destinationProvider as any
+                            ).registerHospitalFromBridge(
+                                message.messageId,
+                                record.wallet,
+                                record.hospitalNameHash,
+                                record.registrationNumberHash,
+                                record.locationHash
+                            );
+                    } else {
+                        throw new Error(
+                            `HospitalRegistered relay to ${message.destinationChain} is not supported`
+                        );
+                    }
+
                     break;
                 }
 
                 case "DoctorRegistered": {
-                    if (
-                        message.destinationChain !==
-                        BlockchainType.FABRIC
-                    ) {
-                        throw new Error(
-                            `DoctorRegistered relay to ${message.destinationChain} is not supported`
-                        );
-                    }
-
                     const record =
                         (message.payload as any).sourceRecord;
 
@@ -380,10 +406,14 @@ export class BridgeService {
                         );
                     }
 
-                    result =
-                        await (
-                            destinationProvider as FabricBridgeProvider
-                        ).registerDoctorFromBridge(
+                    if (
+                        message.destinationChain ===
+                        BlockchainType.FABRIC
+                    ) {
+                        result =
+                            await (
+                                destinationProvider as FabricBridgeProvider
+                            ).registerDoctorFromBridge(
                                 message.messageId,
                                 message.sourceChain,
                                 record.wallet,
@@ -392,6 +422,29 @@ export class BridgeService {
                                 record.specialization,
                                 record.hospital
                             );
+                    } else if (
+                        message.destinationChain ===
+                        BlockchainType.ETHEREUM ||
+                        message.destinationChain ===
+                        BlockchainType.POLYGON
+                    ) {
+                        result =
+                            await (
+                                destinationProvider as any
+                            ).registerDoctorFromBridge(
+                                message.messageId,
+                                record.wallet,
+                                record.fullNameHash,
+                                record.licenseNumberHash,
+                                record.specialization,
+                                record.hospital
+                            );
+                    } else {
+                        throw new Error(
+                            `DoctorRegistered relay to ${message.destinationChain} is not supported`
+                        );
+                    }
+
                     break;
                 }
 

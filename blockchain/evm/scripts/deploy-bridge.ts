@@ -45,12 +45,15 @@ async function main(): Promise<void> {
   // ---------------------------------------------------------------
   // 1. AccessControl
   // ---------------------------------------------------------------
-  console.log("1. Deploying AccessControl...");
+  console.log("1. Using existing AccessControl...");
 
-  const accessControl = await ethers.deployContract("AccessControl");
-  await accessControl.waitForDeployment();
+  const accessControlAddress =
+    "0xff98Dc04De3Ef7f611ca7654Fb00138d1B86De60";
 
-  const accessControlAddress = await accessControl.getAddress();
+  const accessControl = await ethers.getContractAt(
+    "AccessControl",
+    accessControlAddress
+  );
 
   console.log(`   AccessControl -> ${accessControlAddress}`);
 
@@ -61,7 +64,8 @@ async function main(): Promise<void> {
 
   const patientRegistry = await ethers.deployContract(
     "PatientRegistry",
-    [accessControlAddress]
+    [accessControlAddress],
+    { gasLimit: 1700000 }
   );
   await patientRegistry.waitForDeployment();
 
@@ -70,7 +74,8 @@ async function main(): Promise<void> {
 
   const doctorRegistry = await ethers.deployContract(
     "DoctorRegistry",
-    [accessControlAddress]
+    [accessControlAddress],
+    { gasLimit: 2000000 }
   );
   await doctorRegistry.waitForDeployment();
 
@@ -79,7 +84,8 @@ async function main(): Promise<void> {
 
   const hospitalRegistry = await ethers.deployContract(
     "HospitalRegistry",
-    [accessControlAddress]
+    [accessControlAddress],
+    { gasLimit: 1700000 }
   );
   await hospitalRegistry.waitForDeployment();
 
