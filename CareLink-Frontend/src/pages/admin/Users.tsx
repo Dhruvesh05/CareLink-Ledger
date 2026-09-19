@@ -13,60 +13,12 @@ type User = {
   status: UserStatus;
 };
 
-type FormData = {
-  name: string;
-  email: string;
-  role: UserRole;
-  status: UserStatus;
-};
-
-const initialUsers: User[] = [
-  {
-    id: 1,
-    name: "Rahul Sharma",
-    email: "rahul@gmail.com",
-    role: "Patient",
-    status: "Active",
-  },
-  {
-    id: 2,
-    name: "Dr. Priya Patil",
-    email: "priya@carelink.com",
-    role: "Doctor",
-    status: "Active",
-  },
-  {
-    id: 3,
-    name: "City Care Hospital",
-    email: "admin@citycare.com",
-    role: "Hospital",
-    status: "Active",
-  },
-  {
-    id: 4,
-    name: "Sneha Kulkarni",
-    email: "sneha@gmail.com",
-    role: "Patient",
-    status: "Pending",
-  },
-];
-
-const defaultForm: FormData = {
-  name: "",
-  email: "",
-  role: "Patient",
-  status: "Active",
-};
+const initialUsers: User[] = [];
 
 function Users() {
-  const [users, setUsers] = useState<User[]>(initialUsers);
+  const users = initialUsers;
   const [query, setQuery] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState<FormData>(defaultForm);
-  const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [notice, setNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const stats = useMemo(() => {
     const total = users.length;
@@ -91,82 +43,6 @@ function Users() {
     });
   }, [query, users]);
 
-  const validateForm = () => {
-    const nextErrors: Partial<Record<keyof FormData, string>> = {};
-
-    if (!formData.name.trim()) {
-      nextErrors.name = "Name is required.";
-    } else if (formData.name.trim().length < 2) {
-      nextErrors.name = "Name must contain at least 2 characters.";
-    }
-
-    if (!formData.email.trim()) {
-      nextErrors.email = "Email is required.";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
-      nextErrors.email = "Enter a valid email address.";
-    }
-
-    if (!formData.role) {
-      nextErrors.role = "Please select a role.";
-    }
-
-    if (!formData.status) {
-      nextErrors.status = "Please select a status.";
-    }
-
-    setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
-  };
-
-  const handleChange = (field: keyof FormData, value: string) => {
-    setFormData((current) => ({ ...current, [field]: value }));
-    setErrors((current) => ({ ...current, [field]: undefined }));
-  };
-
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setNotice(null);
-
-    if (!validateForm()) {
-      setNotice({ type: "error", message: "Please fix the highlighted fields before saving." });
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    window.setTimeout(() => {
-      setUsers((currentUsers) => [
-        {
-          id: Date.now(),
-          name: formData.name.trim(),
-          email: formData.email.trim(),
-          role: formData.role,
-          status: formData.status,
-        },
-        ...currentUsers,
-      ]);
-
-      setIsSubmitting(false);
-      setShowForm(false);
-      setFormData(defaultForm);
-      setErrors({});
-      setNotice({ type: "success", message: "User added successfully." });
-    }, 700);
-  };
-
-  const handleRemoveUser = (userId: number) => {
-    const userToRemove = users.find((user) => user.id === userId);
-
-    if (!userToRemove) return;
-
-    const confirmed = window.confirm(`Remove ${userToRemove.name} from the user list?`);
-    if (!confirmed) return;
-
-    setUsers((currentUsers) => currentUsers.filter((user) => user.id !== userId));
-    setSelectedUser((current) => (current?.id === userId ? null : current));
-    setNotice({ type: "success", message: `${userToRemove.name} was removed.` });
-  };
-
   const statusStyles: Record<UserStatus, string> = {
     Active: "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200",
     Pending: "bg-amber-100 text-amber-700 ring-1 ring-amber-200",
@@ -175,18 +51,6 @@ function Users() {
   return (
     <DashboardLayout>
       <div className="space-y-6 sm:space-y-8">
-        {notice && (
-          <div
-            className={`rounded-2xl border px-4 py-3 text-sm font-medium ${
-              notice.type === "success"
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                : "border-rose-200 bg-rose-50 text-rose-700"
-            }`}
-          >
-            {notice.message}
-          </div>
-        )}
-
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-600">Admin</p>
@@ -196,13 +60,7 @@ function Users() {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setShowForm(true)}
-            className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-sky-600 to-cyan-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-200 transition hover:translate-y-[-1px] hover:shadow-xl"
-          >
-            + Add User
-          </button>
+          <span className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">User administration API not configured</span>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -301,13 +159,6 @@ function Users() {
                           >
                             View
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveUser(user.id)}
-                            className="font-medium text-rose-600 transition hover:text-rose-700"
-                          >
-                            Remove
-                          </button>
                         </div>
                       </td>
                     </tr>
@@ -323,117 +174,6 @@ function Users() {
             </table>
           </div>
         </div>
-
-        {showForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-xl rounded-3xl border border-sky-100 bg-white p-5 shadow-2xl sm:p-6">
-              <div className="mb-5 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-600">Create user</p>
-                  <h3 className="mt-1 text-2xl font-bold text-slate-900">Add New User</h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowForm(false);
-                    setErrors({});
-                    setFormData(defaultForm);
-                  }}
-                  className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-200"
-                >
-                  Close
-                </button>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label htmlFor="name" className="mb-1 block text-sm font-medium text-slate-700">
-                    Full Name
-                  </label>
-                  <input
-                    id="name"
-                    value={formData.name}
-                    onChange={(event) => handleChange("name", event.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
-                    placeholder="Enter full name"
-                  />
-                  {errors.name && <p className="mt-1 text-xs text-rose-600">{errors.name}</p>}
-                </div>
-
-                <div>
-                  <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
-                    Email Address
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(event) => handleChange("email", event.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
-                    placeholder="name@example.com"
-                  />
-                  {errors.email && <p className="mt-1 text-xs text-rose-600">{errors.email}</p>}
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label htmlFor="role" className="mb-1 block text-sm font-medium text-slate-700">
-                      Role
-                    </label>
-                    <select
-                      id="role"
-                      value={formData.role}
-                      onChange={(event) => handleChange("role", event.target.value as UserRole)}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
-                    >
-                      <option value="Patient">Patient</option>
-                      <option value="Doctor">Doctor</option>
-                      <option value="Hospital">Hospital</option>
-                    </select>
-                    {errors.role && <p className="mt-1 text-xs text-rose-600">{errors.role}</p>}
-                  </div>
-
-                  <div>
-                    <label htmlFor="status" className="mb-1 block text-sm font-medium text-slate-700">
-                      Status
-                    </label>
-                    <select
-                      id="status"
-                      value={formData.status}
-                      onChange={(event) => handleChange("status", event.target.value as UserStatus)}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
-                    >
-                      <option value="Active">Active</option>
-                      <option value="Pending">Pending</option>
-                    </select>
-                    {errors.status && <p className="mt-1 text-xs text-rose-600">{errors.status}</p>}
-                  </div>
-                </div>
-
-                <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowForm(false);
-                      setErrors({});
-                      setFormData(defaultForm);
-                    }}
-                    className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="rounded-xl bg-gradient-to-r from-sky-600 to-cyan-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-200 transition hover:translate-y-[-1px] hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    {isSubmitting ? "Saving..." : "Save User"}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
 
         {selectedUser && (
           <div className="fixed inset-0 z-40 flex items-end justify-center bg-slate-900/40 p-4 sm:items-center">

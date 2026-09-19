@@ -236,12 +236,14 @@ export class MedicalRecordService {
     */
 
     async getMedicalRecord(
-        recordId: number
+        recordId: number,
+        caller?: string
     ) {
 
         return this.blockchainService
             .getMedicalRecord(
-                recordId
+                recordId,
+                caller
             );
     }
 
@@ -499,41 +501,264 @@ export class MedicalRecordService {
             );
     }
 
+    private async hydrateMedicalRecordIds(
+        recordIds: any[],
+        caller?: string
+    ): Promise<any[]> {
+
+        const ids =
+            Array.from(recordIds ?? [])
+                .map((id) => Number(id))
+                .filter(
+                    (id) =>
+                        Number.isSafeInteger(id) &&
+                        id > 0
+                );
+
+        if (!ids.length) {
+            return [];
+        }
+
+        const [chainRecords, mongoRecords] =
+            await Promise.all([
+                Promise.all(
+                    ids.map((id) =>
+                        this.blockchainService
+                            .getMedicalRecord(
+                                id,
+                                caller
+                            )
+                    )
+                ),
+                MedicalRecordModel
+                    .find({
+                        recordId: {
+                            $in: ids
+                        }
+                    })
+                    .lean()
+            ]);
+
+        const mongoById =
+            new Map(
+                mongoRecords.map(
+                    (record) => [
+                        record.recordId,
+                        record
+                    ]
+                )
+            );
+
+        const field = (
+            record: any,
+            index: number,
+            name: string
+        ) =>
+            record?.[name] ??
+            record?.[index];
+
+        const toIso = (value: any) => {
+
+            const seconds =
+                Number(value);
+
+            if (
+                !Number.isFinite(seconds) ||
+                seconds <= 0
+            ) {
+                return undefined;
+            }
+
+            return new Date(
+                seconds * 1000
+            ).toISOString();
+        };
+
+        return chainRecords.map(
+            (record: any) => {
+
+                const recordId =
+                    Number(
+                        field(
+                            record,
+                            0,
+                            "recordId"
+                        )
+                    );
+
+                const createdAt =
+                    toIso(
+                        field(
+                            record,
+                            7,
+                            "createdAt"
+                        )
+                    );
+
+                const updatedAt =
+                    toIso(
+                        field(
+                            record,
+                            8,
+                            "updatedAt"
+                        )
+                    );
+
+                const mongo =
+                    mongoById.get(recordId);
+
+                return {
+                    recordId,
+
+                    patientWallet:
+                        String(
+                            field(
+                                record,
+                                1,
+                                "patient"
+                            )
+                        ),
+
+                    doctorWallet:
+                        String(
+                            field(
+                                record,
+                                2,
+                                "doctor"
+                            )
+                        ),
+
+                    hospitalWallet:
+                        String(
+                            field(
+                                record,
+                                3,
+                                "hospital"
+                            )
+                        ),
+
+                    cid:
+                        String(
+                            field(
+                                record,
+                                4,
+                                "ipfsHash"
+                            )
+                        ),
+
+                    fileHash:
+                        String(
+                            field(
+                                record,
+                                5,
+                                "fileHash"
+                            )
+                        ),
+
+                    category:
+                        String(
+                            field(
+                                record,
+                                6,
+                                "category"
+                            )
+                        ),
+
+                    createdAt,
+                    timestamp:
+                        createdAt,
+
+                    updatedAt,
+
+                    status:
+                        Boolean(
+                            field(
+                                record,
+                                10,
+                                "active"
+                            )
+                        )
+                            ? "Active"
+                            : "Inactive",
+
+                    emergency:
+                        Boolean(
+                            field(
+                                record,
+                                11,
+                                "emergency"
+                            )
+                        ),
+
+                    fileName:
+                        mongo?.fileName,
+
+                    mimeType:
+                        mongo?.mimeType,
+
+                    fileSize:
+                        mongo?.fileSize,
+
+                    transactionHash:
+                        mongo?.transactionHash
+                };
+            }
+        );
+    }
+
     async getPatientRecords(
-        patient: string
+        patient: string,
+        caller?: string
     ) {
 
-        return this.blockchainService
-            .getPatientRecords(
-                patient
-            );
+        const recordIds =
+            await this.blockchainService
+                .getPatientRecords(
+                    patient,
+                    caller
+                );
+
+        return this.hydrateMedicalRecordIds(
+            recordIds,
+            caller
+        );
     }
 
     async getDoctorRecords(
-        doctor: string
+        doctor: string,
+        caller?: string
     ) {
 
-        return this.blockchainService
-            .getDoctorRecords(
-                doctor
-            );
+        const recordIds =
+            await this.blockchainService
+                .getDoctorRecords(
+                    doctor,
+                    caller
+                );
+
+        return this.hydrateMedicalRecordIds(
+            recordIds,
+            caller
+        );
     }
 
     async getHospitalRecords(
-        hospital: string
+        hospital: string,
+        caller?: string
     ) {
 
-        return this.blockchainService
-            .getHospitalRecords(
-                hospital
-            );
-    }
+        const recordIds =
+            await this.blockchainService
+                .getHospitalRecords(
+                    hospital,
+                    caller
+                );
 
-    /*
-    ==========================================================
-    AUDIT
-    ==========================================================
-    */
+        return this.hydrateMedicalRecordIds(
+            recordIds,
+            caller
+        );
+    }
 
     async logDownload(
         recordId: number

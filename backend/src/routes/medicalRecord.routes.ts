@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticate } from "../middleware/auth";
+import { authenticate, requireRole } from "../middleware/auth";
 
 import {
     MedicalRecordController
@@ -25,6 +25,7 @@ CREATE
 
 router.post(
     "/prepare",
+    requireRole("Doctor"),
     upload.single("file"),
     requireFile,
     controller.prepareMedicalRecord.bind(controller)
@@ -32,6 +33,7 @@ router.post(
 
 router.post(
     "/confirm",
+    requireRole("Doctor"),
     controller.confirmMedicalRecord.bind(controller)
 );
 

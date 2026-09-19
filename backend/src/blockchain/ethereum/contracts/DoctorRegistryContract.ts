@@ -81,9 +81,10 @@ export class DoctorRegistryContract {
 
 
         const tx =
-            await ethereum.doctorRegistry.verifyDoctor(
-                wallet
-            );
+            await ethereum.doctorRegistry
+                .getFunction("verifyDoctor")(
+                    wallet
+                );
 
 
         return await tx.wait();

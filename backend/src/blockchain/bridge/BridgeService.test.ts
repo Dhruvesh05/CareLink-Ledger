@@ -347,7 +347,7 @@ describe("BridgeService", () => {
 
         const message =
             createMessage(
-                "RecordCreated",
+                "MetadataUpdated",
                 "msg-008"
             );
 
@@ -584,5 +584,438 @@ describe("BridgeService", () => {
             "msg-014",
             "Relayable event does not contain a wallet argument"
         );
+    });
+});
+
+
+/*
+ * Medical-record interoperability coverage.
+ * Uses an injected provider so no public-chain gas is required.
+ */
+describe("BridgeService medical-record interoperability", () => {
+    const patient =
+        "0x1111111111111111111111111111111111111111";
+
+    const doctor =
+        "0x2222222222222222222222222222222222222222";
+
+    const hospital =
+        "0x3333333333333333333333333333333333333333";
+
+    const sourceRecord = {
+        recordId: 42,
+        patient,
+        doctor,
+        hospital,
+        ipfsHash: "bafy-test-cid",
+        fileHash: "sha256-test",
+        category: "E2E_TEST",
+        emergency: false,
+        version: 3
+    };
+
+    const audit = () => ({
+        recordAccepted: jest.fn()
+            .mockResolvedValue("accepted"),
+        markRelaying: jest.fn()
+            .mockResolvedValue(undefined),
+        markConfirmed: jest.fn()
+            .mockResolvedValue(undefined),
+        markFailed: jest.fn()
+            .mockResolvedValue(undefined),
+        isKnownDestinationTransaction: jest.fn()
+            .mockResolvedValue(false)
+    });
+
+    const provider = () => ({
+        createMedicalRecordFromBridge:
+            jest.fn().mockResolvedValue({
+                hash: "0xcreate"
+            }),
+
+        updateMedicalRecordFromBridge:
+            jest.fn().mockResolvedValue({
+                hash: "0xupdate"
+            }),
+
+        deactivateMedicalRecordFromBridge:
+            jest.fn().mockResolvedValue({
+                hash: "0xdeactivate"
+            }),
+
+        grantAccessFromBridge:
+            jest.fn().mockResolvedValue({
+                hash: "0xgrant"
+            }),
+
+        revokeAccessFromBridge:
+            jest.fn().mockResolvedValue({
+                hash: "0xrevoke"
+            }),
+
+        reactivatePatient:
+            jest.fn(),
+
+        verifyDoctor:
+            jest.fn(),
+
+        revokeDoctorVerification:
+            jest.fn(),
+
+        reactivateDoctor:
+            jest.fn(),
+
+        verifyHospital:
+            jest.fn(),
+
+        revokeHospitalVerification:
+            jest.fn(),
+
+        reactivateHospital:
+            jest.fn()
+    });
+
+    const message = (
+        eventName: string,
+        args: unknown[],
+        sourceRecord?: unknown,
+        sourceChain = BlockchainType.ETHEREUM,
+        destinationChain = BlockchainType.POLYGON
+    ) =>
+        createCrossChainMessage({
+            messageId:
+                `medical-${eventName}-${Date.now()}-${Math.random()}`,
+            sourceChain,
+            destinationChain,
+            messageType: eventName,
+            timestamp:
+                "2026-09-17T00:00:00.000Z",
+            nonce:
+                `nonce-${eventName}-${Math.random()}`,
+            payload: {
+                contract: "medicalRecord",
+                eventName,
+                args,
+                transactionHash: "0xsource",
+                logIndex: 1,
+                ...(sourceRecord
+                    ? { sourceRecord }
+                    : {})
+            }
+        });
+
+    it("relays RecordCreated with the complete source record", async () => {
+        const a = audit();
+        const p = provider();
+
+        const bridge =
+            new BridgeService(
+                a as any,
+                {
+                    [BlockchainType.POLYGON]:
+                        p as any
+                }
+            );
+
+        const result =
+            await bridge.relay(
+                message(
+                    "RecordCreated",
+                    [
+                        42,
+                        patient,
+                        doctor,
+                        hospital,
+                        "E2E_TEST",
+                        100
+                    ],
+                    sourceRecord
+                )
+            );
+
+        expect(result.status)
+            .toBe("confirmed");
+
+        expect(
+            p.createMedicalRecordFromBridge
+        ).toHaveBeenCalledWith(
+            expect.any(String),
+            BlockchainType.ETHEREUM,
+            42,
+            patient,
+            doctor,
+            hospital,
+            "bafy-test-cid",
+            "sha256-test",
+            "E2E_TEST",
+            false
+        );
+    });
+
+    it("relays RecordUpdated exactly once", async () => {
+        const a = audit();
+        const p = provider();
+
+        const bridge =
+            new BridgeService(
+                a as any,
+                {
+                    [BlockchainType.POLYGON]:
+                        p as any
+                }
+            );
+
+        const result =
+            await bridge.relay(
+                message(
+                    "RecordUpdated",
+                    [42, 4, 100],
+                    {
+                        ...sourceRecord,
+                        version: 4
+                    }
+                )
+            );
+
+        expect(result.status)
+            .toBe("confirmed");
+
+        expect(
+            p.updateMedicalRecordFromBridge
+        ).toHaveBeenCalledWith(
+            expect.any(String),
+            BlockchainType.ETHEREUM,
+            42,
+            "bafy-test-cid",
+            "sha256-test",
+            "E2E_TEST",
+            4
+        );
+    });
+
+    it("relays RecordDeactivated", async () => {
+        const a = audit();
+        const p = provider();
+
+        const bridge =
+            new BridgeService(
+                a as any,
+                {
+                    [BlockchainType.POLYGON]:
+                        p as any
+                }
+            );
+
+        const result =
+            await bridge.relay(
+                message(
+                    "RecordDeactivated",
+                    [
+                        42,
+                        doctor,
+                        100
+                    ]
+                )
+            );
+
+        expect(result.status)
+            .toBe("confirmed");
+
+        expect(
+            p.deactivateMedicalRecordFromBridge
+        ).toHaveBeenCalledWith(
+            expect.any(String),
+            BlockchainType.ETHEREUM,
+            42,
+            doctor
+        );
+    });
+
+    it("relays AccessGranted", async () => {
+        const a = audit();
+        const p = provider();
+
+        const bridge =
+            new BridgeService(
+                a as any,
+                {
+                    [BlockchainType.POLYGON]:
+                        p as any
+                }
+            );
+
+        const result =
+            await bridge.relay(
+                message(
+                    "AccessGranted",
+                    [
+                        42,
+                        patient,
+                        doctor,
+                        100
+                    ]
+                )
+            );
+
+        expect(result.status)
+            .toBe("confirmed");
+
+        expect(
+            p.grantAccessFromBridge
+        ).toHaveBeenCalledWith(
+            expect.any(String),
+            BlockchainType.ETHEREUM,
+            42,
+            doctor
+        );
+    });
+
+    it("relays AccessRevoked", async () => {
+        const a = audit();
+        const p = provider();
+
+        const bridge =
+            new BridgeService(
+                a as any,
+                {
+                    [BlockchainType.POLYGON]:
+                        p as any
+                }
+            );
+
+        const result =
+            await bridge.relay(
+                message(
+                    "AccessRevoked",
+                    [
+                        42,
+                        patient,
+                        doctor,
+                        100
+                    ]
+                )
+            );
+
+        expect(result.status)
+            .toBe("confirmed");
+
+        expect(
+            p.revokeAccessFromBridge
+        ).toHaveBeenCalledWith(
+            expect.any(String),
+            BlockchainType.ETHEREUM,
+            42,
+            doctor
+        );
+    });
+
+    it("does not relay MetadataUpdated independently", async () => {
+        const a = audit();
+        const p = provider();
+
+        const bridge =
+            new BridgeService(
+                a as any,
+                {
+                    [BlockchainType.POLYGON]:
+                        p as any
+                }
+            );
+
+        const result =
+            await bridge.relay(
+                message(
+                    "MetadataUpdated",
+                    [
+                        42,
+                        "new-ipfs",
+                        "new-file-hash",
+                        "LAB"
+                    ]
+                )
+            );
+
+        expect(result.status)
+            .toBe("ignored");
+
+        expect(
+            p.updateMedicalRecordFromBridge
+        ).not.toHaveBeenCalled();
+    });
+
+    it("supports Fabric medical-record source events", async () => {
+        const a = audit();
+        const p = provider();
+
+        const bridge =
+            new BridgeService(
+                a as any,
+                {
+                    [BlockchainType.ETHEREUM]:
+                        p as any
+                }
+            );
+
+        const result =
+            await bridge.relay(
+                message(
+                    "MedicalRecordCreated",
+                    [42],
+                    sourceRecord,
+                    BlockchainType.FABRIC,
+                    BlockchainType.ETHEREUM
+                )
+            );
+
+        expect(result.status)
+            .toBe("confirmed");
+
+        expect(
+            p.createMedicalRecordFromBridge
+        ).toHaveBeenCalledWith(
+            expect.any(String),
+            BlockchainType.FABRIC,
+            42,
+            patient,
+            doctor,
+            hospital,
+            "bafy-test-cid",
+            "sha256-test",
+            "E2E_TEST",
+            false
+        );
+    });
+
+    it("does not relay a duplicate medical message", async () => {
+        const a = audit();
+        a.recordAccepted
+            .mockResolvedValue("duplicate");
+
+        const p = provider();
+
+        const bridge =
+            new BridgeService(
+                a as any,
+                {
+                    [BlockchainType.POLYGON]:
+                        p as any
+                }
+            );
+
+        const result =
+            await bridge.relay(
+                message(
+                    "RecordCreated",
+                    [42],
+                    sourceRecord
+                )
+            );
+
+        expect(result.status)
+            .toBe("duplicate");
+
+        expect(
+            p.createMedicalRecordFromBridge
+        ).not.toHaveBeenCalled();
     });
 });

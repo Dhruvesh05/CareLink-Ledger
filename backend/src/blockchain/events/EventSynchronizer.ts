@@ -29,6 +29,10 @@ export interface EventSynchronizerContract {
     getHospital?(
         wallet: string
     ): Promise<unknown>;
+
+    getMedicalRecord?(
+        recordId: string | number | bigint
+    ): Promise<unknown>;
 }
 
 export interface EventSynchronizerConfig {
@@ -265,6 +269,40 @@ export class EventSynchronizer {
         return serializeArgument(record);
     }
 
+    private async enrichMedicalRecordEvent(
+        eventName: string,
+        eventArgs: unknown[]
+    ): Promise<unknown> {
+        if (
+            eventName !== "RecordCreated" &&
+            eventName !== "RecordUpdated"
+        ) {
+            return undefined;
+        }
+
+        const recordId = eventArgs[0];
+
+        if (
+            recordId === undefined ||
+            recordId === null
+        ) {
+            return undefined;
+        }
+
+        const record =
+            await this.contracts.medicalRecord
+                ?.getMedicalRecord?.(recordId as any);
+
+        if (
+            record === undefined ||
+            record === null
+        ) {
+            return undefined;
+        }
+
+        return serializeArgument(record);
+    }
+
     private async handleEvent(
         contractName: string,
         eventName: string,
@@ -322,12 +360,22 @@ export class EventSynchronizer {
             `[events-debug] BEFORE ENRICH ${this.sourceChain} -> ${this.destinationChain} ${contractName}:${eventName}`
         );
 
-        const enrichedRecord =
+        const registrationRecord =
             await this.enrichRegistrationEvent(
                 contractName,
                 eventName,
                 eventArgs
             );
+
+        const medicalRecord =
+            await this.enrichMedicalRecordEvent(
+                eventName,
+                eventArgs
+            );
+
+        const enrichedRecord =
+            medicalRecord ??
+            registrationRecord;
 
         console.log(
             `[events-debug] AFTER ENRICH ${this.sourceChain} -> ${this.destinationChain} ${contractName}:${eventName}`,

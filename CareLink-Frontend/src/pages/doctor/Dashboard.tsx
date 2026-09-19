@@ -2,23 +2,10 @@ import DashboardLayout from "../../components/DashboardLayout";
 
 function Dashboard() {
   const stats = [
-    { title: "Patient Requests", value: "24", icon: "👨‍⚕️", tone: "bg-blue-50 text-blue-700" },
-    { title: "My Patients", value: "128", icon: "👥", tone: "bg-emerald-50 text-emerald-700" },
-    { title: "Medical Records", value: "96", icon: "📁", tone: "bg-violet-50 text-violet-700" },
-    { title: "Treatment Notes", value: "42", icon: "📝", tone: "bg-amber-50 text-amber-700" },
-  ];
-
-  const appointments = [
-    { time: "09:00 AM", patient: "Sarah Johnson", type: "Follow-up", status: "Confirmed" },
-    { time: "10:30 AM", patient: "Michael Chen", type: "Consultation", status: "In progress" },
-    { time: "12:15 PM", patient: "Aisha Patel", type: "Diagnosis", status: "Pending" },
-    { time: "03:00 PM", patient: "Daniel Lee", type: "Cardiology", status: "Confirmed" },
-  ];
-
-  const queue = [
-    { name: "Emma Carter", condition: "Hypertension", tag: "High priority" },
-    { name: "Oliver Smith", condition: "Diabetes", tag: "Review" },
-    { name: "Sophia Brown", condition: "Post-op recovery", tag: "Monitoring" },
+    { title: "Patient Requests", value: "Not configured", icon: "👨‍⚕️", tone: "bg-blue-50 text-blue-700" },
+    { title: "My Patients", value: "Not configured", icon: "👥", tone: "bg-emerald-50 text-emerald-700" },
+    { title: "Medical Records", value: "Use Medical Records", icon: "📁", tone: "bg-violet-50 text-violet-700" },
+    { title: "Treatment Notes", value: "Not configured", icon: "📝", tone: "bg-amber-50 text-amber-700" },
   ];
 
   return (
@@ -31,7 +18,7 @@ function Dashboard() {
               <h1 className="mt-3 text-3xl font-bold sm:text-4xl">Doctor Dashboard</h1>
             </div>
             <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-sky-50 backdrop-blur-sm">
-              8 appointments today
+              Appointment data not configured
             </div>
           </div>
         </section>
@@ -61,44 +48,13 @@ function Dashboard() {
               <button className="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">View all</button>
             </div>
 
-            <div className="space-y-4">
-              {appointments.map((appointment) => (
-                <div key={appointment.time} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 text-lg text-blue-700">⏰</div>
-                    <div>
-                      <p className="font-semibold text-slate-800">{appointment.patient}</p>
-                      <p className="text-sm text-slate-500">{appointment.type}</p>
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <p className="font-medium text-slate-700">{appointment.time}</p>
-                    <span className="mt-1 inline-block rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-semibold text-emerald-700">
-                      {appointment.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <p className="text-sm text-slate-500">Appointments are not exposed by the current backend contract.</p>
           </div>
 
           <div className="space-y-6">
             <div className="rounded-3xl border border-sky-100 bg-white p-6 shadow-[0_12px_30px_rgba(14,116,144,0.06)]">
               <h2 className="text-xl font-bold text-slate-800">Priority Queue</h2>
-              <div className="mt-5 space-y-4">
-                {queue.map((patient) => (
-                  <div key={patient.name} className="flex items-center justify-between rounded-2xl bg-sky-50 px-3 py-3">
-                    <div>
-                      <p className="font-semibold text-slate-800">{patient.name}</p>
-                      <p className="text-sm text-slate-500">{patient.condition}</p>
-                    </div>
-                    <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold text-sky-700 shadow-sm">
-                      {patient.tag}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <p className="mt-5 text-sm text-slate-500">Patient queue data is not exposed by the current backend contract.</p>
             </div>
 
             <div className="rounded-3xl border border-sky-100 bg-gradient-to-br from-sky-600 to-blue-700 p-6 text-white shadow-[0_20px_40px_rgba(59,130,246,0.18)]">
@@ -106,15 +62,15 @@ function Dashboard() {
               <div className="mt-5 space-y-4">
                 <div className="flex items-center justify-between rounded-2xl bg-white/10 px-4 py-3">
                   <span className="text-sky-100">Recovery rate</span>
-                  <span className="text-lg font-bold">92%</span>
+                  <span className="text-lg font-bold">—</span>
                 </div>
                 <div className="flex items-center justify-between rounded-2xl bg-white/10 px-4 py-3">
                   <span className="text-sky-100">Follow-ups due</span>
-                  <span className="text-lg font-bold">16</span>
+                  <span className="text-lg font-bold">—</span>
                 </div>
                 <div className="flex items-center justify-between rounded-2xl bg-white/10 px-4 py-3">
                   <span className="text-sky-100">Critical alerts</span>
-                  <span className="text-lg font-bold">3</span>
+                  <span className="text-lg font-bold">—</span>
                 </div>
               </div>
             </div>

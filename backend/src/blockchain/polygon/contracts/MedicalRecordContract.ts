@@ -11,6 +11,11 @@ export class MedicalRecordContract {
     private readonly contract =
         polygon.medicalRecord;
 
+    private readonly readContract =
+        polygon.medicalRecord.connect(
+            polygon.provider
+        );
+
     private extractRecordCreatedId(
         receipt: ethers.TransactionReceipt
     ): number | null {
@@ -119,10 +124,13 @@ export class MedicalRecordContract {
         category: string,
         emergency: boolean
     ) {
+        const encodedMessageId = ethers.id(messageId);
+        const encodedSourceChain = ethers.encodeBytes32String(sourceChain);
+
         const tx =
             await this.contract.createMedicalRecordFromBridge(
-                messageId,
-                sourceChain,
+                encodedMessageId,
+                encodedSourceChain,
                 sourceRecordId,
                 patient,
                 doctor,
@@ -303,32 +311,72 @@ export class MedicalRecordContract {
     }
 
     async getMedicalRecord(
-        recordId: number
+        recordId: number,
+        caller?: string
     ) {
+
+        if (caller) {
+            return await this.readContract
+                .getFunction("getMedicalRecord")
+                .staticCall(
+                    recordId,
+                    { from: caller }
+                );
+        }
 
         return await this.contract
             .getMedicalRecord(recordId);
     }
 
     async getPatientRecords(
-        patient: string
+        patient: string,
+        caller?: string
     ) {
+
+        if (caller) {
+            return await this.readContract
+                .getFunction("getPatientRecords")
+                .staticCall(
+                    patient,
+                    { from: caller }
+                );
+        }
 
         return await this.contract
             .getPatientRecords(patient);
     }
 
     async getDoctorRecords(
-        doctor: string
+        doctor: string,
+        caller?: string
     ) {
+
+        if (caller) {
+            return await this.readContract
+                .getFunction("getDoctorRecords")
+                .staticCall(
+                    doctor,
+                    { from: caller }
+                );
+        }
 
         return await this.contract
             .getDoctorRecords(doctor);
     }
 
     async getHospitalRecords(
-        hospital: string
+        hospital: string,
+        caller?: string
     ) {
+
+        if (caller) {
+            return await this.readContract
+                .getFunction("getHospitalRecords")
+                .staticCall(
+                    hospital,
+                    { from: caller }
+                );
+        }
 
         return await this.contract
             .getHospitalRecords(hospital);

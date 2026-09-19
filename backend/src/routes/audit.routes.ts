@@ -1,7 +1,9 @@
 import { Router } from "express";
 import { AuditController } from "../controllers/AuditController";
+import { authenticate } from "../middleware/auth";
 
 const router = Router();
+router.use(authenticate);
 
 const controller = new AuditController();
 

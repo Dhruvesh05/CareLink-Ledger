@@ -1,0 +1,8 @@
+{
+  "AccessControl": "0xC0a9FaFab546E04483772113daa35ce6aB07e1a8",
+  "PatientRegistry": "0x0B10b1c7d4Fdd0BAcc2EEe6a4Cdb23DC215cBF6d",
+  "DoctorRegistry": "0x8378EE7780ddB6C40326c2763CBB5A906bDF4f33",
+  "HospitalRegistry": "0x2762D13277cD6be62E657aF502E4d2B6A813B906",
+  "AuditLog": "0xdbA7Befe5A7fc1C90c3DF46c0f9b6835c8089e90",
+  "MedicalRecord": "0xddb1B5Cd52D471F50eeD8e7435b406053d9DC2Cb"
+}

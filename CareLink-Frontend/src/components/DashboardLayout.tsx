@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
+import { useAuth } from "../auth/AuthContext";
 import Header from "./Header";
 
 import PatientSidebar from "./patient/PatientSidebar";
@@ -12,21 +13,21 @@ type DashboardLayoutProps = {
 };
 
 function DashboardLayout({ children }: DashboardLayoutProps) {
-  const role = localStorage.getItem("role");
+  const { role } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const renderSidebar = () => {
+  const renderSidebar = useMemo(() => {
     if (role === "Patient") return <PatientSidebar />;
     if (role === "Doctor") return <DoctorSidebar />;
     if (role === "Hospital") return <HospitalSidebar />;
     if (role === "Admin") return <AdminSidebar />;
     return null;
-  };
+  }, [role]);
 
   return (
     <div className="min-h-screen w-full overflow-x-hidden bg-[radial-gradient(circle_at_top,_rgba(191,219,254,0.45),_transparent_30%),linear-gradient(180deg,_#f5fafe_0%,_#eef6ff_100%)] text-slate-800">
       <div className="hidden md:block fixed left-0 top-0 z-40 h-screen w-72 overflow-y-auto overflow-x-hidden border-r border-sky-100 bg-white/80 backdrop-blur-xl shadow-[12px_0_30px_rgba(30,64,175,0.08)]">
-        {renderSidebar()}
+        {renderSidebar}
       </div>
 
       {mobileMenuOpen && (
@@ -38,7 +39,7 @@ function DashboardLayout({ children }: DashboardLayoutProps) {
             onClick={() => setMobileMenuOpen(false)}
           />
           <div className="relative h-screen w-[82vw] max-w-sm overflow-hidden bg-white shadow-2xl">
-            {renderSidebar()}
+            {renderSidebar}
           </div>
         </div>
       )}

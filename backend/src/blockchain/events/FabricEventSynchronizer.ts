@@ -31,6 +31,13 @@ const RELAYABLE_FABRIC_EVENTS = new Set([
     "HospitalVerified",
     "HospitalVerificationRevoked",
     "HospitalReactivated",
+
+    // Native Fabric medical-record events.
+    "MedicalRecordCreated",
+    "MedicalRecordUpdated",
+    "MedicalRecordDeactivated",
+    "AccessGranted",
+    "AccessRevoked",
 ]);
 
 function parsePayload(payload: Uint8Array): FabricEventPayload {
@@ -173,6 +180,116 @@ function normalizeSourceRecord(
         };
     }
 
+    if (
+        eventName === "MedicalRecordCreated" ||
+        eventName === "MedicalRecordUpdated" ||
+        eventName === "MedicalRecordDeactivated" ||
+        eventName === "AccessGranted" ||
+        eventName === "AccessRevoked"
+    ) {
+        const nestedRecord =
+            readField(
+                decoded,
+                "record",
+                "Record",
+                "medicalRecord",
+                "MedicalRecord",
+                "grant",
+                "Grant",
+                "accessGrant",
+                "AccessGrant"
+            );
+
+        const base =
+            nestedRecord !== null &&
+            typeof nestedRecord === "object"
+                ? nestedRecord as Record<string, unknown>
+                : decoded;
+
+        return {
+            ...decoded,
+            recordId: readField(
+                base,
+                "recordId",
+                "RecordID",
+                "recordID",
+                "id",
+                "ID",
+                "medicalRecordId",
+                "MedicalRecordID"
+            ),
+            patient: readField(
+                base,
+                "patient",
+                "Patient",
+                "patientWallet",
+                "PatientWallet",
+                "patientId",
+                "PatientID"
+            ),
+            doctor: readField(
+                base,
+                "doctor",
+                "Doctor",
+                "doctorWallet",
+                "DoctorWallet",
+                "doctorId",
+                "DoctorID",
+                "granteeId",
+                "GranteeID"
+            ),
+            hospital: readField(
+                base,
+                "hospital",
+                "Hospital",
+                "hospitalWallet",
+                "HospitalWallet",
+                "hospitalId",
+                "HospitalID"
+            ),
+            ipfsHash: readField(
+                base,
+                "ipfsHash",
+                "IPFSHash",
+                "ipfs",
+                "IPFS",
+                "cid",
+                "CID"
+            ),
+            fileHash: readField(
+                base,
+                "fileHash",
+                "FileHash"
+            ),
+            category: readField(
+                base,
+                "category",
+                "Category"
+            ),
+            emergency: readField(
+                base,
+                "emergency",
+                "Emergency",
+                "isEmergency",
+                "IsEmergency"
+            ),
+            version: readField(
+                base,
+                "version",
+                "Version"
+            ),
+            actor: readField(
+                base,
+                "actor",
+                "Actor",
+                "deactivatedBy",
+                "DeactivatedBy",
+                "updatedBy",
+                "UpdatedBy"
+            )
+        };
+    }
+
     return decoded;
 }
 
@@ -186,6 +303,7 @@ function canonicalPayload(
     }
 ) {
     const decoded = parsePayload(event.payload);
+
     const sourceRecord =
         normalizeSourceRecord(
             eventName,
@@ -198,10 +316,62 @@ function canonicalPayload(
         "Wallet"
     );
 
+    const recordId = readField(
+        sourceRecord,
+        "recordId",
+        "RecordID",
+        "recordID",
+        "id",
+        "ID",
+        "medicalRecordId",
+        "MedicalRecordID"
+    );
+
+    const patient = readField(
+        sourceRecord,
+        "patient",
+        "Patient",
+        "patientWallet",
+        "PatientWallet",
+        "patientId",
+        "PatientID"
+    );
+
+    const doctor = readField(
+        sourceRecord,
+        "doctor",
+        "Doctor",
+        "doctorWallet",
+        "DoctorWallet",
+        "doctorId",
+        "DoctorID",
+        "granteeId",
+        "GranteeID"
+    );
+
+    let args: unknown[] = [wallet];
+
+    if (
+        eventName === "MedicalRecordCreated" ||
+        eventName === "MedicalRecordUpdated" ||
+        eventName === "MedicalRecordDeactivated"
+    ) {
+        args = [recordId];
+    } else if (
+        eventName === "AccessGranted" ||
+        eventName === "AccessRevoked"
+    ) {
+        args = [
+            recordId,
+            patient,
+            doctor
+        ];
+    }
+
     return {
         contract: "fabric",
         eventName,
-        args: [wallet],
+        args,
         sourceRecord,
         blockNumber:
             event.blockNumber.toString(),
@@ -339,7 +509,27 @@ export class FabricEventSynchronizer {
                     `[fabric-events] RECEIVED Fabric -> ${this.destinationChain} ${event.eventName} tx=${event.transactionId} block=${event.blockNumber.toString()}`
                 );
 
+                const knownDestination =
+                    await this.bridge
+                        .isKnownDestinationTransaction(
+                            event.transactionId
+                        );
+
                 const result =
+                    knownDestination;
+
+                    if (knownDestination) {
+                        console.log(
+                            `[fabric-events] ignoring destination-generated event tx=${event.transactionId}`
+                        );
+
+                        await checkpoint.checkpointChaincodeEvent(
+                            event
+                        );
+
+                        continue;
+                    }
+
                     await this.bridge.relay(message);
 
                 console.log(

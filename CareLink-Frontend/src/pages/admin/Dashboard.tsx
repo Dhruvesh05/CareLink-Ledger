@@ -5,10 +5,10 @@ function Dashboard() {
   const navigate = useNavigate();
 
   const stats = [
-    { title: "Users", value: "5,432", icon: "👥", tone: "bg-blue-50 text-blue-700" },
-    { title: "Hospitals", value: "156", icon: "🏥", tone: "bg-emerald-50 text-emerald-700" },
-    { title: "Doctors", value: "923", icon: "👨‍⚕️", tone: "bg-violet-50 text-violet-700" },
-    { title: "Verified", value: "4,892", icon: "✅", tone: "bg-amber-50 text-amber-700" },
+    { title: "Users", value: "Not configured", icon: "👥", tone: "bg-blue-50 text-blue-700" },
+    { title: "Hospitals", value: "Available in Analytics", icon: "🏥", tone: "bg-emerald-50 text-emerald-700" },
+    { title: "Doctors", value: "Available in Analytics", icon: "👨‍⚕️", tone: "bg-violet-50 text-violet-700" },
+    { title: "Verified", value: "Not configured", icon: "✅", tone: "bg-amber-50 text-amber-700" },
   ];
 
   const quickLinks = [
@@ -16,12 +16,6 @@ function Dashboard() {
     { title: "Hospitals", path: "/admin/hospitals", desc: "Review institutions" },
     { title: "Doctors", path: "/admin/doctors", desc: "Verify providers" },
     { title: "Analytics", path: "/admin/analytics", desc: "View insights" },
-  ];
-
-  const activity = [
-    { action: "New user registered", detail: "Identity verification completed", time: "Recently" },
-    { action: "Hospital added", detail: "New healthcare organization registered", time: "2h ago" },
-    { action: "Blockchain transaction recorded", detail: "Healthcare hash submitted", time: "Today" },
   ];
 
   return (
@@ -78,19 +72,7 @@ function Dashboard() {
 
           <div className="rounded-3xl border border-amber-100 bg-white p-6 shadow-[0_12px_30px_rgba(14,116,144,0.06)]">
             <h2 className="text-xl font-bold text-slate-800">Recent Activity</h2>
-            <div className="mt-5 space-y-4">
-              {activity.map((item) => (
-                <div key={item.action} className="rounded-2xl bg-amber-50 px-4 py-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-semibold text-slate-800">{item.action}</p>
-                      <p className="mt-1 text-sm text-slate-500">{item.detail}</p>
-                    </div>
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-700">{item.time}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <p className="mt-5 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-slate-500">Activity feed is not exposed by the current backend contract.</p>
           </div>
         </div>
       </div>

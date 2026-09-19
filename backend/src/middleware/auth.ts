@@ -58,3 +58,20 @@ export function authenticate(
         });
     }
 }
+
+export function requireRole(...roles: string[]) {
+    return (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        if (!req.auth?.role || !roles.includes(req.auth.role)) {
+            return res.status(403).json({
+                success: false,
+                message: "Insufficient role for this operation"
+            });
+        }
+
+        return next();
+    };
+}

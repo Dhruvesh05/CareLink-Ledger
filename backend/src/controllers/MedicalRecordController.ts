@@ -487,6 +487,13 @@ export class MedicalRecordController {
 
         try {
 
+            if (!req.auth?.walletAddress) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Authentication required"
+                });
+            }
+
             const recordId =
                 parsePositiveInteger(
                     req.params.recordId,
@@ -495,7 +502,10 @@ export class MedicalRecordController {
 
             const record =
                 await this.getMedicalRecordService()
-                    .getMedicalRecord(recordId);
+                    .getMedicalRecord(
+                        recordId,
+                        req.auth.walletAddress
+                    );
 
             return res.json({
                 success: true,
@@ -736,6 +746,47 @@ export class MedicalRecordController {
         }
     }
 
+    private authorizeWalletScopedRead(
+        req: Request,
+        res: Response,
+        wallet: string,
+        allowedRole: "Patient" | "Doctor" | "Hospital"
+    ): boolean {
+
+        const auth = req.auth;
+
+        if (!auth) {
+            res.status(401).json({
+                success: false,
+                message: "Authentication required"
+            });
+
+            return false;
+        }
+
+        const sameWallet =
+            auth.walletAddress.toLowerCase() ===
+            wallet.toLowerCase();
+
+        if (
+            auth.role !== "Admin" &&
+            (
+                auth.role !== allowedRole ||
+                !sameWallet
+            )
+        ) {
+            res.status(403).json({
+                success: false,
+                message:
+                    "Insufficient role or wallet scope"
+            });
+
+            return false;
+        }
+
+        return true;
+    }
+
     async getPatientRecords(
         req: Request,
         res: Response
@@ -749,9 +800,20 @@ export class MedicalRecordController {
                     "wallet"
                 );
 
+            if (
+                !this.authorizeWalletScopedRead(
+                    req,
+                    res,
+                    wallet,
+                    "Patient"
+                )
+            ) {
+                return;
+            }
+
             const records =
                 await this.getMedicalRecordService()
-                    .getPatientRecords(wallet);
+                    .getPatientRecords(wallet, req.auth!.walletAddress);
 
             return res.json({
                 success: true,
@@ -778,9 +840,20 @@ export class MedicalRecordController {
                     "wallet"
                 );
 
+            if (
+                !this.authorizeWalletScopedRead(
+                    req,
+                    res,
+                    wallet,
+                    "Doctor"
+                )
+            ) {
+                return;
+            }
+
             const records =
                 await this.getMedicalRecordService()
-                    .getDoctorRecords(wallet);
+                    .getDoctorRecords(wallet, req.auth!.walletAddress);
 
             return res.json({
                 success: true,
@@ -807,9 +880,20 @@ export class MedicalRecordController {
                     "wallet"
                 );
 
+            if (
+                !this.authorizeWalletScopedRead(
+                    req,
+                    res,
+                    wallet,
+                    "Hospital"
+                )
+            ) {
+                return;
+            }
+
             const records =
                 await this.getMedicalRecordService()
-                    .getHospitalRecords(wallet);
+                    .getHospitalRecords(wallet, req.auth!.walletAddress);
 
             return res.json({
                 success: true,
@@ -822,6 +906,7 @@ export class MedicalRecordController {
             return sendError(res, error);
         }
     }
+
 
     async logDownload(
         req: Request,

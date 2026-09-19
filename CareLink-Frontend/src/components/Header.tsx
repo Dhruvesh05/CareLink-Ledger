@@ -1,13 +1,14 @@
 import { useNavigate } from "react-router-dom";
 
+import { getDashboardPathByRole, useAuth } from "../auth/AuthContext";
+
 type HeaderProps = {
   onMenuToggle?: () => void;
 };
 
 function Header({ onMenuToggle }: HeaderProps) {
   const navigate = useNavigate();
-
-  const role = localStorage.getItem("role") || "User";
+  const { role, user } = useAuth();
 
   const getRoleName = () => {
     switch (role) {
@@ -24,25 +25,26 @@ function Header({ onMenuToggle }: HeaderProps) {
     }
   };
 
-  const getDashboardPath = () => {
-    switch (role) {
-      case "Patient":
-        return "/patient-dashboard";
-      case "Doctor":
-        return "/doctor/dashboard";
-      case "Hospital":
-        return "/hospital/dashboard";
-      case "Admin":
-        return "/admin/dashboard";
-      default:
-        return "/welcome";
-    }
+  const getNotificationPath = () => {
+    if (role === "Patient") return "/notifications";
+    if (role === "Doctor") return "/doctor/notifications";
+    if (role === "Hospital") return "/hospital/notifications";
+    if (role === "Admin") return "/admin/notifications";
+    return "/login";
   };
+
+  const getProfilePath = () => {
+    if (role === "Patient") return "/profile";
+    if (role === "Doctor") return "/doctor/profile";
+    if (role === "Hospital") return "/hospital/profile";
+    if (role === "Admin") return "/admin/profile";
+    return "/login";
+  };
+
+  const initials = user?.walletAddress ? user.walletAddress.slice(2, 4).toUpperCase() : (role ?? "U").slice(0, 1).toUpperCase();
 
   return (
     <header className="w-full h-20 bg-white/80 border-b border-sky-100 backdrop-blur-md shadow-[0_10px_30px_rgba(14,165,233,0.06)] flex items-center justify-between px-4 sm:px-6 lg:px-8 sticky top-0 z-30">
-
-      {/* Left Section */}
       <div className="flex min-w-0 items-center gap-3">
         {onMenuToggle && (
           <button
@@ -55,64 +57,29 @@ function Header({ onMenuToggle }: HeaderProps) {
           </button>
         )}
 
-        <button
-          onClick={() => navigate(getDashboardPath())}
-          className="text-left"
-        >
-          <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-sky-900 truncate">
-            Welcome 👋
-          </h2>
-
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            {getRoleName()} Dashboard
-          </p>
+        <button onClick={() => navigate(getDashboardPathByRole(role))} className="text-left">
+          <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-sky-900 truncate">Welcome 👋</h2>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">{getRoleName()} Dashboard</p>
         </button>
-
       </div>
 
-      {/* Right Section */}
       <div className="flex items-center gap-3 sm:gap-5 ml-4">
-
-        {/* Notification */}
         <button
-          onClick={() => {
-            if (role === "Patient") {
-              navigate("/notifications");
-            } else if (role === "Doctor") {
-              navigate("/doctor/notifications");
-            } else if (role === "Hospital") {
-              navigate("/hospital/notifications");
-            } else if (role === "Admin") {
-              navigate("/admin/notifications");
-            }
-          }}
+          onClick={() => navigate(getNotificationPath())}
           className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center text-xl sm:text-2xl bg-sky-50 text-sky-700 hover:bg-sky-100 transition shadow-sm"
           title="Notifications"
         >
           🔔
         </button>
 
-        {/* Profile */}
         <button
-          onClick={() => {
-            if (role === "Patient") {
-              navigate("/profile");
-            } else if (role === "Doctor") {
-              navigate("/doctor/profile");
-            } else if (role === "Hospital") {
-              navigate("/hospital/profile");
-            } else if (role === "Admin") {
-              navigate("/admin/profile");
-            }
-          }}
+          onClick={() => navigate(getProfilePath())}
           className="w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12 rounded-full bg-gradient-to-br from-sky-600 to-blue-700 text-white flex items-center justify-center text-base sm:text-lg lg:text-xl font-semibold hover:from-sky-700 hover:to-blue-800 transition shadow-md"
           title="Profile"
         >
-          {role.charAt(0).toUpperCase()}
+          {initials}
         </button>
-
       </div>
-
     </header>
   );
 }

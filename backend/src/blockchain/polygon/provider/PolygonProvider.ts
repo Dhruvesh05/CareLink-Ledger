@@ -430,35 +430,47 @@ export class PolygonProvider implements IBlockchainProvider {
     }
 
     async getMedicalRecord(
-        recordId: number
+        recordId: number,
+        caller?: string
     ): Promise<any> {
-        return await this.medicalRecordService.getMedicalRecord(
-            recordId
-        );
+        return await this.medicalRecordService
+            .getMedicalRecord(
+                recordId,
+                caller
+            );
     }
 
     async getPatientRecords(
-        patient: string
+        patient: string,
+        caller?: string
     ): Promise<any> {
-        return await this.medicalRecordService.getPatientRecords(
-            patient
-        );
+        return await this.medicalRecordService
+            .getPatientRecords(
+                patient,
+                caller
+            );
     }
 
     async getDoctorRecords(
-        doctor: string
+        doctor: string,
+        caller?: string
     ): Promise<any> {
-        return await this.medicalRecordService.getDoctorRecords(
-            doctor
-        );
+        return await this.medicalRecordService
+            .getDoctorRecords(
+                doctor,
+                caller
+            );
     }
 
     async getHospitalRecords(
-        hospital: string
+        hospital: string,
+        caller?: string
     ): Promise<any> {
-        return await this.medicalRecordService.getHospitalRecords(
-            hospital
-        );
+        return await this.medicalRecordService
+            .getHospitalRecords(
+                hospital,
+                caller
+            );
     }
 
     async recordExists(

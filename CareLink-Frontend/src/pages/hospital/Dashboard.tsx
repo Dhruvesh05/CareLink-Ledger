@@ -2,10 +2,10 @@ import DashboardLayout from "../../components/DashboardLayout";
 
 function Dashboard() {
   const stats = [
-    { title: "Patients", value: "1,245", icon: "🏥", tone: "bg-blue-50 text-blue-700" },
-    { title: "Doctors", value: "78", icon: "👨‍⚕️", tone: "bg-emerald-50 text-emerald-700" },
-    { title: "Departments", value: "12", icon: "🏢", tone: "bg-violet-50 text-violet-700" },
-    { title: "Appointments", value: "245", icon: "📅", tone: "bg-amber-50 text-amber-700" },
+    { title: "Patients", value: "Use Patient Records", icon: "🏥", tone: "bg-blue-50 text-blue-700" },
+    { title: "Doctors", value: "Not configured", icon: "👨‍⚕️", tone: "bg-emerald-50 text-emerald-700" },
+    { title: "Departments", value: "Not configured", icon: "🏢", tone: "bg-violet-50 text-violet-700" },
+    { title: "Appointments", value: "Not configured", icon: "📅", tone: "bg-amber-50 text-amber-700" },
   ];
 
   const departmentStatus = [

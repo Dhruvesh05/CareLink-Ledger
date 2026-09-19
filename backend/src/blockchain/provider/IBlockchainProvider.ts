@@ -218,19 +218,23 @@ export interface IBlockchainProvider {
     ): Promise<any>;
 
     getMedicalRecord(
-        recordId: number
+        recordId: number,
+        caller?: string
     ): Promise<any>;
 
     getPatientRecords(
-        patient: string
+        patient: string,
+        caller?: string
     ): Promise<any>;
 
     getDoctorRecords(
-        doctor: string
+        doctor: string,
+        caller?: string
     ): Promise<any>;
 
     getHospitalRecords(
-        hospital: string
+        hospital: string,
+        caller?: string
     ): Promise<any>;
 
     recordExists(

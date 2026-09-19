@@ -11,6 +11,7 @@ type AnyMock = jest.Mock<(...args: any[]) => any>;
 const mockCreateMedicalRecord = jest.fn() as AnyMock;
 const mockUpdateMedicalRecord = jest.fn() as AnyMock;
 const mockDeactivateMedicalRecord = jest.fn() as AnyMock;
+const mockGetMedicalRecord = jest.fn() as AnyMock;
 
 const mockMongoCreate = jest.fn() as AnyMock;
 const mockMongoFindOne = jest.fn() as AnyMock;
@@ -57,6 +58,7 @@ describe("MedicalRecordService IPFS transaction flow", () => {
         createMedicalRecord: AnyMock;
         updateMedicalRecord: AnyMock;
         deactivateMedicalRecord: AnyMock;
+        getMedicalRecord: AnyMock;
     };
 
     let service: MedicalRecordService;
@@ -68,6 +70,7 @@ describe("MedicalRecordService IPFS transaction flow", () => {
         mockCreateMedicalRecord.mockReset();
         mockUpdateMedicalRecord.mockReset();
         mockDeactivateMedicalRecord.mockReset();
+        mockGetMedicalRecord.mockReset();
 
         mockMongoCreate.mockReset();
         mockMongoFindOne.mockReset();
@@ -81,13 +84,42 @@ describe("MedicalRecordService IPFS transaction flow", () => {
         mockBlockchainProvider = {
             createMedicalRecord: mockCreateMedicalRecord,
             updateMedicalRecord: mockUpdateMedicalRecord,
-            deactivateMedicalRecord: mockDeactivateMedicalRecord
+            deactivateMedicalRecord: mockDeactivateMedicalRecord,
+            getMedicalRecord: mockGetMedicalRecord
         };
 
         service = new MedicalRecordService(
             mockIpfsService as any,
             mockBlockchainProvider as any
         );
+    });
+
+    describe("getMedicalRecord", () => {
+        it("forwards the caller to the blockchain provider", async () => {
+            const caller =
+                "0x1234567890123456789012345678901234567890";
+
+            mockGetMedicalRecord.mockResolvedValue({
+                recordId: 1
+            });
+
+            const result =
+                await service.getMedicalRecord(
+                    1,
+                    caller
+                );
+
+            expect(
+                mockGetMedicalRecord
+            ).toHaveBeenCalledWith(
+                1,
+                caller
+            );
+
+            expect(result).toEqual({
+                recordId: 1
+            });
+        });
     });
 
     describe("createMedicalRecord", () => {

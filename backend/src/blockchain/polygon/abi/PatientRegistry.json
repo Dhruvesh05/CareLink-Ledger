@@ -1,6 +1,4 @@
 {
-  "contractName": "PatientRegistry",
-  "sourceName": "contracts/PatientRegistry.sol",
   "abi": [
     {
       "inputs": [

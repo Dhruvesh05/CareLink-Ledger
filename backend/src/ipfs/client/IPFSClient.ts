@@ -305,13 +305,15 @@ export class IPFSClient
 
             response =
                 await fetch(
-                    "https://uploads.pinata.cloud/v3/files",
+                    "https://api.pinata.cloud/pinning/pinFileToIPFS",
                     {
                         method: "POST",
 
                         headers: {
-                            Authorization:
-                                `Bearer ${this.getPinataJwt()}`
+                            pinata_api_key:
+                                env.PINATA_API_KEY.trim(),
+                            pinata_secret_api_key:
+                                env.PINATA_SECRET_KEY.trim()
                         },
 
                         body:
@@ -338,11 +340,14 @@ export class IPFSClient
         }
 
         const result =
-            await response.json() as
-                PinataUploadResponse;
+            await response.json() as {
+                IpfsHash?: string;
+                PinSize?: number;
+                Name?: string;
+            };
 
         const cid =
-            result.data?.cid;
+            result.IpfsHash;
 
         if (!cid) {
 
@@ -357,11 +362,11 @@ export class IPFSClient
             cid,
 
             path:
-                result.data?.name ??
+                result.Name ??
                 "upload",
 
             size:
-                result.data?.size ??
+                result.PinSize ??
                 bytes.byteLength
         };
     }
