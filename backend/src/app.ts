@@ -18,7 +18,27 @@ const app: Express = express();
    GLOBAL MIDDLEWARE
 ========================================================== */
 
-app.use(cors());
+const corsOrigins = (process.env.CORS_ORIGINS || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(
+  cors(
+    corsOrigins.length
+      ? {
+          origin: (origin, callback) => {
+            if (!origin || corsOrigins.includes(origin)) {
+              callback(null, true);
+              return;
+            }
+
+            callback(new Error("CORS origin not allowed"));
+          },
+        }
+      : undefined,
+  ),
+);
 
 app.use(helmet());
 
