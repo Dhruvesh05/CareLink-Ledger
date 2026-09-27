@@ -6,6 +6,7 @@ import tempfile
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app.ingestion.ingestion_service import IngestionService
+from app.services.analytics_pipeline_service import AnalyticsPipelineService
 from app.services.mapping_service import MappingService
 from app.services.schema_service import SchemaService
 
@@ -15,6 +16,7 @@ router = APIRouter(prefix="/analytics", tags=["Analytics"])
 _ingestion_service = IngestionService()
 _schema_service = SchemaService()
 _mapping_service = MappingService()
+_pipeline_service = AnalyticsPipelineService()
 
 
 def _serialize_profile(profile):
@@ -56,6 +58,37 @@ def _serialize_mapping_result(result):
     }
 
 
+def _serialize_validation_result(result):
+    return {
+        "is_valid": result.is_valid,
+        "total_rows": result.total_rows,
+        "valid_rows": result.valid_rows,
+        "invalid_rows": result.invalid_rows,
+        "quality_score": result.quality_score,
+        "quarantined_rows": result.quarantined_rows,
+        "errors": [
+            {
+                "field": error.field,
+                "row": error.row,
+                "code": error.code,
+                "message": error.message,
+                "value": error.value,
+            }
+            for error in result.errors
+        ],
+        "warnings": [
+            {
+                "field": warning.field,
+                "row": warning.row,
+                "code": warning.code,
+                "message": warning.message,
+                "value": warning.value,
+            }
+            for warning in result.warnings
+        ],
+    }
+
+
 async def _save_upload(upload: UploadFile) -> str:
     suffix = os.path.splitext(upload.filename or "")[1].lower()
 
@@ -90,12 +123,20 @@ async def analyze_dataset(
     try:
         dataframe = _ingestion_service.load(temp_path)
 
-        profile = _schema_service.analyze_dataset(
+        result = _pipeline_service.process(
             dataframe,
-            file.filename or "uploaded_dataset",
+            dataset_name=file.filename or "uploaded_dataset",
         )
 
-        return _serialize_profile(profile)
+        profile = result["schema_profile"]
+        mapping = result["mapping_result"]
+        validation = result["validation_result"]
+
+        return {
+            "schema": _serialize_profile(profile),
+            "mapping": _serialize_mapping_result(mapping),
+            "validation": _serialize_validation_result(validation),
+        }
 
     except (FileNotFoundError, ValueError, TypeError) as exc:
         raise HTTPException(
