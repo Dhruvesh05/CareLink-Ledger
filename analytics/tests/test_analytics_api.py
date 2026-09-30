@@ -238,3 +238,79 @@ def test_analyze_hospital_aliases_detect_invalid_canonical_data():
     }
 
     assert "AGE_OUT_OF_RANGE" in error_codes
+
+def test_analyze_returns_fhir_bundle_for_valid_hospital_data():
+    csv_content = (
+        "PatientID,PatientAge,Sex,BodyWeight\n"
+        "1,25,male,65.5\n"
+        "2,40,female,58.0\n"
+    )
+
+    response = client.post(
+        "/analytics/analyze",
+        files={
+            "file": (
+                "hospital_fhir.csv",
+                io.BytesIO(csv_content.encode("utf-8")),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert "fhir" in body
+    assert body["fhir"] is not None
+
+    fhir = body["fhir"]
+
+    assert fhir["resourceType"] == "Bundle"
+    assert fhir["type"] == "collection"
+    assert "entry" in fhir
+
+    assert len(fhir["entry"]) == 4
+
+    resource_types = [
+        entry["resource"]["resourceType"]
+        for entry in fhir["entry"]
+    ]
+
+    assert resource_types == [
+        "Patient",
+        "Observation",
+        "Patient",
+        "Observation",
+    ]
+
+
+def test_analyze_returns_null_fhir_for_invalid_hospital_data():
+    csv_content = (
+        "PatientID,PatientAge,Sex,BodyWeight\n"
+        "1,25,male,65.5\n"
+        "2,150,female,58.0\n"
+    )
+
+    response = client.post(
+        "/analytics/analyze",
+        files={
+            "file": (
+                "invalid_hospital_fhir.csv",
+                io.BytesIO(csv_content.encode("utf-8")),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert "fhir" in body
+    assert body["fhir"] is None
+
+    validation = body["validation"]
+
+    assert validation["is_valid"] is False
+    assert validation["invalid_rows"] == 1

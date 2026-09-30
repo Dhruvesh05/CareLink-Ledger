@@ -13,6 +13,7 @@ from app.services.schema_service import SchemaService
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
+
 _ingestion_service = IngestionService()
 _schema_service = SchemaService()
 _mapping_service = MappingService()
@@ -29,7 +30,6 @@ def _serialize_profile(profile):
         "missing_values": profile.missing_values,
         "missing_percentages": profile.missing_percentages,
         "unique_values": profile.unique_values,
-        "duplicate_rows": profile.duplicate_rows,
         "potential_primary_keys": profile.potential_primary_keys,
         "statistics": profile.statistics,
         "fingerprint": profile.fingerprint,
@@ -89,13 +89,48 @@ def _serialize_validation_result(result):
     }
 
 
-async def _save_upload(upload: UploadFile) -> str:
-    suffix = os.path.splitext(upload.filename or "")[1].lower()
+def _serialize_fhir_bundle(bundle):
+    """
+    Convert a FHIR Bundle resource into JSON-compatible data.
 
-    if suffix not in {".csv", ".xlsx", ".xls", ".json"}:
+    Returns None when the dataset failed validation and no
+    FHIR Bundle was generated.
+    """
+    if bundle is None:
+        return None
+
+    return bundle.model_dump(
+        mode="json",
+        exclude_none=True,
+    )
+
+
+async def _save_upload(upload: UploadFile) -> str:
+    """
+    Save an uploaded dataset to a temporary file.
+
+    Supported formats:
+        CSV
+        XLSX
+        XLS
+        JSON
+    """
+    suffix = os.path.splitext(
+        upload.filename or ""
+    )[1].lower()
+
+    if suffix not in {
+        ".csv",
+        ".xlsx",
+        ".xls",
+        ".json",
+    }:
         raise HTTPException(
             status_code=400,
-            detail="Unsupported dataset format. Use CSV, XLSX, XLS, or JSON.",
+            detail=(
+                "Unsupported dataset format. "
+                "Use CSV, XLSX, XLS, or JSON."
+            ),
         )
 
     content = await upload.read()
@@ -118,6 +153,25 @@ async def _save_upload(upload: UploadFile) -> str:
 async def analyze_dataset(
     file: UploadFile = File(...),
 ):
+    """
+    Run the complete Analytics Layer pipeline.
+
+    Pipeline:
+
+        Upload
+          ↓
+        Ingestion
+          ↓
+        Schema Analysis
+          ↓
+        Schema Mapping
+          ↓
+        Canonical Transformation
+          ↓
+        Validation
+          ↓
+        FHIR Transformation
+    """
     temp_path = await _save_upload(file)
 
     try:
@@ -131,14 +185,20 @@ async def analyze_dataset(
         profile = result["schema_profile"]
         mapping = result["mapping_result"]
         validation = result["validation_result"]
+        fhir_bundle = result["fhir_bundle"]
 
         return {
             "schema": _serialize_profile(profile),
             "mapping": _serialize_mapping_result(mapping),
             "validation": _serialize_validation_result(validation),
+            "fhir": _serialize_fhir_bundle(fhir_bundle),
         }
 
-    except (FileNotFoundError, ValueError, TypeError) as exc:
+    except (
+        FileNotFoundError,
+        ValueError,
+        TypeError,
+    ) as exc:
         raise HTTPException(
             status_code=400,
             detail=str(exc),
@@ -153,6 +213,10 @@ async def analyze_dataset(
 async def map_dataset(
     file: UploadFile = File(...),
 ):
+    """
+    Analyze a dataset and return its schema-to-canonical
+    field mappings without running the complete pipeline.
+    """
     temp_path = await _save_upload(file)
 
     try:
@@ -171,7 +235,11 @@ async def map_dataset(
             "mapping": _serialize_mapping_result(result),
         }
 
-    except (FileNotFoundError, ValueError, TypeError) as exc:
+    except (
+        FileNotFoundError,
+        ValueError,
+        TypeError,
+    ) as exc:
         raise HTTPException(
             status_code=400,
             detail=str(exc),
