@@ -3,18 +3,74 @@ import { createAgent } from "../agent/createAgent";
 import { IVerifiablePresentation } from "../interfaces/IVerifiablePresentation";
 
 export class PresentationService implements IVerifiablePresentation {
+    private isValidDid(value: unknown): value is string {
+        return (
+            typeof value === "string" &&
+            value.trim().startsWith("did:")
+        );
+    }
+
+    private isValidCredential(value: unknown): value is W3CVerifiableCredential {
+        if (typeof value === "string") {
+            return value.trim().length > 0;
+        }
+
+        if (!value || typeof value !== "object" || Array.isArray(value)) {
+            return false;
+        }
+
+        const credential = value as Record<string, unknown>;
+        return Boolean(
+            credential.proof &&
+            typeof credential.proof === "object" &&
+            credential.credentialSubject &&
+            typeof credential.credentialSubject === "object" &&
+            !Array.isArray(credential.credentialSubject)
+        );
+    }
+
+    private isValidPresentation(value: unknown): value is W3CVerifiablePresentation {
+        if (typeof value === "string") {
+            return value.trim().length > 0;
+        }
+
+        if (!value || typeof value !== "object" || Array.isArray(value)) {
+            return false;
+        }
+
+        const presentation = value as Record<string, unknown>;
+        const credentials = presentation.verifiableCredential;
+
+        return Boolean(
+            this.isValidDid(presentation.holder) &&
+            presentation.proof &&
+            typeof presentation.proof === "object" &&
+            Array.isArray(credentials) &&
+            credentials.length > 0 &&
+            credentials.every((credential) => this.isValidCredential(credential))
+        );
+    }
+
     async createPresentation(
         holderDid: string,
         credentials: W3CVerifiableCredential[],
-        challenge?: string,
+        challenge: string,
         domain?: string,
     ): Promise<VerifiablePresentation> {
-        if (!holderDid || typeof holderDid !== "string" || !holderDid.trim()) {
+        if (!this.isValidDid(holderDid)) {
             throw new Error("Holder DID is required.");
         }
 
         if (!Array.isArray(credentials) || credentials.length === 0) {
             throw new Error("At least one verifiable credential is required.");
+        }
+
+        if (!credentials.every((credential) => this.isValidCredential(credential))) {
+            throw new Error("All verifiable credentials must be valid.");
+        }
+
+        if (typeof challenge !== "string" || !challenge.trim()) {
+            throw new Error("Challenge is required.");
         }
 
         const agent = await createAgent();
@@ -32,7 +88,7 @@ export class PresentationService implements IVerifiablePresentation {
                     verifiableCredential: credentials,
                 },
                 proofFormat: "jwt",
-                ...(challenge !== undefined ? { challenge } : {}),
+                challenge,
                 ...(domain !== undefined ? { domain } : {}),
             });
         } catch (error: any) {
@@ -43,14 +99,24 @@ export class PresentationService implements IVerifiablePresentation {
 
     async verifyPresentation(
         presentation: W3CVerifiablePresentation,
-        challenge?: string,
+        challenge: string,
         domain?: string,
     ): Promise<IVerifyResult> {
-        if (!presentation || (typeof presentation === "string" && !presentation.trim())) {
+        if (!this.isValidPresentation(presentation)) {
             return {
                 verified: false,
                 error: {
-                    message: "Presentation is required.",
+                    message: "Presentation is malformed.",
+                    errorCode: "invalid_argument",
+                },
+            };
+        }
+
+        if (typeof challenge !== "string" || !challenge.trim()) {
+            return {
+                verified: false,
+                error: {
+                    message: "Challenge is required.",
                     errorCode: "invalid_argument",
                 },
             };
@@ -71,7 +137,7 @@ export class PresentationService implements IVerifiablePresentation {
         try {
             const result = await agent.verifyPresentation({
                 presentation,
-                ...(challenge !== undefined ? { challenge } : {}),
+                challenge,
                 ...(domain !== undefined ? { domain } : {}),
             });
 
