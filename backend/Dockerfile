@@ -1,4 +1,4 @@
-FROM node@sha256:3d0f05455dea2c82e2f76e7e2543964c30f6b7d673fc1a83286736d44fe4c41c AS build
+FROM node@sha256:48e4b67d85f87bd551df43704e24d252f56cc5f8e9718841aace50f19948f0f9 AS build
 
 WORKDIR /app
 
@@ -23,7 +23,7 @@ COPY backend/src ./backend/src
 RUN npm run build --workspace backend
 
 
-FROM node@sha256:3d0f05455dea2c82e2f76e7e2543964c30f6b7d673fc1a83286736d44fe4c41c AS runtime
+FROM node@sha256:48e4b67d85f87bd551df43704e24d252f56cc5f8e9718841aace50f19948f0f9 AS runtime
 
 WORKDIR /app
 

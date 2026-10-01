@@ -20,6 +20,7 @@ Pygments==2.20.0
 pytest==9.1.1
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.1
+python-multipart==0.0.32
 pytz==2026.3.post1
 PyYAML==6.0.3
 six==1.17.0
@@ -31,5 +32,4 @@ uvicorn==0.35.0
 uvloop==0.22.1
 watchfiles==1.2.0
 websockets==16.1.1
-python-multipart==0.0.32
 httpx==0.28.1

@@ -154,7 +154,7 @@ describe("EventSynchronizer", () => {
         );
     });
 
-    it("serializes bigint event arguments", () => {
+    it("serializes bigint event arguments", async () => {
         const contract = createMockContract();
         const bridge = {
             relay: jest.fn().mockResolvedValue({
@@ -186,6 +186,8 @@ describe("EventSynchronizer", () => {
             3n,
             456n
         );
+
+        await new Promise(resolve => setImmediate(resolve));
 
         expect(relaySpy).toHaveBeenCalledTimes(1);
 

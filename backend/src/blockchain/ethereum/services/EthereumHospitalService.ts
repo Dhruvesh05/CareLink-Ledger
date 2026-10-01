@@ -105,4 +105,19 @@ export class EthereumHospitalService {
 
     }
 
+    async registerHospitalFromBridge(
+        messageId: string,
+        wallet: string,
+        hospitalNameHash: string,
+        registrationNumberHash: string,
+        locationHash: string
+    ): Promise<any> {
+        return await this.hospitalContract.registerHospitalFromBridge(
+            messageId,
+            wallet,
+            hospitalNameHash,
+            registrationNumberHash,
+            locationHash
+        );
+    }
 }

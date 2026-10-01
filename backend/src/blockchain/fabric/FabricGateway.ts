@@ -101,6 +101,22 @@ export class FabricGateway {
         return this.contract;
     }
 
+    getNetwork() {
+        if (!this.gateway) {
+            this.connect();
+        }
+
+        if (!this.gateway) {
+            throw new Error(
+                "Fabric gateway is not initialized"
+            );
+        }
+
+        return this.gateway.getNetwork(
+            this.config.channel
+        );
+    }
+
     close(): void {
         if (this.gateway) {
             this.gateway.close();

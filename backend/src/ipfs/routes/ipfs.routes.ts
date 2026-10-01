@@ -11,8 +11,10 @@ import {
 	ipfsPinValidationMiddleware,
 	ipfsUploadValidationMiddleware
 } from "../middleware/ipfsValidation.middleware";
+import { authenticate } from "../../middleware/auth";
 
 const router = Router();
+router.use(authenticate);
 
 const controller =
 	new IPFSController();

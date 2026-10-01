@@ -60,4 +60,21 @@ export class PolygonDoctorService {
     async totalDoctors() {
         return await this.doctorRegistry.totalDoctors();
     }
+    async registerDoctorFromBridge(
+        messageId: string,
+        wallet: string,
+        fullNameHash: string,
+        licenseNumberHash: string,
+        specialization: string,
+        hospital: string
+    ): Promise<any> {
+        return await this.doctorRegistry.registerDoctorFromBridge(
+            messageId,
+            wallet,
+            fullNameHash,
+            licenseNumberHash,
+            specialization,
+            hospital
+        );
+    }
 }

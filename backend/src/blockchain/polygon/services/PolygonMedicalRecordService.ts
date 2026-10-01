@@ -167,28 +167,48 @@ export class PolygonMedicalRecordService {
         );
     }
 
-    async getMedicalRecord(recordId: number) {
-        return await this.medicalRecordContract.getMedicalRecord(
-            recordId
-        );
+    async getMedicalRecord(
+        recordId: number,
+        caller?: string
+    ) {
+        return await this.medicalRecordContract
+            .getMedicalRecord(
+                recordId,
+                caller
+            );
     }
 
-    async getPatientRecords(patient: string) {
-        return await this.medicalRecordContract.getPatientRecords(
-            patient
-        );
+    async getPatientRecords(
+        patient: string,
+        caller?: string
+    ) {
+        return await this.medicalRecordContract
+            .getPatientRecords(
+                patient,
+                caller
+            );
     }
 
-    async getDoctorRecords(doctor: string) {
-        return await this.medicalRecordContract.getDoctorRecords(
-            doctor
-        );
+    async getDoctorRecords(
+        doctor: string,
+        caller?: string
+    ) {
+        return await this.medicalRecordContract
+            .getDoctorRecords(
+                doctor,
+                caller
+            );
     }
 
-    async getHospitalRecords(hospital: string) {
-        return await this.medicalRecordContract.getHospitalRecords(
-            hospital
-        );
+    async getHospitalRecords(
+        hospital: string,
+        caller?: string
+    ) {
+        return await this.medicalRecordContract
+            .getHospitalRecords(
+                hospital,
+                caller
+            );
     }
 
     async recordExists(recordId: number) {

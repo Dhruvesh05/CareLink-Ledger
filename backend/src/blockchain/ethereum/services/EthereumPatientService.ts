@@ -61,4 +61,21 @@ export class EthereumPatientService {
 
     }
 
+    async registerPatientFromBridge(
+        messageId: string,
+        wallet: string,
+        fullNameHash: string,
+        dobHash: string,
+        bloodGroup: string,
+        gender: string
+    ): Promise<any> {
+        return await this.patientRegistry.registerPatientFromBridge(
+            messageId,
+            wallet,
+            fullNameHash,
+            dobHash,
+            bloodGroup,
+            gender
+        );
+    }
 }

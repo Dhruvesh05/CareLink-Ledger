@@ -97,6 +97,34 @@ describe("MedicalRecordService IPFS transaction flow", () => {
         );
     });
 
+    describe("getMedicalRecord", () => {
+        it("forwards the caller to the blockchain provider", async () => {
+            const caller =
+                "0x1234567890123456789012345678901234567890";
+
+            mockGetMedicalRecord.mockResolvedValue({
+                recordId: 1
+            });
+
+            const result =
+                await service.getMedicalRecord(
+                    1,
+                    caller
+                );
+
+            expect(
+                mockGetMedicalRecord
+            ).toHaveBeenCalledWith(
+                1,
+                caller
+            );
+
+            expect(result).toEqual({
+                recordId: 1
+            });
+        });
+    });
+
     describe("createMedicalRecord", () => {
 
         it(

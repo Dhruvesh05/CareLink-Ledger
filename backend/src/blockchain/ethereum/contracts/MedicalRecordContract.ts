@@ -100,10 +100,13 @@ export class MedicalRecordContract {
         emergency: boolean
     ) {
 
+        const encodedMessageId = ethers.id(messageId);
+        const encodedSourceChain = ethers.encodeBytes32String(sourceChain);
+
         const tx =
             await ethereum.medicalRecord.createMedicalRecordFromBridge(
-                messageId,
-                sourceChain,
+                encodedMessageId,
+                encodedSourceChain,
                 sourceRecordId,
                 patient,
                 doctor,
