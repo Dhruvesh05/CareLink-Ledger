@@ -39,6 +39,10 @@ export const env = {
         process.env.JWT_SECRET
     ),
 
+    CARELINK_ISSUER_DID: getString(
+        process.env.CARELINK_ISSUER_DID
+    ),
+
     ETHEREUM_NETWORK: getString(
         process.env.ETHEREUM_NETWORK,
         "sepolia"
