@@ -18,4 +18,9 @@ router.get(
     controller.getDid.bind(controller)
 );
 
+router.post(
+    "/authorization-challenge",
+    controller.authorizationChallenge.bind(controller)
+);
+
 export default router;

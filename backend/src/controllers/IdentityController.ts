@@ -4,10 +4,14 @@ import {
     UserDidError,
     UserDidService
 } from "../services/UserDidService";
+import SsiAuthorizationChallengeService from "../services/SsiAuthorizationChallengeService";
 import { sendError, sendSuccess } from "../utils/response";
 
 export class IdentityController {
     private readonly userDidService = new UserDidService();
+
+    private readonly ssiAuthorizationChallengeService =
+        SsiAuthorizationChallengeService;
 
     async createOrLoadDid(req: Request, res: Response) {
         return this.respondWithDid(
@@ -25,6 +29,35 @@ export class IdentityController {
             () => this.userDidService.getDid(req.auth!.userId),
             "CareLink DID retrieved"
         );
+    }
+
+    async authorizationChallenge(req: Request, res: Response) {
+        if (!req.auth?.userId) {
+            return sendError(
+                res,
+                "Authentication required",
+                401
+            );
+        }
+
+        try {
+            const challenge =
+                await this.ssiAuthorizationChallengeService.createChallenge(
+                    req.auth.userId
+                );
+
+            return sendSuccess(
+                res,
+                "SSI authorization challenge created",
+                challenge
+            );
+        } catch {
+            return sendError(
+                res,
+                "Unable to create SSI authorization challenge",
+                500
+            );
+        }
     }
 
     private async respondWithDid(
