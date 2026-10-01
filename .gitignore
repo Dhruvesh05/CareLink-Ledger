@@ -163,3 +163,4 @@ temp/
 *.swp
 *.swo
 .nfs*
+benchmark-results/
