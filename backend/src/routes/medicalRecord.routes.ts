@@ -8,6 +8,9 @@ import {
 import upload, {
     requireFile
 } from "../middleware/upload.middleware";
+import {
+    requireCareLinkRole
+} from "../ssi/middleware/carelinkAuthorization";
 
 const router = Router();
 
@@ -25,8 +28,9 @@ CREATE
 
 router.post(
     "/prepare",
-    requireRole("Doctor"),
     upload.single("file"),
+    requireCareLinkRole("Doctor"),
+    requireRole("Doctor"),
     requireFile,
     controller.prepareMedicalRecord.bind(controller)
 );
