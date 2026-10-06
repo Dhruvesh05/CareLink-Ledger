@@ -37,6 +37,7 @@ router.post(
 
 router.post(
     "/confirm",
+    requireCareLinkRole("Doctor"),
     requireRole("Doctor"),
     controller.confirmMedicalRecord.bind(controller)
 );

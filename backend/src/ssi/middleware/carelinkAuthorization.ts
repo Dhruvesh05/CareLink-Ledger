@@ -28,9 +28,19 @@ export function requireCareLinkRole(...requiredRoles: UserRole[]) {
             return sendError(res, "SSI authorization failed", 403);
         }
 
-        const presentation =
+        const rawPresentation =
             req.body?.presentation ??
             req.body?.verifiablePresentation;
+
+        let presentation = rawPresentation;
+
+        if (typeof rawPresentation === "string") {
+            try {
+                presentation = JSON.parse(rawPresentation);
+            } catch {
+                presentation = rawPresentation;
+            }
+        }
 
         if (!presentation) {
             return sendError(res, "Verifiable presentation is required", 403);
