@@ -613,36 +613,7 @@ export class MedicalRecordController {
                     "recordId"
                 );
 
-            const presentation =
-                req.body?.presentation ??
-                req.body?.verifiablePresentation;
-
-            if (!presentation) {
-                return res.status(400).json({
-                    success: false,
-                    message:
-                        "Verifiable presentation is required"
-                });
-            }
-
-            const verification =
-                await this.presentationService
-                    .verifyPresentation(
-                        presentation
-                    );
-
-            if (!verification.verified) {
-                throw new Error(
-                    "Unauthorized"
-                );
-            }
-
-            const claims =
-                getVerifiedPresentationClaims(
-                    verification
-                );
-
-            if (!claims) {
+            if (!req.careLinkAuth) {
                 throw new Error(
                     "Unauthorized"
                 );
@@ -651,12 +622,12 @@ export class MedicalRecordController {
             const authorized =
                 await this.authorizationService
                     .authorize(
-                        claims.holder,
+                        req.careLinkAuth.did,
                         "read_patient_record",
                         true,
                         {
                             role:
-                                claims.role
+                                req.careLinkAuth.role
                         }
                     );
 

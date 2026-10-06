@@ -359,6 +359,7 @@ describe("medical record prepare SSI multipart integration", () => {
             fileSize: 21,
             category: "general",
             emergency: false,
+            encryption: {} as PreparedMedicalRecordTransaction["encryption"],
         });
         if (!presentationService) {
             throw new Error(

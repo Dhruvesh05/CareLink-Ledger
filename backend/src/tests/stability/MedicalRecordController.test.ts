@@ -175,26 +175,9 @@ describe("MedicalRecordController validation", () => {
             authorizationService
         } = createControllerDependencies();
         const order: string[] = [];
-        const presentation = { proof: { jwt: "vp-jwt" } };
         const content = Buffer.from("verified-content");
         const res = createResponseMock();
 
-        presentationService.verifyPresentation.mockImplementation(async () => {
-            order.push("verify");
-            return {
-                verified: true,
-                verifiablePresentation: {
-                    holder: "did:key:holder",
-                    verifiableCredential: [
-                        {
-                            credentialSubject: {
-                                role: "doctor"
-                            }
-                        }
-                    ]
-                }
-            };
-        });
         authorizationService.authorize.mockImplementation(async () => {
             order.push("authorize");
             return true;
@@ -214,13 +197,16 @@ describe("MedicalRecordController validation", () => {
         await controller.getMedicalRecordContent(
             {
                 params: { recordId: "42" },
-                body: { presentation }
+                careLinkAuth: {
+                    userId: "user-1",
+                    did: "did:key:holder",
+                    role: "Doctor"
+                }
             } as any,
             res as any
         );
 
         expect(order).toEqual([
-            "verify",
             "authorize",
             "retrieve"
         ]);
@@ -228,33 +214,23 @@ describe("MedicalRecordController validation", () => {
             "did:key:holder",
             "read_patient_record",
             true,
-            { role: "doctor" }
+            { role: "Doctor" }
         );
         expect(medicalRecordService.getMedicalRecordContent).toHaveBeenCalledWith(42);
         expect(res.send).toHaveBeenCalledWith(content);
     });
 
-    it("rejects invalid VP verification without authorization or retrieval", async () => {
+    it("rejects content retrieval when SSI middleware has not authorized the request", async () => {
         const {
             controller,
             medicalRecordService,
-            presentationService,
             authorizationService
         } = createControllerDependencies();
         const res = createResponseMock();
 
-        presentationService.verifyPresentation.mockResolvedValue({
-            verified: false,
-            error: {
-                message: "JWT signature invalid",
-                errorCode: "invalid_signature"
-            }
-        });
-
         await controller.getMedicalRecordContent(
             {
-                params: { recordId: "42" },
-                body: { presentation: { proof: { jwt: "bad" } } }
+                params: { recordId: "42" }
             } as any,
             res as any
         );
@@ -291,7 +267,11 @@ describe("MedicalRecordController validation", () => {
         await controller.getMedicalRecordContent(
             {
                 params: { recordId: "42" },
-                body: { presentation: { proof: { jwt: "vp-jwt" } } }
+                careLinkAuth: {
+                    userId: "user-1",
+                    did: "did:key:holder",
+                    role: "Patient"
+                }
             } as any,
             res as any
         );
@@ -330,7 +310,11 @@ describe("MedicalRecordController validation", () => {
         await controller.getMedicalRecordContent(
             {
                 params: { recordId: "42" },
-                body: { presentation: { proof: { jwt: "vp-jwt" } } }
+                careLinkAuth: {
+                    userId: "user-1",
+                    did: "did:key:holder",
+                    role: "Doctor"
+                }
             } as any,
             res as any
         );

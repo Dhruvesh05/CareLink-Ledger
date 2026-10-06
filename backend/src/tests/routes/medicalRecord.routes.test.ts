@@ -218,6 +218,31 @@ describe("medical record route SSI integration", () => {
         expect(confirmRoute.stack[2].handle.name).toBe(`bound ${mockConfirmMedicalRecord.name}`);
     });
 
+    it("protects content retrieval with SSI authorization before the controller", async () => {
+        const { default: router } = await import("../../routes/medicalRecord.routes");
+        const contentRoute = getRoute(router, "/:recordId/content", "get");
+
+        expect(contentRoute.stack).toHaveLength(2);
+        expect(contentRoute.stack[0].handle.name).toBe(
+            "requireCareLinkRole:Doctor"
+        );
+        expect(contentRoute.stack[1].handle.name).toBe(
+            `bound ${mockGetMedicalRecordContent.name}`
+        );
+
+        ssiAuthorizationAllowed = false;
+        const response = createResponse();
+
+        await invokeConfirmRoute(
+            contentRoute,
+            { params: { recordId: "42" } },
+            response
+        );
+
+        expect(response.status).toHaveBeenCalledWith(403);
+        expect(mockGetMedicalRecordContent).not.toHaveBeenCalled();
+    });
+
     it("allows a valid SSI-authorized Doctor request to reach confirmation business logic", async () => {
         const { default: router } = await import("../../routes/medicalRecord.routes");
         const confirmRoute = getRoute(router, "/confirm", "post");

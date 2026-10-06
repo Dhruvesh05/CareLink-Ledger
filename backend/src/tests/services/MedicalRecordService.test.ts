@@ -38,6 +38,8 @@ jest.mock(
 
 import { MedicalRecordService } from "../../services/MedicalRecordService";
 import { sha256FromBuffer } from "../../utils/hash";
+import { KeyManagementService } from "../../services/encryption/KeyManagementService";
+import { MedicalRecordEncryptionService } from "../../services/encryption/MedicalRecordEncryptionService";
 
 describe("MedicalRecordService IPFS transaction flow", () => {
 
@@ -64,6 +66,8 @@ describe("MedicalRecordService IPFS transaction flow", () => {
     };
 
     let service: MedicalRecordService;
+    let keyManagementService: KeyManagementService;
+    const encryptionService = new MedicalRecordEncryptionService();
 
     beforeEach(() => {
 
@@ -91,9 +95,14 @@ describe("MedicalRecordService IPFS transaction flow", () => {
             getMedicalRecord: mockGetMedicalRecord
         };
 
+        keyManagementService =
+            new KeyManagementService();
+
         service = new MedicalRecordService(
             mockIpfsService as any,
-            mockBlockchainProvider as any
+            mockBlockchainProvider as any,
+            keyManagementService,
+            encryptionService
         );
     });
 
@@ -164,10 +173,13 @@ describe("MedicalRecordService IPFS transaction flow", () => {
                 expect(
                     mockIpfsService.uploadFile
                 ).toHaveBeenCalledWith(
-                    file.buffer,
+                    expect.any(Buffer),
                     "report.pdf",
                     "application/pdf"
                 );
+                expect(
+                    mockIpfsService.uploadFile.mock.calls[0][0]
+                ).not.toEqual(file.buffer);
 
                 expect(
                     mockCreateMedicalRecord
@@ -191,7 +203,12 @@ describe("MedicalRecordService IPFS transaction flow", () => {
                         cid: "bafy-test-cid",
                         category: "diagnostic",
                         emergency: false,
-                        transactionHash: "0xtxhash"
+                        transactionHash: "0xtxhash",
+                        encryptionVersion: 1,
+                        encryptionAlgorithm: "aes-256-gcm",
+                        encryptionIv: expect.any(String),
+                        encryptionAuthTag: expect.any(String),
+                        encryptionKeyReference: expect.any(String)
                     })
                 );
 
@@ -313,22 +330,40 @@ describe("MedicalRecordService IPFS transaction flow", () => {
                     Buffer.from(
                         "medical-record-content"
                     );
+                const managedKey =
+                    await keyManagementService.createKey();
+                const encrypted =
+                    encryptionService.encrypt(
+                        content,
+                        managedKey.key,
+                        managedKey.reference
+                    );
 
                 mockGetMedicalRecord.mockResolvedValue({
                     ipfsHash: "bafy-record-cid",
-                    fileHash: sha256FromBuffer(content),
+                    fileHash: sha256FromBuffer(encrypted.ciphertext),
                     category: "diagnostic"
                 });
 
                 mockIpfsService.downloadFile
                     .mockResolvedValue(
-                        content
+                        encrypted.ciphertext
                     );
 
                 mockMongoFindOne.mockResolvedValue({
                     fileName: "report.pdf",
                     mimeType: "application/pdf",
-                    fileSize: content.length
+                    fileSize: content.length,
+                    encryptionVersion:
+                        encrypted.metadata.version,
+                    encryptionAlgorithm:
+                        encrypted.metadata.algorithm,
+                    encryptionIv:
+                        encrypted.metadata.iv,
+                    encryptionAuthTag:
+                        encrypted.metadata.authTag,
+                    encryptionKeyReference:
+                        encrypted.metadata.keyReference
                 });
 
                 const result =
@@ -347,10 +382,10 @@ describe("MedicalRecordService IPFS transaction flow", () => {
                 expect(result).toEqual({
                     content,
                     cid: "bafy-record-cid",
-                    fileHash: sha256FromBuffer(content),
+                    fileHash: sha256FromBuffer(encrypted.ciphertext),
                     record: {
                         ipfsHash: "bafy-record-cid",
-                        fileHash: sha256FromBuffer(content),
+                        fileHash: sha256FromBuffer(encrypted.ciphertext),
                         category: "diagnostic"
                     },
                     fileName: "report.pdf",
@@ -460,6 +495,93 @@ describe("MedicalRecordService IPFS transaction flow", () => {
                 ).rejects.toThrow(
                     "Medical record content integrity verification failed"
                 );
+            }
+        );
+
+        it(
+            "rejects tampered ciphertext after integrity verification",
+            async () => {
+                const managedKey =
+                    await keyManagementService.createKey();
+                const encrypted =
+                    encryptionService.encrypt(
+                        Buffer.from("original-content"),
+                        managedKey.key,
+                        managedKey.reference
+                    );
+                const tampered =
+                    Buffer.from(encrypted.ciphertext);
+                tampered[0] ^= 1;
+
+                mockGetMedicalRecord.mockResolvedValue({
+                    ipfsHash: "bafy-record-cid",
+                    fileHash: sha256FromBuffer(tampered),
+                    encryptionVersion:
+                        encrypted.metadata.version,
+                    encryptionAlgorithm:
+                        encrypted.metadata.algorithm,
+                    encryptionIv:
+                        encrypted.metadata.iv,
+                    encryptionAuthTag:
+                        encrypted.metadata.authTag,
+                    encryptionKeyReference:
+                        encrypted.metadata.keyReference
+                });
+                mockIpfsService.downloadFile.mockResolvedValue(tampered);
+
+                await expect(
+                    service.getMedicalRecordContent(42)
+                ).rejects.toThrow();
+            }
+        );
+
+        it(
+            "rejects content when its encryption key is unavailable",
+            async () => {
+                const otherKeyManagementService =
+                    new KeyManagementService();
+                const managedKey =
+                    await otherKeyManagementService.createKey();
+                const encrypted =
+                    encryptionService.encrypt(
+                        Buffer.from("protected-content"),
+                        managedKey.key,
+                        managedKey.reference
+                    );
+
+                mockGetMedicalRecord.mockResolvedValue({
+                    ipfsHash: "bafy-record-cid",
+                    fileHash: sha256FromBuffer(encrypted.ciphertext),
+                    encryptionVersion:
+                        encrypted.metadata.version,
+                    encryptionAlgorithm:
+                        encrypted.metadata.algorithm,
+                    encryptionIv:
+                        encrypted.metadata.iv,
+                    encryptionAuthTag:
+                        encrypted.metadata.authTag,
+                    encryptionKeyReference:
+                        encrypted.metadata.keyReference
+                });
+                mockMongoFindOne.mockResolvedValue({
+                    encryptionVersion:
+                        encrypted.metadata.version,
+                    encryptionAlgorithm:
+                        encrypted.metadata.algorithm,
+                    encryptionIv:
+                        encrypted.metadata.iv,
+                    encryptionAuthTag:
+                        encrypted.metadata.authTag,
+                    encryptionKeyReference:
+                        encrypted.metadata.keyReference
+                });
+                mockIpfsService.downloadFile.mockResolvedValue(
+                    encrypted.ciphertext
+                );
+
+                await expect(
+                    service.getMedicalRecordContent(42)
+                ).rejects.toThrow("Encryption key is unavailable");
             }
         );
 

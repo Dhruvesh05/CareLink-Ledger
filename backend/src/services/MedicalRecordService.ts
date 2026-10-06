@@ -11,6 +11,14 @@ import {
 
 import MedicalRecordModel
     from "../models/MedicalRecordModel";
+import {
+    KeyManagement,
+    keyManagementService as defaultKeyManagementService
+} from "./encryption/KeyManagementService";
+import {
+    MedicalRecordEncryptionMetadata,
+    MedicalRecordEncryptionService
+} from "./encryption/MedicalRecordEncryptionService";
 
 export class MedicalRecordService {
 
@@ -20,9 +28,21 @@ export class MedicalRecordService {
     private readonly ipfsService:
         IPFSService;
 
+    private readonly keyManagementService:
+        KeyManagement;
+
+    private readonly encryptionService:
+        MedicalRecordEncryptionService;
+
     constructor(
         ipfsService: IPFSService,
-        blockchainService: IBlockchainProvider
+        blockchainService: IBlockchainProvider,
+        keyManagementService:
+            KeyManagement =
+                defaultKeyManagementService,
+        encryptionService:
+            MedicalRecordEncryptionService =
+                new MedicalRecordEncryptionService()
     ) {
 
         this.blockchainService =
@@ -30,6 +50,44 @@ export class MedicalRecordService {
 
         this.ipfsService =
             ipfsService;
+
+        this.keyManagementService =
+            keyManagementService;
+
+        this.encryptionService =
+            encryptionService;
+    }
+
+    private getEncryptionMetadata(
+        metadata: any
+    ): MedicalRecordEncryptionMetadata {
+        if (!metadata) {
+            throw new Error(
+                "Medical record encryption metadata is unavailable"
+            );
+        }
+
+        const encryptionMetadata = {
+            version: metadata.encryptionVersion,
+            algorithm: metadata.encryptionAlgorithm,
+            iv: metadata.encryptionIv,
+            authTag: metadata.encryptionAuthTag,
+            keyReference: metadata.encryptionKeyReference
+        } as MedicalRecordEncryptionMetadata;
+
+        if (
+            encryptionMetadata.version === undefined ||
+            !encryptionMetadata.algorithm ||
+            !encryptionMetadata.iv ||
+            !encryptionMetadata.authTag ||
+            !encryptionMetadata.keyReference
+        ) {
+            throw new Error(
+                "Medical record encryption metadata is unavailable"
+            );
+        }
+
+        return encryptionMetadata;
     }
 
     /*
@@ -66,9 +124,19 @@ export class MedicalRecordService {
          * Calculate SHA-256 from the exact bytes
          * that will be uploaded to IPFS.
          */
+        const managedKey =
+            await this.keyManagementService.createKey();
+
+        const encrypted =
+            this.encryptionService.encrypt(
+                file.buffer,
+                managedKey.key,
+                managedKey.reference
+            );
+
         const fileHash =
             sha256FromBuffer(
-                file.buffer
+                encrypted.ciphertext
             );
 
         /*
@@ -78,7 +146,7 @@ export class MedicalRecordService {
          */
         const uploadResult =
             await this.ipfsService.uploadFile(
-                file.buffer,
+                encrypted.ciphertext,
                 fileName,
                 mimeType
             );
@@ -149,6 +217,21 @@ export class MedicalRecordService {
                     fileHash,
 
                     cid,
+
+                    encryptionVersion:
+                        encrypted.metadata.version,
+
+                    encryptionAlgorithm:
+                        encrypted.metadata.algorithm,
+
+                    encryptionIv:
+                        encrypted.metadata.iv,
+
+                    encryptionAuthTag:
+                        encrypted.metadata.authTag,
+
+                    encryptionKeyReference:
+                        encrypted.metadata.keyReference,
 
                     category,
 
@@ -241,6 +324,11 @@ export class MedicalRecordService {
         caller?: string
     ) {
 
+        if (caller === undefined) {
+            return this.blockchainService
+                .getMedicalRecord(recordId);
+        }
+
         return this.blockchainService
             .getMedicalRecord(
                 recordId,
@@ -298,8 +386,24 @@ export class MedicalRecordService {
             );
         }
 
+        const encryptionMetadata =
+            this.getEncryptionMetadata(metadata);
+
+        const key =
+            await this.keyManagementService
+                .getKey(
+                    encryptionMetadata.keyReference
+                );
+
+        const decryptedContent =
+            this.encryptionService.decrypt(
+                content,
+                key,
+                encryptionMetadata
+            );
+
         return {
-            content,
+            content: decryptedContent,
             cid,
             fileHash,
             record,
@@ -346,9 +450,19 @@ export class MedicalRecordService {
         const fileSize =
             file.buffer.length;
 
+        const managedKey =
+            await this.keyManagementService.createKey();
+
+        const encrypted =
+            this.encryptionService.encrypt(
+                file.buffer,
+                managedKey.key,
+                managedKey.reference
+            );
+
         const fileHash =
             sha256FromBuffer(
-                file.buffer
+                encrypted.ciphertext
             );
 
         /*
@@ -358,7 +472,7 @@ export class MedicalRecordService {
          */
         const uploadResult =
             await this.ipfsService.uploadFile(
-                file.buffer,
+                encrypted.ciphertext,
                 fileName,
                 mimeType
             );
@@ -421,6 +535,21 @@ export class MedicalRecordService {
                                 fileHash,
 
                                 cid,
+
+                                encryptionVersion:
+                                    encrypted.metadata.version,
+
+                                encryptionAlgorithm:
+                                    encrypted.metadata.algorithm,
+
+                                encryptionIv:
+                                    encrypted.metadata.iv,
+
+                                encryptionAuthTag:
+                                    encrypted.metadata.authTag,
+
+                                encryptionKeyReference:
+                                    encrypted.metadata.keyReference,
 
                                 category,
 
