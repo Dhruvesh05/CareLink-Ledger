@@ -72,6 +72,10 @@ export function validateCrossChainMessage(
         throw new Error("Unsupported cross-chain network");
     }
 
+    if (message.sourceChain === BlockchainType.BRIDGE) {
+        throw new Error("Bridge cannot be used as a source chain");
+    }
+
     if (
         typeof message.messageId !== "string" ||
         !message.messageId.trim()

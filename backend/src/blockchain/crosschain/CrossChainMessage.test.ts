@@ -145,4 +145,20 @@ describe("CrossChainMessage", () => {
             })
         ).toThrow("Unsupported cross-chain network");
     });
+
+    it("rejects the bridge as a source network", () => {
+        const message = createCrossChainMessage({
+            messageId: "msg-004",
+            sourceChain: BlockchainType.BRIDGE,
+            destinationChain: BlockchainType.POLYGON,
+            messageType: "MEDICAL_RECORD_CREATED",
+            timestamp: "2026-09-10T12:00:00.000Z",
+            nonce: "4",
+            payload,
+        });
+
+        expect(() =>
+            validateCrossChainMessage(message)
+        ).toThrow("Bridge cannot be used as a source chain");
+    });
 });
