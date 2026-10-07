@@ -84,7 +84,7 @@ router.get(
 
 router.get(
     "/:recordId/content",
-    requireCareLinkRole("Doctor", "Patient", "Admin"),
+    requireCareLinkRole("Doctor", "Patient", "Hospital", "Admin"),
     controller.getMedicalRecordContent.bind(controller)
 );
 

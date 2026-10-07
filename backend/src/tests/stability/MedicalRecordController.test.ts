@@ -46,7 +46,13 @@ type MedicalRecordContent = {
 
 type MockMedicalRecordService = {
     getMedicalRecordContent: jest.Mock<
-        (recordId: number) => Promise<MedicalRecordContent>
+        (
+            recordId: number,
+            accessContext: {
+                walletAddress: string;
+                role: "Admin" | "Patient" | "Doctor" | "Hospital";
+            }
+        ) => Promise<MedicalRecordContent>
     >;
 };
 
@@ -197,6 +203,12 @@ describe("MedicalRecordController validation", () => {
         await controller.getMedicalRecordContent(
             {
                 params: { recordId: "42" },
+                auth: {
+                    userId: "user-1",
+                    walletAddress:
+                        "0x1234567890123456789012345678901234567890",
+                    role: "Doctor"
+                },
                 careLinkAuth: {
                     userId: "user-1",
                     did: "did:key:holder",
@@ -216,7 +228,14 @@ describe("MedicalRecordController validation", () => {
             true,
             { role: "Doctor" }
         );
-        expect(medicalRecordService.getMedicalRecordContent).toHaveBeenCalledWith(42);
+        expect(medicalRecordService.getMedicalRecordContent).toHaveBeenCalledWith(
+            42,
+            {
+                walletAddress:
+                    "0x1234567890123456789012345678901234567890",
+                role: "Doctor"
+            }
+        );
         expect(res.send).toHaveBeenCalledWith(content);
     });
 
@@ -267,6 +286,12 @@ describe("MedicalRecordController validation", () => {
         await controller.getMedicalRecordContent(
             {
                 params: { recordId: "42" },
+                auth: {
+                    userId: "user-1",
+                    walletAddress:
+                        "0x1234567890123456789012345678901234567890",
+                    role: "Patient"
+                },
                 careLinkAuth: {
                     userId: "user-1",
                     did: "did:key:holder",
@@ -310,6 +335,12 @@ describe("MedicalRecordController validation", () => {
         await controller.getMedicalRecordContent(
             {
                 params: { recordId: "42" },
+                auth: {
+                    userId: "user-1",
+                    walletAddress:
+                        "0x1234567890123456789012345678901234567890",
+                    role: "Doctor"
+                },
                 careLinkAuth: {
                     userId: "user-1",
                     did: "did:key:holder",

@@ -20,6 +20,11 @@ import {
     MedicalRecordEncryptionService
 } from "./encryption/MedicalRecordEncryptionService";
 
+export type MedicalRecordAccessContext = {
+    walletAddress: string;
+    role: "Admin" | "Patient" | "Doctor" | "Hospital";
+};
+
 export class MedicalRecordService {
 
     private readonly blockchainService:
@@ -337,13 +342,22 @@ export class MedicalRecordService {
     }
 
     async getMedicalRecordContent(
-        recordId: number
+        recordId: number,
+        accessContext?: MedicalRecordAccessContext
     ) {
 
         const record =
             await this.getMedicalRecord(
                 recordId
             );
+
+        if (accessContext) {
+            await this.assertRecordAccess(
+                recordId,
+                record,
+                accessContext
+            );
+        }
 
         const cid =
             String(
@@ -418,6 +432,64 @@ export class MedicalRecordService {
                   }
                 : {})
         };
+    }
+
+    private async assertRecordAccess(
+        recordId: number,
+        record: any,
+        accessContext: MedicalRecordAccessContext
+    ): Promise<void> {
+        const active =
+            record?.active ??
+            record?.[10];
+
+        if (active !== true) {
+            throw new Error("InactiveRecord");
+        }
+
+        const wallet =
+            accessContext.walletAddress.trim().toLowerCase();
+        const patient =
+            this.getRecordAddress(record, "patient", 1);
+        const doctor =
+            this.getRecordAddress(record, "doctor", 2);
+        const hospital =
+            this.getRecordAddress(record, "hospital", 3);
+
+        if (
+            accessContext.role === "Admin" ||
+            (accessContext.role === "Patient" && wallet === patient) ||
+            (accessContext.role === "Doctor" && wallet === doctor) ||
+            (accessContext.role === "Hospital" && wallet === hospital)
+        ) {
+            return;
+        }
+
+        if (accessContext.role === "Doctor") {
+            const granted =
+                await this.blockchainService.isAuthorizedDoctor(
+                    recordId,
+                    accessContext.walletAddress
+                );
+
+            if (granted === true) {
+                return;
+            }
+        }
+
+        throw new Error("Unauthorized");
+    }
+
+    private getRecordAddress(
+        record: any,
+        name: string,
+        index: number
+    ): string {
+        return String(
+            record?.[name] ??
+            record?.[index] ??
+            ""
+        ).trim().toLowerCase();
     }
 
     /*

@@ -613,17 +613,22 @@ export class MedicalRecordController {
                     "recordId"
                 );
 
-            if (!req.careLinkAuth) {
+            if (!req.auth?.walletAddress || !req.careLinkAuth) {
                 throw new Error(
                     "Unauthorized"
                 );
             }
 
+            const action =
+                req.careLinkAuth.role === "Patient"
+                    ? "read_own_record"
+                    : "read_patient_record";
+
             const authorized =
                 await this.authorizationService
                     .authorize(
                         req.careLinkAuth.did,
-                        "read_patient_record",
+                        action,
                         true,
                         {
                             role:
@@ -640,7 +645,13 @@ export class MedicalRecordController {
             const result =
                 await this.getMedicalRecordService()
                     .getMedicalRecordContent(
-                        recordId
+                        recordId,
+                        {
+                            walletAddress:
+                                req.auth.walletAddress,
+                            role:
+                                req.careLinkAuth.role
+                        }
                     );
 
             if (result.mimeType) {

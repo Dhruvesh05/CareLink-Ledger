@@ -13,6 +13,9 @@ const ROLE_ACTIONS: Record<string, readonly string[]> = {
     patient: [
         "read_own_record",
     ],
+    hospital: [
+        "read_patient_record",
+    ],
     admin: [
         "read_patient_record",
         "create_clinical_record",

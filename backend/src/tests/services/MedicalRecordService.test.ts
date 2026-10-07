@@ -12,6 +12,7 @@ const mockCreateMedicalRecord = jest.fn() as AnyMock;
 const mockUpdateMedicalRecord = jest.fn() as AnyMock;
 const mockDeactivateMedicalRecord = jest.fn() as AnyMock;
 const mockGetMedicalRecord = jest.fn() as AnyMock;
+const mockIsAuthorizedDoctor = jest.fn() as AnyMock;
 
 const mockMongoCreate = jest.fn() as AnyMock;
 const mockMongoFindOne = jest.fn() as AnyMock;
@@ -63,6 +64,7 @@ describe("MedicalRecordService IPFS transaction flow", () => {
         updateMedicalRecord: AnyMock;
         deactivateMedicalRecord: AnyMock;
         getMedicalRecord: AnyMock;
+        isAuthorizedDoctor: AnyMock;
     };
 
     let service: MedicalRecordService;
@@ -77,6 +79,7 @@ describe("MedicalRecordService IPFS transaction flow", () => {
         mockUpdateMedicalRecord.mockReset();
         mockDeactivateMedicalRecord.mockReset();
         mockGetMedicalRecord.mockReset();
+        mockIsAuthorizedDoctor.mockReset();
 
         mockMongoCreate.mockReset();
         mockMongoFindOne.mockReset();
@@ -92,7 +95,8 @@ describe("MedicalRecordService IPFS transaction flow", () => {
             createMedicalRecord: mockCreateMedicalRecord,
             updateMedicalRecord: mockUpdateMedicalRecord,
             deactivateMedicalRecord: mockDeactivateMedicalRecord,
-            getMedicalRecord: mockGetMedicalRecord
+            getMedicalRecord: mockGetMedicalRecord,
+            isAuthorizedDoctor: mockIsAuthorizedDoctor
         };
 
         keyManagementService =
@@ -105,6 +109,34 @@ describe("MedicalRecordService IPFS transaction flow", () => {
             encryptionService
         );
     });
+
+    async function configureReadableRecord(
+        record: Record<string, unknown>
+    ) {
+        const content = Buffer.from("authorized-content");
+        const managedKey = await keyManagementService.createKey();
+        const encrypted = encryptionService.encrypt(
+            content,
+            managedKey.key,
+            managedKey.reference
+        );
+
+        mockGetMedicalRecord.mockResolvedValue({
+            ...record,
+            ipfsHash: "bafy-record-cid",
+            fileHash: sha256FromBuffer(encrypted.ciphertext)
+        });
+        mockMongoFindOne.mockResolvedValue({
+            encryptionVersion: encrypted.metadata.version,
+            encryptionAlgorithm: encrypted.metadata.algorithm,
+            encryptionIv: encrypted.metadata.iv,
+            encryptionAuthTag: encrypted.metadata.authTag,
+            encryptionKeyReference: encrypted.metadata.keyReference
+        });
+        mockIpfsService.downloadFile.mockResolvedValue(encrypted.ciphertext);
+
+        return content;
+    }
 
     describe("getMedicalRecord", () => {
         it("forwards the caller to the blockchain provider", async () => {
@@ -584,6 +616,95 @@ describe("MedicalRecordService IPFS transaction flow", () => {
                 ).rejects.toThrow("Encryption key is unavailable");
             }
         );
+
+        it("allows an authorized patient to retrieve their own record", async () => {
+            const wallet =
+                "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+            const content = await configureReadableRecord({
+                patient: wallet,
+                active: true
+            });
+
+            const result = await service.getMedicalRecordContent(42, {
+                walletAddress: wallet,
+                role: "Patient"
+            });
+
+            expect(result.content).toEqual(content);
+            expect(mockIpfsService.downloadFile).toHaveBeenCalled();
+        });
+
+        it("allows the treating doctor to retrieve the record", async () => {
+            const wallet =
+                "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+            await configureReadableRecord({
+                doctor: wallet,
+                active: true
+            });
+
+            await service.getMedicalRecordContent(42, {
+                walletAddress: wallet,
+                role: "Doctor"
+            });
+
+            expect(mockIpfsService.downloadFile).toHaveBeenCalled();
+            expect(mockIsAuthorizedDoctor).not.toHaveBeenCalled();
+        });
+
+        it("allows a doctor with an existing grant to retrieve the record", async () => {
+            const wallet =
+                "0xcccccccccccccccccccccccccccccccccccccc";
+            await configureReadableRecord({
+                doctor: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                active: true
+            });
+            mockIsAuthorizedDoctor.mockResolvedValue(true);
+
+            await service.getMedicalRecordContent(42, {
+                walletAddress: wallet,
+                role: "Doctor"
+            });
+
+            expect(mockIsAuthorizedDoctor).toHaveBeenCalledWith(42, wallet);
+            expect(mockIpfsService.downloadFile).toHaveBeenCalled();
+        });
+
+        it("allows the associated hospital to retrieve the record", async () => {
+            const wallet =
+                "0xdddddddddddddddddddddddddddddddddddddd";
+            await configureReadableRecord({
+                hospital: wallet,
+                active: true
+            });
+
+            await service.getMedicalRecordContent(42, {
+                walletAddress: wallet,
+                role: "Hospital"
+            });
+
+            expect(mockIpfsService.downloadFile).toHaveBeenCalled();
+        });
+
+        it("rejects inactive records before IPFS and key retrieval", async () => {
+            const wallet =
+                "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+            mockGetMedicalRecord.mockResolvedValue({
+                patient: wallet,
+                active: false
+            });
+            const getKey = jest.spyOn(keyManagementService, "getKey");
+
+            await expect(
+                service.getMedicalRecordContent(42, {
+                    walletAddress: wallet,
+                    role: "Patient"
+                })
+            ).rejects.toThrow("InactiveRecord");
+
+            expect(mockIpfsService.downloadFile).not.toHaveBeenCalled();
+            expect(getKey).not.toHaveBeenCalled();
+            getKey.mockRestore();
+        });
 
         it(
             "rejects content when the stored file hash is missing or invalid",
