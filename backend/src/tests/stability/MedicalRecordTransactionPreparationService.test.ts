@@ -11,6 +11,7 @@ import { MedicalRecordTransactionPreparationService } from "../../services/block
 import PreparedMedicalRecordModel
     from "../../models/PreparedMedicalRecordModel";
 import { IBlockchainProvider } from "../../blockchain/provider/IBlockchainProvider";
+import { sha256FromBuffer } from "../../utils/hash";
 
 describe("MedicalRecordTransactionPreparationService", () => {
 
@@ -149,7 +150,22 @@ describe("MedicalRecordTransactionPreparationService", () => {
             .toBe(expectedCid);
 
         expect(preparationDocument.fileHash)
-            .toBe(result.fileHash);
+            .toBe(sha256FromBuffer(uploadedBuffer));
+
+        expect(preparationDocument.encryptionVersion)
+            .toBe(1);
+
+        expect(preparationDocument.encryptionAlgorithm)
+            .toBe("aes-256-gcm");
+
+        expect(preparationDocument.encryptionIv)
+            .toBeTruthy();
+
+        expect(preparationDocument.encryptionAuthTag)
+            .toBeTruthy();
+
+        expect(preparationDocument.encryptionKeyReference)
+            .toBeTruthy();
 
         expect(preparationDocument.fileName)
             .toBe("record.pdf");
@@ -216,10 +232,16 @@ describe("MedicalRecordTransactionPreparationService", () => {
         expect(
             ipfsService.uploadFile
         ).toHaveBeenCalledWith(
-            fileBuffer,
+            expect.any(Buffer),
             "record.pdf",
             "application/pdf"
         );
+
+        const uploadedBuffer =
+            ipfsService.uploadFile.mock.calls[0][0] as Buffer;
+
+        expect(uploadedBuffer).not.toEqual(fileBuffer);
+        expect(uploadedBuffer.length).toBe(fileBuffer.length);
 
         /*
          * Verify the transaction builder receives:
@@ -270,6 +292,14 @@ describe("MedicalRecordTransactionPreparationService", () => {
 
         expect(result.fileHash)
             .toBe(builderCall[2]);
+
+        expect(result.encryption).toEqual(
+            expect.objectContaining({
+                version: 1,
+                algorithm: "aes-256-gcm",
+                keyReference: preparationDocument.encryptionKeyReference
+            })
+        );
 
         expect(result.fileName)
             .toBe("record.pdf");

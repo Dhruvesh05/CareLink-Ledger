@@ -8,6 +8,7 @@ import auditRoutes from "./audit.routes";
 import authRoutes from "./auth.routes";
 import healthRoutes from "./health.routes";
 import ipfsRoutes from "../ipfs/routes/ipfs.routes";
+import identityRoutes from "./identity.routes";
 
 const router = Router();
 
@@ -19,5 +20,6 @@ router.use("/audit", auditRoutes);
 router.use("/auth", authRoutes);
 router.use("/health", healthRoutes);
 router.use("/ipfs", ipfsRoutes);
+router.use("/identity", identityRoutes);
 
 export default router;

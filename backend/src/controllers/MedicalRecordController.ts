@@ -23,6 +23,12 @@ import IPFSServiceAdapter
 import { BlockchainFactory } from "../blockchain/provider/BlockchainFactory";
 import { IBlockchainProvider } from "../blockchain/provider/IBlockchainProvider";
 
+import AuthorizationService
+    from "../ssi/services/AuthorizationService";
+
+import PresentationService
+    from "../ssi/services/PresentationService";
+
 import {
     serializeBigInt
 } from "../utils/bigint";
@@ -241,6 +247,63 @@ function sendError(
     });
 }
 
+function getVerifiedPresentationClaims(
+    result: any
+): {
+    holder: string;
+    role: string;
+} | null {
+
+    const presentation =
+        result?.verifiablePresentation;
+
+    const holder =
+        presentation?.holder;
+
+    if (
+        typeof holder !==
+        "string" ||
+        !holder.trim()
+    ) {
+        return null;
+    }
+
+    const credentials =
+        Array.isArray(
+            presentation?.verifiableCredential
+        )
+            ? presentation.verifiableCredential
+            : [];
+
+    const credentialWithRole =
+        credentials.find(
+            (credential: any) =>
+                typeof credential === "object" &&
+                credential !== null &&
+                typeof credential.credentialSubject?.role ===
+                    "string" &&
+                credential.credentialSubject.role.trim()
+        );
+
+    const role =
+        credentialWithRole?.credentialSubject?.role;
+
+    if (
+        typeof role !==
+        "string" ||
+        !role.trim()
+    ) {
+        return null;
+    }
+
+    return {
+        holder:
+            holder.trim(),
+        role:
+            role.trim()
+    };
+}
+
 export class MedicalRecordController {
 
     private medicalRecordService?: MedicalRecordService;
@@ -253,13 +316,25 @@ export class MedicalRecordController {
     private readonly transactionConfirmationService:
         MedicalRecordTransactionConfirmationService;
 
+    private readonly authorizationService:
+        typeof AuthorizationService;
+
+    private readonly presentationService:
+        typeof PresentationService;
+
     constructor(
         medicalRecordService?: MedicalRecordService,
         blockchainService?: IBlockchainProvider,
         transactionPreparationService?:
             MedicalRecordTransactionPreparationService,
         transactionConfirmationService?:
-            MedicalRecordTransactionConfirmationService
+            MedicalRecordTransactionConfirmationService,
+        presentationService:
+            typeof PresentationService =
+                PresentationService,
+        authorizationService:
+            typeof AuthorizationService =
+                AuthorizationService
     ) {
         this.medicalRecordService = medicalRecordService;
         this.blockchainService = blockchainService;
@@ -275,6 +350,12 @@ export class MedicalRecordController {
         this.transactionConfirmationService =
             transactionConfirmationService ??
             new MedicalRecordTransactionConfirmationService();
+
+        this.presentationService =
+            presentationService;
+
+        this.authorizationService =
+            authorizationService;
     }
 
     private getMedicalRecordService(): MedicalRecordService {
@@ -516,6 +597,87 @@ export class MedicalRecordController {
         } catch (error) {
 
             return sendError(res, error);
+        }
+    }
+
+    async getMedicalRecordContent(
+        req: Request,
+        res: Response
+    ) {
+
+        try {
+
+            const recordId =
+                parsePositiveInteger(
+                    req.params.recordId,
+                    "recordId"
+                );
+
+            if (!req.auth?.walletAddress || !req.careLinkAuth) {
+                throw new Error(
+                    "Unauthorized"
+                );
+            }
+
+            const action =
+                req.careLinkAuth.role === "Patient"
+                    ? "read_own_record"
+                    : "read_patient_record";
+
+            const authorized =
+                await this.authorizationService
+                    .authorize(
+                        req.careLinkAuth.did,
+                        action,
+                        true,
+                        {
+                            role:
+                                req.careLinkAuth.role
+                        }
+                    );
+
+            if (!authorized) {
+                throw new Error(
+                    "Unauthorized"
+                );
+            }
+
+            const result =
+                await this.getMedicalRecordService()
+                    .getMedicalRecordContent(
+                        recordId,
+                        {
+                            walletAddress:
+                                req.auth.walletAddress,
+                            role:
+                                req.careLinkAuth.role
+                        }
+                    );
+
+            if (result.mimeType) {
+                res.setHeader(
+                    "Content-Type",
+                    result.mimeType
+                );
+            }
+
+            if (result.fileName) {
+                res.setHeader(
+                    "Content-Disposition",
+                    `attachment; filename="${result.fileName}"`
+                );
+            }
+
+            return res.status(200).send(
+                result.content
+            );
+
+        } catch (error) {
+
+            return sendError(
+                res,
+                error
+            );
         }
     }
 

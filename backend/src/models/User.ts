@@ -12,6 +12,7 @@ export type UserRole =
 export interface IUser extends Document {
     walletAddress: string;
     role: UserRole;
+    did?: string;
     passwordHash?: string;
     active: boolean;
     createdAt: Date;
@@ -38,6 +39,15 @@ const UserSchema = new Schema<IUser>(
                 "Hospital"
             ],
             required: true
+        },
+
+        did: {
+            type: String,
+            required: false,
+            unique: true,
+            sparse: true,
+            index: true,
+            trim: true
         },
 
         passwordHash: {

@@ -17,8 +17,12 @@ export interface IMedicalRecord
     fileSize: number;
 
     fileHash: string;
-
     cid: string;
+    encryptionVersion: number;
+    encryptionAlgorithm: string;
+    encryptionIv: string;
+    encryptionAuthTag: string;
+    encryptionKeyReference: string;
 
     category: string;
 
@@ -73,6 +77,32 @@ const MedicalRecordSchema =
             },
 
             cid: {
+                type: String,
+                required: true,
+                index: true
+            },
+
+            encryptionVersion: {
+                type: Number,
+                required: true
+            },
+
+            encryptionAlgorithm: {
+                type: String,
+                required: true
+            },
+
+            encryptionIv: {
+                type: String,
+                required: true
+            },
+
+            encryptionAuthTag: {
+                type: String,
+                required: true
+            },
+
+            encryptionKeyReference: {
                 type: String,
                 required: true,
                 index: true
