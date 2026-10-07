@@ -463,6 +463,23 @@ describe("BridgeService", () => {
         ).not.toHaveBeenCalled();
     });
 
+    it("rejects a tampered message before accepting it", async () => {
+        const auditService = createAuditService();
+        const provider = createProvider();
+        const bridge = createBridge(auditService, provider);
+        const message = createMessage("DoctorVerified", "msg-integrity");
+
+        await expect(
+            bridge.relay({
+                ...message,
+                payloadHash: "f".repeat(64),
+            })
+        ).rejects.toThrow("Cross-chain payload integrity check failed");
+
+        expect(auditService.recordAccepted).not.toHaveBeenCalled();
+        expect(provider.verifyDoctor).not.toHaveBeenCalled();
+    });
+
     it("marks relay as failed when destination provider throws", async () => {
 
         const auditService =

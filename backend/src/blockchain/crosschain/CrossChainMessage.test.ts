@@ -1,6 +1,7 @@
 import {
     createCrossChainMessage,
     createPayloadHash,
+    validateCrossChainMessage,
 } from "./CrossChainMessage";
 import { BlockchainType } from "../provider/BlockchainType";
 
@@ -105,5 +106,43 @@ describe("CrossChainMessage", () => {
                 payload,
             })
         ).toThrow("nonce is required");
+    });
+
+    it("rejects a message with an invalid payload hash", () => {
+        const message = createCrossChainMessage({
+            messageId: "msg-002",
+            sourceChain: BlockchainType.ETHEREUM,
+            destinationChain: BlockchainType.POLYGON,
+            messageType: "MEDICAL_RECORD_CREATED",
+            timestamp: "2026-09-10T12:00:00.000Z",
+            nonce: "2",
+            payload,
+        });
+
+        expect(() =>
+            validateCrossChainMessage({
+                ...message,
+                payloadHash: "f".repeat(64),
+            })
+        ).toThrow("Cross-chain payload integrity check failed");
+    });
+
+    it("rejects an unsupported source network", () => {
+        const message = createCrossChainMessage({
+            messageId: "msg-003",
+            sourceChain: BlockchainType.ETHEREUM,
+            destinationChain: BlockchainType.POLYGON,
+            messageType: "MEDICAL_RECORD_CREATED",
+            timestamp: "2026-09-10T12:00:00.000Z",
+            nonce: "3",
+            payload,
+        });
+
+        expect(() =>
+            validateCrossChainMessage({
+                ...message,
+                sourceChain: "unknown" as BlockchainType,
+            })
+        ).toThrow("Unsupported cross-chain network");
     });
 });
