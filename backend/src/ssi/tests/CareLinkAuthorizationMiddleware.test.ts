@@ -170,6 +170,27 @@ describe("requireCareLinkRole", () => {
         );
     });
 
+    it("rejects a presentation supplied only through query parameters", async () => {
+        const next = jest.fn();
+        const response = createResponseMock();
+
+        await requireCareLinkRole("Doctor")(
+            {
+                auth: authenticatedUser,
+                query: {
+                    presentation: { holder: "did:key:doctor" },
+                },
+                body: {},
+            } as any,
+            response,
+            next
+        );
+
+        expect(response.status).toHaveBeenCalledWith(403);
+        expect(mockVerifyPresentation).not.toHaveBeenCalled();
+        expect(next).not.toHaveBeenCalled();
+    });
+
     it("rejects missing authentication or a missing pending challenge", async () => {
         const response = createResponseMock();
         const next = jest.fn();

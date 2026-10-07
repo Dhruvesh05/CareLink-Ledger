@@ -88,6 +88,12 @@ router.get(
     controller.getMedicalRecordContent.bind(controller)
 );
 
+router.post(
+    "/:recordId/content",
+    requireCareLinkRole("Doctor", "Patient", "Hospital", "Admin"),
+    controller.getMedicalRecordContent.bind(controller)
+);
+
 router.get(
     "/patient/:wallet",
     controller.getPatientRecords.bind(controller)
