@@ -9,6 +9,7 @@ from typing import Any
 import pandas as pd
 from fhir.resources.condition import Condition
 from fhir.resources.reference import Reference
+from app.fhir.patient_id import normalize_patient_id
 
 
 class ConditionMapper:
@@ -50,7 +51,7 @@ class ConditionMapper:
         if not condition_text:
             return None
 
-        patient_reference = self._format_patient_id(patient_id)
+        patient_reference = normalize_patient_id(patient_id)
 
         condition_data: dict[str, Any] = {
             "subject": Reference(

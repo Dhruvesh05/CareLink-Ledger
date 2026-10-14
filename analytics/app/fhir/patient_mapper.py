@@ -9,6 +9,7 @@ from typing import Any
 
 import pandas as pd
 from fhir.resources.patient import Patient
+from app.fhir.patient_id import normalize_patient_id
 
 
 class PatientMapper:
@@ -31,11 +32,14 @@ class PatientMapper:
 
         patient_id = row.get("patient_id")
 
+
         if pd.isna(patient_id):
             raise ValueError("patient_id is required for FHIR Patient mapping.")
 
+        fhir_patient_id = normalize_patient_id(patient_id)
+
         patient_data: dict[str, Any] = {
-            "id": str(patient_id),
+            "id": fhir_patient_id,
         }
 
         gender = row.get("gender")
