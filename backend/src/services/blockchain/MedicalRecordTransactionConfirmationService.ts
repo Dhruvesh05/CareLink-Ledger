@@ -24,6 +24,11 @@ export interface ConfirmedMedicalRecord {
 
     cid: string;
     fileHash: string;
+    encryptionVersion: number;
+    encryptionAlgorithm: string;
+    encryptionIv: string;
+    encryptionAuthTag: string;
+    encryptionKeyReference: string;
 
     fileName: string;
     mimeType: string;
@@ -595,6 +600,21 @@ export class MedicalRecordTransactionConfirmationService {
                 cid:
                     preparation.cid,
 
+                encryptionVersion:
+                    preparation.encryptionVersion,
+
+                encryptionAlgorithm:
+                    preparation.encryptionAlgorithm,
+
+                encryptionIv:
+                    preparation.encryptionIv,
+
+                encryptionAuthTag:
+                    preparation.encryptionAuthTag,
+
+                encryptionKeyReference:
+                    preparation.encryptionKeyReference,
+
                 category:
                     preparation.category,
 
@@ -706,6 +726,21 @@ export class MedicalRecordTransactionConfirmationService {
 
             fileHash:
                 preparation.fileHash,
+
+            encryptionVersion:
+                preparation.encryptionVersion,
+
+            encryptionAlgorithm:
+                preparation.encryptionAlgorithm,
+
+            encryptionIv:
+                preparation.encryptionIv,
+
+            encryptionAuthTag:
+                preparation.encryptionAuthTag,
+
+            encryptionKeyReference:
+                preparation.encryptionKeyReference,
 
             fileName:
                 preparation.fileName,

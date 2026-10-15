@@ -1,5 +1,6 @@
 import {
-    CrossChainMessage
+    CrossChainMessage,
+    validateCrossChainMessage
 } from "../crosschain/CrossChainMessage";
 
 import {
@@ -556,6 +557,8 @@ export class BridgeService {
     async relay<T>(
         message: CrossChainMessage<T>
     ): Promise<RelayResult> {
+
+        validateCrossChainMessage(message);
 
         if (
             message.sourceChain ===

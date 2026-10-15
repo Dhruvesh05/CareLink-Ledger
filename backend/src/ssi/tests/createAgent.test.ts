@@ -165,6 +165,17 @@ jest.mock("@veramo/credential-jwt", () => ({
 }));
 
 // ---------------------------------------------------------------------------
+// TypeORM
+// ---------------------------------------------------------------------------
+// createAgent dynamically imports TypeORM, so keep this unit test isolated
+// from the persistent SQLite database used by the real agent.
+jest.mock("typeorm", () => ({
+    DataSource: class MockDataSource {
+        async initialize() {}
+    },
+}));
+
+// ---------------------------------------------------------------------------
 // Optional Veramo packages
 // ---------------------------------------------------------------------------
 

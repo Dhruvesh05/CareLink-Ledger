@@ -5,11 +5,25 @@ import {
 } from "./ipfs/IPFSService";
 
 import {
-    sha256FromBuffer
+    sha256FromBuffer,
+    verifySha256
 } from "../utils/hash";
 
 import MedicalRecordModel
     from "../models/MedicalRecordModel";
+import {
+    KeyManagement,
+    keyManagementService as defaultKeyManagementService
+} from "./encryption/KeyManagementService";
+import {
+    MedicalRecordEncryptionMetadata,
+    MedicalRecordEncryptionService
+} from "./encryption/MedicalRecordEncryptionService";
+
+export type MedicalRecordAccessContext = {
+    walletAddress: string;
+    role: "Admin" | "Patient" | "Doctor" | "Hospital";
+};
 
 export class MedicalRecordService {
 
@@ -19,9 +33,21 @@ export class MedicalRecordService {
     private readonly ipfsService:
         IPFSService;
 
+    private readonly keyManagementService:
+        KeyManagement;
+
+    private readonly encryptionService:
+        MedicalRecordEncryptionService;
+
     constructor(
         ipfsService: IPFSService,
-        blockchainService: IBlockchainProvider
+        blockchainService: IBlockchainProvider,
+        keyManagementService:
+            KeyManagement =
+                defaultKeyManagementService,
+        encryptionService:
+            MedicalRecordEncryptionService =
+                new MedicalRecordEncryptionService()
     ) {
 
         this.blockchainService =
@@ -29,6 +55,44 @@ export class MedicalRecordService {
 
         this.ipfsService =
             ipfsService;
+
+        this.keyManagementService =
+            keyManagementService;
+
+        this.encryptionService =
+            encryptionService;
+    }
+
+    private getEncryptionMetadata(
+        metadata: any
+    ): MedicalRecordEncryptionMetadata {
+        if (!metadata) {
+            throw new Error(
+                "Medical record encryption metadata is unavailable"
+            );
+        }
+
+        const encryptionMetadata = {
+            version: metadata.encryptionVersion,
+            algorithm: metadata.encryptionAlgorithm,
+            iv: metadata.encryptionIv,
+            authTag: metadata.encryptionAuthTag,
+            keyReference: metadata.encryptionKeyReference
+        } as MedicalRecordEncryptionMetadata;
+
+        if (
+            encryptionMetadata.version === undefined ||
+            !encryptionMetadata.algorithm ||
+            !encryptionMetadata.iv ||
+            !encryptionMetadata.authTag ||
+            !encryptionMetadata.keyReference
+        ) {
+            throw new Error(
+                "Medical record encryption metadata is unavailable"
+            );
+        }
+
+        return encryptionMetadata;
     }
 
     /*
@@ -65,9 +129,19 @@ export class MedicalRecordService {
          * Calculate SHA-256 from the exact bytes
          * that will be uploaded to IPFS.
          */
+        const managedKey =
+            await this.keyManagementService.createKey();
+
+        const encrypted =
+            this.encryptionService.encrypt(
+                file.buffer,
+                managedKey.key,
+                managedKey.reference
+            );
+
         const fileHash =
             sha256FromBuffer(
-                file.buffer
+                encrypted.ciphertext
             );
 
         /*
@@ -77,7 +151,7 @@ export class MedicalRecordService {
          */
         const uploadResult =
             await this.ipfsService.uploadFile(
-                file.buffer,
+                encrypted.ciphertext,
                 fileName,
                 mimeType
             );
@@ -148,6 +222,21 @@ export class MedicalRecordService {
                     fileHash,
 
                     cid,
+
+                    encryptionVersion:
+                        encrypted.metadata.version,
+
+                    encryptionAlgorithm:
+                        encrypted.metadata.algorithm,
+
+                    encryptionIv:
+                        encrypted.metadata.iv,
+
+                    encryptionAuthTag:
+                        encrypted.metadata.authTag,
+
+                    encryptionKeyReference:
+                        encrypted.metadata.keyReference,
 
                     category,
 
@@ -240,11 +329,167 @@ export class MedicalRecordService {
         caller?: string
     ) {
 
+        if (caller === undefined) {
+            return this.blockchainService
+                .getMedicalRecord(recordId);
+        }
+
         return this.blockchainService
             .getMedicalRecord(
                 recordId,
                 caller
             );
+    }
+
+    async getMedicalRecordContent(
+        recordId: number,
+        accessContext?: MedicalRecordAccessContext
+    ) {
+
+        const record =
+            await this.getMedicalRecord(
+                recordId
+            );
+
+        if (accessContext) {
+            await this.assertRecordAccess(
+                recordId,
+                record,
+                accessContext
+            );
+        }
+
+        const cid =
+            String(
+                record?.ipfsHash ??
+                record?.cid ??
+                ""
+            ).trim();
+
+        if (!cid) {
+            throw new Error(
+                "Medical record CID is missing"
+            );
+        }
+
+        const metadata =
+            await MedicalRecordModel.findOne({
+                recordId
+            });
+
+        const fileHash =
+            String(
+                record?.fileHash ??
+                metadata?.fileHash ??
+                ""
+            ).trim();
+
+        if (!/^[a-f0-9]{64}$/i.test(fileHash)) {
+            throw new Error(
+                "Medical record file hash is missing or invalid"
+            );
+        }
+
+        const content =
+            await this.ipfsService
+                .downloadFile(cid);
+
+        if (!verifySha256(content, fileHash)) {
+            throw new Error(
+                "Medical record content integrity verification failed"
+            );
+        }
+
+        const encryptionMetadata =
+            this.getEncryptionMetadata(metadata);
+
+        const key =
+            await this.keyManagementService
+                .getKey(
+                    encryptionMetadata.keyReference
+                );
+
+        const decryptedContent =
+            this.encryptionService.decrypt(
+                content,
+                key,
+                encryptionMetadata
+            );
+
+        return {
+            content: decryptedContent,
+            cid,
+            fileHash,
+            record,
+            ...(metadata
+                ? {
+                      fileName:
+                          metadata.fileName,
+                      mimeType:
+                          metadata.mimeType,
+                      fileSize:
+                          metadata.fileSize
+                  }
+                : {})
+        };
+    }
+
+    private async assertRecordAccess(
+        recordId: number,
+        record: any,
+        accessContext: MedicalRecordAccessContext
+    ): Promise<void> {
+        const active =
+            record?.active ??
+            record?.[10];
+
+        if (active !== true) {
+            throw new Error("InactiveRecord");
+        }
+
+        const wallet =
+            accessContext.walletAddress.trim().toLowerCase();
+        const patient =
+            this.getRecordAddress(record, "patient", 1);
+        const doctor =
+            this.getRecordAddress(record, "doctor", 2);
+        const hospital =
+            this.getRecordAddress(record, "hospital", 3);
+
+        if (
+            accessContext.role === "Admin" ||
+            (accessContext.role === "Patient" && wallet === patient) ||
+            (accessContext.role === "Doctor" && wallet === doctor) ||
+            (accessContext.role === "Hospital" && wallet === hospital)
+        ) {
+            return;
+        }
+
+        if (accessContext.role === "Doctor") {
+            const granted =
+                await this.blockchainService.isAuthorizedDoctor(
+                    recordId,
+                    accessContext.walletAddress
+                );
+
+            if (granted === true) {
+                return;
+            }
+        }
+
+        throw new Error("Unauthorized");
+    }
+
+    private getRecordAddress(
+        record: any,
+        name: string,
+        index: number
+    ): string {
+        return String(
+            record?.[name] ??
+            record?.[index] ??
+            ""
+        ).trim().toLowerCase();
     }
 
     /*
@@ -277,9 +522,19 @@ export class MedicalRecordService {
         const fileSize =
             file.buffer.length;
 
+        const managedKey =
+            await this.keyManagementService.createKey();
+
+        const encrypted =
+            this.encryptionService.encrypt(
+                file.buffer,
+                managedKey.key,
+                managedKey.reference
+            );
+
         const fileHash =
             sha256FromBuffer(
-                file.buffer
+                encrypted.ciphertext
             );
 
         /*
@@ -289,7 +544,7 @@ export class MedicalRecordService {
          */
         const uploadResult =
             await this.ipfsService.uploadFile(
-                file.buffer,
+                encrypted.ciphertext,
                 fileName,
                 mimeType
             );
@@ -352,6 +607,21 @@ export class MedicalRecordService {
                                 fileHash,
 
                                 cid,
+
+                                encryptionVersion:
+                                    encrypted.metadata.version,
+
+                                encryptionAlgorithm:
+                                    encrypted.metadata.algorithm,
+
+                                encryptionIv:
+                                    encrypted.metadata.iv,
+
+                                encryptionAuthTag:
+                                    encrypted.metadata.authTag,
+
+                                encryptionKeyReference:
+                                    encrypted.metadata.keyReference,
 
                                 category,
 

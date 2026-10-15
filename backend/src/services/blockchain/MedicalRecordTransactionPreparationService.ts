@@ -26,6 +26,14 @@ import {
 
 import PreparedMedicalRecordModel
     from "../../models/PreparedMedicalRecordModel";
+import {
+    KeyManagement,
+    keyManagementService as defaultKeyManagementService
+} from "../encryption/KeyManagementService";
+import {
+    MedicalRecordEncryptionMetadata,
+    MedicalRecordEncryptionService
+} from "../encryption/MedicalRecordEncryptionService";
 
 export interface PrepareMedicalRecordInput {
     doctorWallet: string;
@@ -55,6 +63,7 @@ export interface PreparedMedicalRecordTransaction {
     fileName: string;
     mimeType: string;
     fileSize: number;
+    encryption: MedicalRecordEncryptionMetadata;
 
     category: string;
     emergency: boolean;
@@ -74,6 +83,12 @@ export class MedicalRecordTransactionPreparationService {
     private readonly blockchainService:
         IBlockchainProvider;
 
+    private readonly keyManagementService:
+        KeyManagement;
+
+    private readonly encryptionService:
+        MedicalRecordEncryptionService;
+
     constructor(
         ipfsService: IPFSService,
         blockchainService: IBlockchainProvider,
@@ -88,12 +103,20 @@ export class MedicalRecordTransactionPreparationService {
                             ? env.POLYGON_RPC
                             : env.ETHEREUM_RPC
                     )
-                )
+                ),
+        keyManagementService:
+            KeyManagement =
+                        defaultKeyManagementService,
+        encryptionService:
+            MedicalRecordEncryptionService =
+                new MedicalRecordEncryptionService()
     ) {
         this.ipfsService = ipfsService;
         this.blockchainService = blockchainService;
         this.preflightService = preflightService;
         this.transactionBuilder = transactionBuilder;
+        this.keyManagementService = keyManagementService;
+        this.encryptionService = encryptionService;
     }
 
     async prepare(
@@ -164,9 +187,19 @@ export class MedicalRecordTransactionPreparationService {
         /*
          * Calculate the exact SHA-256 hash of the uploaded bytes.
          */
-        const fileHash =
+        const managedKey =
+            await this.keyManagementService.createKey();
+
+        const encrypted =
+            this.encryptionService.encrypt(
+                input.file.buffer,
+                managedKey.key,
+                managedKey.reference
+            );
+
+        const encryptedFileHash =
             sha256FromBuffer(
-                input.file.buffer
+                encrypted.ciphertext
             );
 
         /*
@@ -178,7 +211,7 @@ export class MedicalRecordTransactionPreparationService {
         try {
             uploadResult =
                 await this.ipfsService.uploadFile(
-                    input.file.buffer,
+                    encrypted.ciphertext,
                     input.file.originalname,
                     input.file.mimetype
                 );
@@ -197,7 +230,7 @@ export class MedicalRecordTransactionPreparationService {
                 .buildCreateMedicalRecordTransaction(
                     patientWallet,
                     uploadResult.cid,
-                    fileHash,
+                    encryptedFileHash,
                     input.category,
                     input.emergency
                 );
@@ -234,7 +267,8 @@ export class MedicalRecordTransactionPreparationService {
                 cid:
                     uploadResult.cid,
 
-                fileHash,
+                fileHash:
+                    encryptedFileHash,
 
                 fileName:
                     uploadResult.fileName,
@@ -243,7 +277,22 @@ export class MedicalRecordTransactionPreparationService {
                     uploadResult.mimeType,
 
                 fileSize:
-                    uploadResult.size,
+                    input.file.buffer.length,
+
+                encryptionVersion:
+                    encrypted.metadata.version,
+
+                encryptionAlgorithm:
+                    encrypted.metadata.algorithm,
+
+                encryptionIv:
+                    encrypted.metadata.iv,
+
+                encryptionAuthTag:
+                    encrypted.metadata.authTag,
+
+                encryptionKeyReference:
+                    encrypted.metadata.keyReference,
 
                 category:
                     input.category,
@@ -298,14 +347,15 @@ export class MedicalRecordTransactionPreparationService {
             patientWallet,
 
             cid: uploadResult.cid,
-            fileHash,
+            fileHash: encryptedFileHash,
 
             fileName: uploadResult.fileName,
             mimeType: uploadResult.mimeType,
-            fileSize: uploadResult.size,
+            fileSize: input.file.buffer.length,
 
             category: input.category,
-            emergency: input.emergency
+            emergency: input.emergency,
+            encryption: encrypted.metadata
         };
     }
 }

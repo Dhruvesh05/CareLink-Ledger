@@ -6,6 +6,7 @@ export class CredentialService implements IVerifiableCredential {
         issuerDid: string,
         subjectDid: string,
         credentialSubject: Record<string, unknown>,
+        credentialTypes = ["VerifiableCredential", "IdentityCredential"],
     ): Promise<any> {
         if (!issuerDid || typeof issuerDid !== "string" || !issuerDid.trim()) {
             throw new Error("Issuer DID is required.");
@@ -19,6 +20,10 @@ export class CredentialService implements IVerifiableCredential {
             throw new Error("Credential subject is required.");
         }
 
+        if (!Array.isArray(credentialTypes) || credentialTypes.length === 0) {
+            throw new Error("Credential types are required.");
+        }
+
         const agent = await createAgent();
 
         if (!agent || typeof agent.createVerifiableCredential !== "function") {
@@ -27,7 +32,7 @@ export class CredentialService implements IVerifiableCredential {
 
         const credential = {
             "@context": ["https://www.w3.org/2018/credentials/v1"],
-            type: ["VerifiableCredential", "IdentityCredential"],
+            type: credentialTypes,
             issuer: issuerDid.trim(),
             credentialSubject: {
                 id: subjectDid.trim(),

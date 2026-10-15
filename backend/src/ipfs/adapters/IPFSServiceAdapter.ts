@@ -11,6 +11,10 @@ import {
     PinService
 } from "../services/PinService";
 
+import {
+    DownloadService
+} from "../services/DownloadService";
+
 export class IPFSServiceAdapter
     implements IPFSService {
 
@@ -20,6 +24,9 @@ export class IPFSServiceAdapter
     private readonly pinService:
         PinService;
 
+    private readonly downloadService:
+        DownloadService;
+
     constructor(
         storageService:
             StorageService =
@@ -27,7 +34,11 @@ export class IPFSServiceAdapter
 
         pinService:
             PinService =
-                new PinService()
+                new PinService(),
+
+        downloadService:
+            DownloadService =
+                new DownloadService()
     ) {
 
         this.storageService =
@@ -35,6 +46,9 @@ export class IPFSServiceAdapter
 
         this.pinService =
             pinService;
+
+        this.downloadService =
+            downloadService;
     }
 
     async uploadFile(
@@ -65,6 +79,14 @@ export class IPFSServiceAdapter
     ): Promise<void> {
 
         await this.pinService.unpinCid(cid);
+    }
+
+    async downloadFile(
+        cid: string
+    ): Promise<Buffer> {
+
+        return this.downloadService
+            .downloadFile(cid);
     }
 }
 

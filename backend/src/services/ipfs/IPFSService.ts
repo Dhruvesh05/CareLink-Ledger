@@ -17,4 +17,8 @@ export interface IPFSService {
     unpinFile(
         cid: string
     ): Promise<void>;
+
+    downloadFile(
+        cid: string
+    ): Promise<Buffer>;
 }
