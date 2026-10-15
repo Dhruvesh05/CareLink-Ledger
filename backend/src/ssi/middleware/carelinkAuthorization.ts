@@ -30,9 +30,7 @@ export function requireCareLinkRole(...requiredRoles: UserRole[]) {
 
         const rawPresentation =
             req.body?.presentation ??
-            req.body?.verifiablePresentation ??
-            req.query?.presentation ??
-            req.query?.verifiablePresentation;
+            req.body?.verifiablePresentation;
 
         let presentation = rawPresentation;
 
