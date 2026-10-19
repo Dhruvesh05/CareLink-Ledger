@@ -1,22 +1,33 @@
 import { useNavigate } from "react-router-dom";
-
 import { useAuth } from "../../auth/AuthContext";
+import {
+  LayoutDashboard,
+  Inbox,
+  Users,
+  FileText,
+  Upload,
+  ClipboardList,
+  Bell,
+  User,
+  Settings,
+  HelpCircle,
+} from "lucide-react";
 
 function DoctorSidebar() {
   const navigate = useNavigate();
   const { logout } = useAuth();
 
   const menu = [
-    { title: "Dashboard", icon: "🏠", path: "/doctor/dashboard" },
-    { title: "Patient Requests", icon: "📩", path: "/doctor/patient-requests" },
-    { title: "My Patients", icon: "👥", path: "/doctor/my-patients" },
-    { title: "Medical Records", icon: "📁", path: "/doctor/medical-records" },
-    { title: "Upload Record", icon: "⬆️", path: "/doctor/upload-record" },
-    { title: "Treatment Notes", icon: "📝", path: "/doctor/treatment-notes" },
-    { title: "Notifications", icon: "🔔", path: "/doctor/notifications" },
-    { title: "Profile", icon: "👤", path: "/doctor/profile" },
-    { title: "Settings", icon: "⚙️", path: "/doctor/settings" },
-    { title: "Help & Support", icon: "❓", path: "/doctor/help-support" },
+    { title: "Dashboard", icon: LayoutDashboard, path: "/doctor/dashboard" },
+    { title: "Patient Requests", icon: Inbox, path: "/doctor/patient-requests" },
+    { title: "My Patients", icon: Users, path: "/doctor/my-patients" },
+    { title: "Medical Records", icon: FileText, path: "/doctor/medical-records" },
+    { title: "Upload Record", icon: Upload, path: "/doctor/upload-record" },
+    { title: "Treatment Notes", icon: ClipboardList, path: "/doctor/treatment-notes" },
+    { title: "Notifications", icon: Bell, path: "/doctor/notifications" },
+    { title: "Profile", icon: User, path: "/doctor/profile" },
+    { title: "Settings", icon: Settings, path: "/doctor/settings" },
+    { title: "Help & Support", icon: HelpCircle, path: "/doctor/help-support" },
   ];
 
   return (
@@ -27,12 +38,15 @@ function DoctorSidebar() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
-        {menu.map((item) => (
-          <button key={item.title} onClick={() => navigate(item.path)} className="w-full flex items-center gap-4 text-left px-4 py-3 rounded-xl hover:bg-white/10 transition mb-2 text-sky-50">
-            <span className="text-xl">{item.icon}</span>
-            <span>{item.title}</span>
-          </button>
-        ))}
+        {menu.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button key={item.title} onClick={() => navigate(item.path)} className="w-full flex items-center gap-4 text-left px-4 py-3 rounded-xl hover:bg-white/10 transition mb-2 text-sky-50">
+              <Icon className="w-5 h-5 text-sky-200 shrink-0" />
+              <span>{item.title}</span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="mt-auto border-t border-white/15 p-4">
