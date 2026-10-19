@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { FileText, Calendar, Users, HeartPulse } from "lucide-react";
 
 import { getPatientRecords, type MedicalRecordSummary } from "../../api/medicalRecords";
 import { useAuth } from "../../auth/AuthContext";
@@ -36,10 +37,10 @@ function Dashboard() {
   }, [user?.walletAddress]);
 
   const stats = useMemo(() => [
-    { title: "Medical Records", value: String(records.length), icon: "📁", tone: "bg-blue-50 text-blue-700" },
-    { title: "Appointments", value: "—", icon: "📅", tone: "bg-emerald-50 text-emerald-700" },
-    { title: "Access Requests", value: "—", icon: "👥", tone: "bg-violet-50 text-violet-700" },
-    { title: "Health Summary", value: records.some((record) => record.emergency) ? "High priority" : "Stable", icon: "❤️", tone: "bg-rose-50 text-rose-700" },
+    { title: "Medical Records", value: String(records.length), icon: FileText, tone: "bg-blue-50 text-blue-700" },
+    { title: "Appointments", value: "—", icon: Calendar, tone: "bg-emerald-50 text-emerald-700" },
+    { title: "Access Requests", value: "—", icon: Users, tone: "bg-violet-50 text-violet-700" },
+    { title: "Health Summary", value: records.some((record) => record.emergency) ? "High priority" : "Stable", icon: HeartPulse, tone: "bg-rose-50 text-rose-700" },
   ], [records]);
 
   const categorySummary = useMemo(() => {
@@ -69,18 +70,21 @@ function Dashboard() {
         </section>
 
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-          {stats.map((item) => (
-            <div key={item.title} className="rounded-[24px] border border-slate-200 bg-white/90 p-5 shadow-[0_18px_35px_rgba(15,23,42,0.05)] ring-1 ring-slate-100 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(37,99,235,0.10)]">
-              <div className="flex items-center justify-between">
-                <span className={`flex h-12 w-12 items-center justify-center rounded-xl text-2xl ${item.tone}`}>
-                  {item.icon}
-                </span>
-                <span className="text-sm font-semibold text-slate-500">Live</span>
+          {stats.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.title} className="rounded-[24px] border border-slate-200 bg-white/90 p-5 shadow-[0_18px_35px_rgba(15,23,42,0.05)] ring-1 ring-slate-100 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(37,99,235,0.10)]">
+                <div className="flex items-center justify-between">
+                  <span className={`flex h-12 w-12 items-center justify-center rounded-xl text-2xl ${item.tone}`}>
+                    <Icon className="w-6 h-6" />
+                  </span>
+                  <span className="text-sm font-semibold text-slate-500">Live</span>
+                </div>
+                <p className="mt-6 text-3xl font-bold text-slate-800">{item.value}</p>
+                <p className="mt-2 text-sm text-slate-500">{item.title}</p>
               </div>
-              <p className="mt-6 text-3xl font-bold text-slate-800">{item.value}</p>
-              <p className="mt-2 text-sm text-slate-500">{item.title}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">

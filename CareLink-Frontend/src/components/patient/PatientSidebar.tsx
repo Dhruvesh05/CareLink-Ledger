@@ -1,20 +1,29 @@
 import { useNavigate } from "react-router-dom";
-
-import { useAuth } from "../..//auth/AuthContext";
+import { useAuth } from "../../auth/AuthContext";
+import {
+  LayoutDashboard,
+  FileText,
+  Calendar,
+  Lock,
+  Bell,
+  User,
+  Settings,
+  HelpCircle,
+} from "lucide-react";
 
 function PatientSidebar() {
   const navigate = useNavigate();
   const { logout } = useAuth();
 
   const menu = [
-    { title: "Dashboard", icon: "🏠", path: "/patient-dashboard" },
-    { title: "Medical Records", icon: "📁", path: "/medical-records" },
-    { title: "Appointments", icon: "📅", path: "/appointments" },
-    { title: "Access Management", icon: "🔐", path: "/access-management" },
-    { title: "Notifications", icon: "🔔", path: "/notifications" },
-    { title: "Profile", icon: "👤", path: "/profile" },
-    { title: "Settings", icon: "⚙️", path: "/settings" },
-    { title: "Help & Support", icon: "❓", path: "/help-support" },
+    { title: "Dashboard", icon: LayoutDashboard, path: "/patient-dashboard" },
+    { title: "Medical Records", icon: FileText, path: "/medical-records" },
+    { title: "Appointments", icon: Calendar, path: "/appointments" },
+    { title: "Access Management", icon: Lock, path: "/access-management" },
+    { title: "Notifications", icon: Bell, path: "/notifications" },
+    { title: "Profile", icon: User, path: "/profile" },
+    { title: "Settings", icon: Settings, path: "/settings" },
+    { title: "Help & Support", icon: HelpCircle, path: "/help-support" },
   ];
 
   return (
@@ -25,16 +34,29 @@ function PatientSidebar() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
-        {menu.map((item) => (
-          <button key={item.title} onClick={() => navigate(item.path)} className="w-full flex items-center gap-4 text-left px-4 py-3 rounded-xl hover:bg-blue-700 transition mb-2">
-            <span className="text-xl">{item.icon}</span>
-            <span>{item.title}</span>
-          </button>
-        ))}
+        {menu.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.title}
+              onClick={() => navigate(item.path)}
+              className="w-full flex items-center gap-4 text-left px-4 py-3 rounded-xl hover:bg-blue-700 transition mb-2"
+            >
+              <Icon className="w-5 h-5 text-blue-200" />
+              <span>{item.title}</span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="mt-auto border-t border-blue-700 p-4">
-        <button onClick={() => { logout(); navigate("/login"); }} className="w-full rounded-xl bg-red-500 py-3 font-medium transition hover:bg-red-600">
+        <button
+          onClick={() => {
+            logout();
+            navigate("/login");
+          }}
+          className="w-full rounded-xl bg-red-500 py-3 font-medium transition hover:bg-red-600"
+        >
           Logout
         </button>
       </div>

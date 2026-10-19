@@ -1,11 +1,12 @@
 import DashboardLayout from "../../components/DashboardLayout";
+import { Building2, UserCheck, Building, Calendar } from "lucide-react";
 
 function Dashboard() {
   const stats = [
-    { title: "Patients", value: "Use Patient Records", icon: "🏥", tone: "bg-blue-50 text-blue-700" },
-    { title: "Doctors", value: "Not configured", icon: "👨‍⚕️", tone: "bg-emerald-50 text-emerald-700" },
-    { title: "Departments", value: "Not configured", icon: "🏢", tone: "bg-violet-50 text-violet-700" },
-    { title: "Appointments", value: "Not configured", icon: "📅", tone: "bg-amber-50 text-amber-700" },
+    { title: "Patients", value: "Use Patient Records", icon: Building2, tone: "bg-blue-50 text-blue-700" },
+    { title: "Doctors", value: "Not configured", icon: UserCheck, tone: "bg-emerald-50 text-emerald-700" },
+    { title: "Departments", value: "Not configured", icon: Building, tone: "bg-violet-50 text-violet-700" },
+    { title: "Appointments", value: "Not configured", icon: Calendar, tone: "bg-amber-50 text-amber-700" },
   ];
 
   const departmentStatus = [
@@ -37,18 +38,21 @@ function Dashboard() {
         </section>
 
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-          {stats.map((item) => (
-            <div key={item.title} className="rounded-[24px] border border-slate-200 bg-white/90 p-5 shadow-[0_18px_35px_rgba(15,23,42,0.05)] ring-1 ring-slate-100 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(99,102,241,0.10)]">
-              <div className="flex items-center justify-between">
-                <span className={`flex h-12 w-12 items-center justify-center rounded-xl text-2xl ${item.tone}`}>
-                  {item.icon}
-                </span>
-                <span className="text-sm font-semibold text-slate-500">Today</span>
+          {stats.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.title} className="rounded-[24px] border border-slate-200 bg-white/90 p-5 shadow-[0_18px_35px_rgba(15,23,42,0.05)] ring-1 ring-slate-100 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(99,102,241,0.10)]">
+                <div className="flex items-center justify-between">
+                  <span className={`flex h-12 w-12 items-center justify-center rounded-xl text-2xl ${item.tone}`}>
+                    <Icon className="w-6 h-6" />
+                  </span>
+                  <span className="text-sm font-semibold text-slate-500">Today</span>
+                </div>
+                <p className="mt-6 text-3xl font-bold text-slate-800">{item.value}</p>
+                <p className="mt-2 text-sm text-slate-500">{item.title}</p>
               </div>
-              <p className="mt-6 text-3xl font-bold text-slate-800">{item.value}</p>
-              <p className="mt-2 text-sm text-slate-500">{item.title}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[1.3fr_1fr]">

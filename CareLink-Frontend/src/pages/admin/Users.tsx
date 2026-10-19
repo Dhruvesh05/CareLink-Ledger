@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { X } from "lucide-react";
 
 import DashboardLayout from "../../components/DashboardLayout";
 
@@ -183,9 +184,9 @@ function Users() {
                 <button
                   type="button"
                   onClick={() => setSelectedUser(null)}
-                  className="rounded-full bg-slate-100 px-2.5 py-1 text-sm text-slate-600 hover:bg-slate-200"
+                  className="rounded-full bg-slate-100 p-1.5 text-slate-600 hover:bg-slate-200"
                 >
-                  ✕
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 

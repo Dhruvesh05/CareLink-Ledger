@@ -1,14 +1,15 @@
 import { useNavigate } from "react-router-dom";
+import { Users, Building2, UserCheck, CheckCircle2 } from "lucide-react";
 import DashboardLayout from "../../components/DashboardLayout";
 
 function Dashboard() {
   const navigate = useNavigate();
 
   const stats = [
-    { title: "Users", value: "Not configured", icon: "👥", tone: "bg-blue-50 text-blue-700" },
-    { title: "Hospitals", value: "Available in Analytics", icon: "🏥", tone: "bg-emerald-50 text-emerald-700" },
-    { title: "Doctors", value: "Available in Analytics", icon: "👨‍⚕️", tone: "bg-violet-50 text-violet-700" },
-    { title: "Verified", value: "Not configured", icon: "✅", tone: "bg-amber-50 text-amber-700" },
+    { title: "Users", value: "Not configured", icon: Users, tone: "bg-blue-50 text-blue-700" },
+    { title: "Hospitals", value: "Available in Analytics", icon: Building2, tone: "bg-emerald-50 text-emerald-700" },
+    { title: "Doctors", value: "Available in Analytics", icon: UserCheck, tone: "bg-violet-50 text-violet-700" },
+    { title: "Verified", value: "Not configured", icon: CheckCircle2, tone: "bg-amber-50 text-amber-700" },
   ];
 
   const quickLinks = [
@@ -34,18 +35,21 @@ function Dashboard() {
         </section>
 
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-          {stats.map((item) => (
-            <div key={item.title} className="rounded-[24px] border border-slate-200 bg-white/90 p-5 shadow-[0_18px_35px_rgba(15,23,42,0.05)] ring-1 ring-slate-100 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(251,146,60,0.10)]">
-              <div className="flex items-center justify-between">
-                <span className={`flex h-12 w-12 items-center justify-center rounded-xl text-2xl ${item.tone}`}>
-                  {item.icon}
-                </span>
-                <span className="text-sm font-semibold text-slate-500">Live</span>
+          {stats.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.title} className="rounded-[24px] border border-slate-200 bg-white/90 p-5 shadow-[0_18px_35px_rgba(15,23,42,0.05)] ring-1 ring-slate-100 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(251,146,60,0.10)]">
+                <div className="flex items-center justify-between">
+                  <span className={`flex h-12 w-12 items-center justify-center rounded-xl text-2xl ${item.tone}`}>
+                    <Icon className="w-6 h-6" />
+                  </span>
+                  <span className="text-sm font-semibold text-slate-500">Live</span>
+                </div>
+                <p className="mt-6 text-3xl font-bold text-slate-800">{item.value}</p>
+                <p className="mt-2 text-sm text-slate-500">{item.title}</p>
               </div>
-              <p className="mt-6 text-3xl font-bold text-slate-800">{item.value}</p>
-              <p className="mt-2 text-sm text-slate-500">{item.title}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[1.25fr_1fr]">
