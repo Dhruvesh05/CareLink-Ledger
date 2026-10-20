@@ -123,6 +123,9 @@ describe("MedicalRecordTransactionPreparationService", () => {
                 emergency: false
             });
 
+        const uploadedBuffer =
+            ipfsService.uploadFile.mock.calls[0][0] as Buffer;
+
         /*
          * The preparation must be persisted server-side before
          * the unsigned transaction is returned.
@@ -237,8 +240,6 @@ describe("MedicalRecordTransactionPreparationService", () => {
             "application/pdf"
         );
 
-        const uploadedBuffer =
-            ipfsService.uploadFile.mock.calls[0][0] as Buffer;
 
         expect(uploadedBuffer).not.toEqual(fileBuffer);
         expect(uploadedBuffer.length).toBe(fileBuffer.length);

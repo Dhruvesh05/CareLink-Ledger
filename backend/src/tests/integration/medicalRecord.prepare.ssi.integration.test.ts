@@ -389,7 +389,7 @@ describe("medical record prepare SSI multipart integration", () => {
     it("accepts a real SSI-authorized multipart Doctor request", async () => {
         const scenario = await createScenario("Doctor");
         const presentation = await createPresentation(
-            scenario.identity.did, 
+            scenario.identity.did,
             [scenario.credential],
             scenario.pendingChallenge.challenge,
         );

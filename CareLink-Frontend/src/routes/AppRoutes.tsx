@@ -3,7 +3,6 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "../components/ProtectedRoute";
 
 // Auth Pages
-import SplashScreen from "../pages/auth/SplashScreen";
 import Welcome from "../pages/auth/Welcome";
 import RoleSelection from "../pages/auth/RoleSelection";
 import Login from "../pages/auth/Login";
@@ -62,11 +61,13 @@ function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<SplashScreen />} />
+        <Route path="/" element={<Welcome />} />
         <Route path="/welcome" element={<Welcome />} />
+        <Route path="/welcome/login" element={<Login />} />
+        <Route path="/welcome/signup" element={<Register />} />
         <Route path="/role-selection" element={<RoleSelection />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<Navigate to="/welcome/login" replace />} />
+        <Route path="/register" element={<Navigate to="/welcome/signup" replace />} />
         <Route path="/identity-verification" element={<IdentityVerification />} />
 
         <Route element={<ProtectedRoute allowedRoles={["Patient"]} />}>

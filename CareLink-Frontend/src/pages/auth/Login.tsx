@@ -127,7 +127,7 @@ function Login() {
 
             <button
               type="button"
-              onClick={() => navigate("/register")}
+              onClick={() => navigate("/welcome/signup")}
               className="mt-4 w-full rounded-xl border border-blue-200 bg-blue-50 px-4 py-3.5 text-base font-semibold text-blue-700 transition hover:bg-blue-100"
             >
               Create account

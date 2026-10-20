@@ -15,9 +15,9 @@ async function main(): Promise<void> {
     try {
         const [{ createAgent }, { default: CredentialService }, presentationModule] =
             await Promise.all([
-                import("../agent/createAgent"),
-                import("../services/CredentialService"),
-                import("../services/PresentationService"),
+                import("../agent/createAgent.js"),
+                import("../services/CredentialService.js"),
+                import("../services/PresentationService.js"),
             ]);
 
         const {
@@ -39,7 +39,7 @@ async function main(): Promise<void> {
             throw new Error("Issuer or holder DID creation failed.");
         }
 
-        const credential = await CredentialService.issueCredential(
+        const credential = await CredentialService.default.issueCredential(
             issuer.did,
             holder.did,
             { role: "Doctor" },
@@ -53,14 +53,14 @@ async function main(): Promise<void> {
         const challengeA = `carelink-vp-challenge-a-${Date.now()}`;
         const challengeB = `carelink-vp-challenge-b-${Date.now()}`;
 
-        const presentation = await PresentationService.createPresentation(
+        const presentation = await PresentationService.default.createPresentation(
             holder.did,
             [credential],
             challengeA
         );
 
         const matchingVerification =
-            await PresentationService.verifyPresentation(
+            await PresentationService.default.verifyPresentation(
                 presentation,
                 challengeA
             );
@@ -74,7 +74,7 @@ async function main(): Promise<void> {
         }
 
         const mismatchedVerification =
-            await PresentationService.verifyPresentation(
+            await PresentationService.default.verifyPresentation(
                 presentation,
                 challengeB
             );

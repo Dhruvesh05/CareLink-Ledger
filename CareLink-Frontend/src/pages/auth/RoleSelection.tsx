@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { User, Stethoscope, Building2, ShieldAlert } from "lucide-react";
 import logo from "../../assets/images/logo.png";
 
 function RoleSelection() {
@@ -8,7 +9,7 @@ function RoleSelection() {
     {
       title: "Patient",
       description: "Manage your health records, appointments, and access requests.",
-      icon: "👤",
+      icon: User,
       color: "from-blue-500 to-blue-700",
       badge: "bg-blue-50 text-blue-700",
       border: "border-blue-100 hover:border-blue-300",
@@ -16,7 +17,7 @@ function RoleSelection() {
     {
       title: "Doctor",
       description: "Review patient activity, records, and treatment workflows.",
-      icon: "👨‍⚕️",
+      icon: Stethoscope,
       color: "from-emerald-500 to-emerald-700",
       badge: "bg-emerald-50 text-emerald-700",
       border: "border-emerald-100 hover:border-emerald-300",
@@ -24,7 +25,7 @@ function RoleSelection() {
     {
       title: "Hospital",
       description: "Oversee departments, doctors, records, and operations.",
-      icon: "🏥",
+      icon: Building2,
       color: "from-violet-500 to-violet-700",
       badge: "bg-violet-50 text-violet-700",
       border: "border-violet-100 hover:border-violet-300",
@@ -32,7 +33,7 @@ function RoleSelection() {
     {
       title: "Admin",
       description: "Monitor system health, users, blockchain, and analytics.",
-      icon: "👨‍💼",
+      icon: ShieldAlert,
       color: "from-amber-500 to-orange-600",
       badge: "bg-orange-50 text-orange-700",
       border: "border-orange-100 hover:border-orange-300",
@@ -41,7 +42,7 @@ function RoleSelection() {
 
   const handleRoleSelect = (role: string) => {
     localStorage.setItem("role", role);
-    navigate("/login");
+    navigate("/welcome/login");
   };
 
   return (
@@ -91,37 +92,40 @@ function RoleSelection() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {roles.map((role) => (
-              <button
-                key={role.title}
-                onClick={() => handleRoleSelect(role.title)}
-                className={`group rounded-[24px] border bg-white p-4 text-left shadow-[0_10px_24px_rgba(15,23,42,0.04)] ring-1 ring-slate-100 transition-all duration-200 hover:-translate-y-1 hover:border-blue-200 hover:shadow-[0_20px_38px_rgba(37,99,235,0.12)] ${role.border} focus:outline-none focus:ring-4 focus:ring-blue-100`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${role.color} text-2xl shadow-sm sm:h-14 sm:w-14`}>
-                      {role.icon}
+            {roles.map((role) => {
+              const Icon = role.icon;
+              return (
+                <button
+                  key={role.title}
+                  onClick={() => handleRoleSelect(role.title)}
+                  className={`group rounded-[24px] border bg-white p-4 text-left shadow-[0_10px_24px_rgba(15,23,42,0.04)] ring-1 ring-slate-100 transition-all duration-200 hover:-translate-y-1 hover:border-blue-200 hover:shadow-[0_20px_38px_rgba(37,99,235,0.12)] ${role.border} focus:outline-none focus:ring-4 focus:ring-blue-100`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${role.color} text-white shadow-sm sm:h-14 sm:w-14`}>
+                        <Icon className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-[#0f2b6d] sm:text-xl">{role.title}</h3>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-[#0f2b6d] sm:text-xl">{role.title}</h3>
-                    </div>
+
+                    <span className={`rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-[0.14em] ${role.badge}`}>
+                      Open
+                    </span>
                   </div>
 
-                  <span className={`rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-[0.14em] ${role.badge}`}>
-                    Open
-                  </span>
-                </div>
+                  <p className="mt-4 text-sm leading-relaxed text-slate-500">{role.description}</p>
 
-                <p className="mt-4 text-sm leading-relaxed text-slate-500">{role.description}</p>
-
-                <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-3">
-                  <span className="text-sm font-semibold text-blue-700">Continue as {role.title}</span>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-base text-slate-600 transition group-hover:bg-blue-100 group-hover:text-blue-700">
-                    →
+                  <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-3">
+                    <span className="text-sm font-semibold text-blue-700">Continue as {role.title}</span>
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-base text-slate-600 transition group-hover:bg-blue-100 group-hover:text-blue-700">
+                      →
+                    </div>
                   </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
 
           <div className="mt-6 flex flex-col items-center justify-between gap-3 border-t border-slate-100 pt-4 text-sm text-slate-500 sm:flex-row">
