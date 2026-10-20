@@ -85,3 +85,11 @@ class SchemaDetector:
         """
 
         return self.detect(profile) is not None
+
+    def resolve_schema_version(
+        self,
+        profile: SchemaProfile,
+    ) -> str | None:
+        """Return the authoritative version of a registered schema, if present."""
+        schema = self.detect(profile)
+        return schema.schema_version if schema is not None else None
