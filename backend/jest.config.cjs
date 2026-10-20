@@ -1,25 +1,41 @@
 /** @type {import('jest').Config} */
 module.exports = {
-	preset: "ts-jest",
-	testEnvironment: "node",
-	roots: ["<rootDir>/src"],
-	testMatch: ["**/*.test.ts"],
-	moduleFileExtensions: ["ts", "js", "json"],
-	setupFiles: ["<rootDir>/src/jest.setup.ts"],
-	clearMocks: true,
-	restoreMocks: true,
-	resetMocks: false,
-	collectCoverageFrom: [
-		"src/ipfs/**/*.ts",
-		"!src/ipfs/tests/**/*.ts",
-		"!src/ipfs/index.ts"
-	],
-	transform: {
-		"^.+\\.ts$": [
-			"ts-jest",
-			{
-				tsconfig: "<rootDir>/tsconfig.test.json"
-			}
-		]
-	}
+    preset: "ts-jest/presets/default-esm",
+    testEnvironment: "node",
+    roots: ["<rootDir>/src"],
+    testMatch: ["**/*.test.ts"],
+    moduleFileExtensions: ["ts", "js", "json"],
+    setupFilesAfterEnv: ["<rootDir>/src/jest.setup.ts"],
+    clearMocks: true,
+    restoreMocks: true,
+    resetMocks: false,
+    collectCoverageFrom: [
+        "src/ipfs/**/*.ts",
+        "!src/ipfs/tests/**/*.ts",
+        "!src/ipfs/index.ts"
+    ],
+    extensionsToTreatAsEsm: [".ts"],
+    transform: {
+        "^.+\\.ts$": [
+            "ts-jest",
+            {
+                useESM: true,
+                tsconfig: "<rootDir>/tsconfig.test.json"
+            }
+        ]
+    },
+    moduleNameMapper: {
+        "^\\.\\./\\.\\./models/User\\.js$": "<rootDir>/src/models/User.ts",
+        "^\\.\\./\\.\\./models/SsiAuthorizationChallenge\\.js$": "<rootDir>/src/models/SsiAuthorizationChallenge.ts",
+        "^\\.\\./\\.\\./services/blockchain/MedicalRecordTransactionPreparationService\\.js$": "<rootDir>/src/services/blockchain/MedicalRecordTransactionPreparationService.ts",
+        "^\\.\\./\\.\\./services/blockchain/MedicalRecordTransactionConfirmationService\\.js$": "<rootDir>/src/services/blockchain/MedicalRecordTransactionConfirmationService.ts",
+        "^\\.\\./\\.\\./blockchain/provider/BlockchainFactory\\.js$": "<rootDir>/src/blockchain/provider/BlockchainFactory.ts",
+        "^\\.\\./config/veramo\\.config$": "<rootDir>/src/ssi/config/veramo.config.ts",
+        "^\\.\\./config/veramo\\.config\\.js$": "<rootDir>/src/ssi/config/veramo.config.ts",
+        "^\\.\\./\\.\\./config/env$": "<rootDir>/src/config/env.ts",
+        "^\\.\\./\\.\\./config/env\\.js$": "<rootDir>/src/config/env.ts",
+        "^\\.\\./\\.\\./utils/jwt$": "<rootDir>/src/utils/jwt.ts",
+        "^\\.\\./\\.\\./utils/jwt\\.js$": "<rootDir>/src/utils/jwt.ts",
+        "^(\\.{1,2}/.*)\\.js$": "$1"
+    },
 };

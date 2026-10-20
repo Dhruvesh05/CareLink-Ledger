@@ -44,6 +44,7 @@ def create_schema(
     detector,
     profile,
     schema_id="schema-001",
+    schema_version=None,
 ):
     """
     Create a Schema object using the profile's schema fingerprint.
@@ -55,6 +56,7 @@ def create_schema(
         schema_name="Hospital Patient Schema",
         fingerprint=detector.fingerprint(profile),
         mapping_version="v1",
+        schema_version=schema_version,
     )
 
 
@@ -89,6 +91,30 @@ def test_detects_known_schema(
     result = detector.detect(profile)
 
     assert result is schema
+
+
+def test_registered_schema_version_is_resolved(detector, registry):
+    profile = create_profile(
+        columns=["patient_id", "age"],
+        data_types={"patient_id": "integer", "age": "integer"},
+    )
+    schema = create_schema(
+        detector,
+        profile,
+        schema_version="schema-2026-01",
+    )
+    registry.register(schema)
+
+    assert detector.resolve_schema_version(profile) == "schema-2026-01"
+
+
+def test_new_schema_has_no_schema_version(detector):
+    profile = create_profile(
+        columns=["patient_id", "diagnosis"],
+        data_types={"patient_id": "integer", "diagnosis": "string"},
+    )
+
+    assert detector.resolve_schema_version(profile) is None
 
 
 def test_detects_unknown_schema(

@@ -10,7 +10,23 @@ let singletonAgent: AnyAgent | null = null;
  * Kept in a separate function so the agent construction logic
  * remains isolated and easier to test.
  */
+
 async function loadVeramoDependencies() {
+    const load = async <T>(
+        name: string,
+        importer: () => Promise<T>,
+    ): Promise<T> => {
+        try {
+            return await importer();
+        } catch (error) {
+            console.error(
+                `[Veramo dependency import failed] ${name}`,
+                error instanceof Error ? error.stack : error,
+            );
+            throw error;
+        }
+    };
+
     const [
         core,
         keyManagerModule,
@@ -22,15 +38,15 @@ async function loadVeramoDependencies() {
         credentialW3c,
         credentialJwt,
     ] = await Promise.all([
-        import("@veramo/core"),
-        import("@veramo/key-manager"),
-        import("@veramo/data-store"),
-        import("@veramo/kms-local"),
-        import("@veramo/did-manager"),
-        import("@veramo/did-provider-key"),
-        import("@veramo/did-resolver"),
-        import("@veramo/credential-w3c"),
-        import("@veramo/credential-jwt"),
+        load("@veramo/core", () => import("@veramo/core")),
+        load("@veramo/key-manager", () => import("@veramo/key-manager")),
+        load("@veramo/data-store", () => import("@veramo/data-store")),
+        load("@veramo/kms-local", () => import("@veramo/kms-local")),
+        load("@veramo/did-manager", () => import("@veramo/did-manager")),
+        load("@veramo/did-provider-key", () => import("@veramo/did-provider-key")),
+        load("@veramo/did-resolver", () => import("@veramo/did-resolver")),
+        load("@veramo/credential-w3c", () => import("@veramo/credential-w3c")),
+        load("@veramo/credential-jwt", () => import("@veramo/credential-jwt")),
     ]);
 
     return {
@@ -45,6 +61,7 @@ async function loadVeramoDependencies() {
         credentialJwt,
     };
 }
+
 
 export async function createAgent(): Promise<AnyAgent> {
     // Reuse the existing agent when already initialized.

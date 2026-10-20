@@ -44,11 +44,11 @@ jest.mock("../../models/MedicalRecordModel", () => ({
     }
 }));
 
-import PreparedMedicalRecordModel from "../../models/PreparedMedicalRecordModel";
 import MedicalRecordModel from "../../models/MedicalRecordModel";
+import PreparedMedicalRecordModel from "../../models/PreparedMedicalRecordModel";
 import {
     MedicalRecordTransactionConfirmationService
-} from "../../services/blockchain/MedicalRecordTransactionConfirmationService";
+} from "../../services/blockchain/MedicalRecordTransactionConfirmationService.ts";
 
 const preparedModel =
     PreparedMedicalRecordModel as any;

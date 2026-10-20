@@ -1,7 +1,10 @@
 import pandas as pd
 import pytest
 
+from app.mapping.schema_detector import SchemaDetector
 from app.models.schema_profile import SchemaProfile
+from app.models.schema import Schema
+from app.registry.schema_registry import SchemaRegistry
 from app.schemas.schema_analyzer import SchemaAnalyzer
 from app.services.schema_service import SchemaService
 
@@ -77,3 +80,30 @@ def test_service_rejects_invalid_dataframe():
             "invalid",
             "test.csv",
         )
+
+
+def test_service_propagates_registered_schema_version(dataframe):
+    registry = SchemaRegistry()
+    detector = SchemaDetector(schema_registry=registry)
+    analyzer_service = SchemaService(schema_detector=detector)
+    profile = analyzer_service.analyze_dataset(dataframe, "hospital_a.csv")
+    registry.register(
+        Schema(
+            schema_id="schema-1",
+            hospital_id="hospital-1",
+            schema_name="Hospital schema",
+            fingerprint=detector.fingerprint(profile),
+            mapping_version="mapping-v1",
+            schema_version="schema-v2",
+        )
+    )
+
+    resolved = analyzer_service.analyze_dataset(dataframe, "hospital_a.csv")
+
+    assert resolved.schema_version == "schema-v2"
+
+
+def test_service_leaves_new_schema_version_unset(dataframe):
+    profile = SchemaService().analyze_dataset(dataframe, "hospital_a.csv")
+
+    assert profile.schema_version is None

@@ -1,3 +1,6 @@
+
+import path from "node:path";
+
 import {
     FhirValidator,
     SpecRegistry,
@@ -14,38 +17,31 @@ export interface FhirValidationResult {
 }
 
 export class FhirValidatorService {
+    private readonly registry = new SpecRegistry({
+        specsPath: path.resolve(
+            process.cwd(),
+            "../node_modules/@fhir-toolkit/r4-specs/specs",
+        ),
+        fhirVersion: "R4",
+    });
 
-    private readonly registry =
-        new SpecRegistry({
-            specsPath:
-                "/home/dhruv/carelink/node_modules/@fhir-toolkit/r4-specs/specs",
-            fhirVersion: "R4",
-        });
-
-    private readonly validator =
-        new FhirValidator({
-            registry: this.registry,
-            fhirVersion: "R4",
-        });
+    private readonly validator = new FhirValidator({
+        registry: this.registry,
+        fhirVersion: "R4",
+    });
 
     async validate(
-        resource: FhirResource
+        resource: FhirResource,
     ): Promise<FhirValidationResult> {
+        const outcome = await this.validator.validate(resource);
 
-        const outcome =
-            await this.validator.validate(
-                resource
-            );
+        const issues = outcome.issue ?? [];
 
-        const issues =
-            outcome.issue ?? [];
-
-        const errors =
-            issues.filter(
-                (issue) =>
-                    issue.severity === "error" ||
-                    issue.severity === "fatal"
-            );
+        const errors = issues.filter(
+            (issue) =>
+                issue.severity === "error" ||
+                issue.severity === "fatal",
+        );
 
         return {
             valid: errors.length === 0,
@@ -53,13 +49,8 @@ export class FhirValidatorService {
         };
     }
 
-    async isValid(
-        resource: FhirResource
-    ): Promise<boolean> {
-
-        const result =
-            await this.validate(resource);
-
+    async isValid(resource: FhirResource): Promise<boolean> {
+        const result = await this.validate(resource);
         return result.valid;
     }
 }

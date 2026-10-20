@@ -1,7 +1,11 @@
 import io
 
+import pandas as pd
 from fastapi.testclient import TestClient
 
+from app.api import analytics as analytics_api
+from app.mapping.schema_detector import SchemaDetector
+from app.models.schema import Schema
 from main import app
 
 
@@ -283,6 +287,45 @@ def test_analyze_returns_fhir_bundle_for_valid_hospital_data():
         "Patient",
         "Observation",
     ]
+
+
+def test_analyze_returns_patient_handoffs_for_registered_schema():
+    csv_content = (
+        "patient_id,age,gender,weight\n"
+        "1,25,male,65.5\n"
+        "2,40,female,58.0\n"
+    )
+    profile = analytics_api._pipeline_service.schema_analyzer.analyze(
+        pd.read_csv(io.StringIO(csv_content)),
+        dataset_name="registered.csv",
+    )
+    detector = analytics_api._pipeline_service.schema_detector
+    analytics_api._schema_registry.register(
+        Schema(
+            schema_id="api-schema-1",
+            hospital_id="hospital-1",
+            schema_name="API schema",
+            fingerprint=detector.fingerprint(profile),
+            mapping_version="mapping-v1",
+            schema_version="schema-v1",
+        )
+    )
+
+    response = client.post(
+        "/analytics/analyze",
+        files={
+            "file": (
+                "registered.csv",
+                io.BytesIO(csv_content.encode("utf-8")),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+    handoffs = response.json()["handoffs"]
+    assert set(handoffs) == {"1", "2"}
+    assert handoffs["1"]["processing"]["schemaVersion"] == "schema-v1"
 
 
 def test_analyze_returns_null_fhir_for_invalid_hospital_data():

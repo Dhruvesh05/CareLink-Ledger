@@ -13,6 +13,7 @@ async function main(): Promise<void> {
         path.join(temporaryDirectory, "ssi.sqlite");
 
     try {
+<<<<<<< Updated upstream
         const [{ createAgent }, { default: CredentialService }, presentationModule] =
             await Promise.all([
                 import("../agent/createAgent.js"),
@@ -26,6 +27,17 @@ async function main(): Promise<void> {
 
         const agent = await createAgent();
 
+=======
+        const agentModule = await import("../agent/createAgent.js");
+        const credentialModule = await import("../services/CredentialService.js");
+        const presentationModule = await import("../services/PresentationService.js");
+
+        const createAgent = agentModule.createAgent;
+        const CredentialService = new credentialModule.CredentialService();
+        const PresentationService = new presentationModule.PresentationService();
+
+        const agent = await createAgent();
+>>>>>>> Stashed changes
         const issuer = await agent.didManagerCreate({
             provider: "did:key",
             alias: `carelink-vp-issuer-${Date.now()}`,
@@ -39,7 +51,11 @@ async function main(): Promise<void> {
             throw new Error("Issuer or holder DID creation failed.");
         }
 
+<<<<<<< Updated upstream
         const credential = await CredentialService.default.issueCredential(
+=======
+        const credential = await CredentialService.issueCredential(
+>>>>>>> Stashed changes
             issuer.did,
             holder.did,
             { role: "Doctor" },
@@ -53,14 +69,22 @@ async function main(): Promise<void> {
         const challengeA = `carelink-vp-challenge-a-${Date.now()}`;
         const challengeB = `carelink-vp-challenge-b-${Date.now()}`;
 
+<<<<<<< Updated upstream
         const presentation = await PresentationService.default.createPresentation(
+=======
+        const presentation = await PresentationService.createPresentation(
+>>>>>>> Stashed changes
             holder.did,
             [credential],
             challengeA
         );
 
         const matchingVerification =
+<<<<<<< Updated upstream
             await PresentationService.default.verifyPresentation(
+=======
+            await PresentationService.verifyPresentation(
+>>>>>>> Stashed changes
                 presentation,
                 challengeA
             );
@@ -74,7 +98,11 @@ async function main(): Promise<void> {
         }
 
         const mismatchedVerification =
+<<<<<<< Updated upstream
             await PresentationService.default.verifyPresentation(
+=======
+            await PresentationService.verifyPresentation(
+>>>>>>> Stashed changes
                 presentation,
                 challengeB
             );
@@ -98,4 +126,8 @@ main().catch((error: unknown) => {
     console.error("SSI presentation lifecycle integration test FAILED");
     console.error(error);
     process.exit(1);
+<<<<<<< Updated upstream
 });
+=======
+});
+>>>>>>> Stashed changes

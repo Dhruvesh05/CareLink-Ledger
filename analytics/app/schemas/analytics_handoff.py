@@ -7,7 +7,14 @@ from datetime import datetime, timezone
 from hashlib import sha256
 from typing import Any, ClassVar, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictInt,
+    field_validator,
+    model_validator,
+)
 
 CONTRACT_VERSION = "1.0"
 SUPPORTED_SOURCE_FORMATS = {"CSV", "XLSX", "XLS", "JSON"}
@@ -36,16 +43,23 @@ class ProcessingInfo(ContractModel):
     schema_fingerprint: str = Field(min_length=1)
     schema_version: str = Field(min_length=1)
 
+    @field_validator("processed_at")
+    @classmethod
+    def require_timezone(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("processedAt must include a timezone")
+        return value
+
 
 class ValidationInfo(ContractModel):
     validation_status: Literal["PASSED"]
     quality_score: float = Field(ge=0, le=100)
-    total_rows: int = Field(ge=0)
-    valid_rows: int = Field(ge=0)
-    invalid_rows: int = Field(ge=0)
-    error_count: int = Field(ge=0)
-    warning_count: int = Field(ge=0)
-    quarantined_rows: int = Field(ge=0)
+    total_rows: StrictInt = Field(ge=0)
+    valid_rows: StrictInt = Field(ge=0)
+    invalid_rows: StrictInt = Field(ge=0)
+    error_count: StrictInt = Field(ge=0)
+    warning_count: StrictInt = Field(ge=0)
+    quarantined_rows: StrictInt = Field(ge=0)
 
     @model_validator(mode="after")
     def validate_row_counts(self) -> "ValidationInfo":
@@ -64,7 +78,7 @@ class PatientInfo(ContractModel):
 class ArtifactInfo(ContractModel):
     artifact_type: Literal["FHIR_R4_BUNDLE"]
     bundle_id: str = Field(min_length=1)
-    resource_count: int = Field(ge=1)
+    resource_count: StrictInt = Field(ge=1)
     resource_types: list[str] = Field(min_length=1)
     sha256: str = Field(pattern=r"^[a-fA-F0-9]{64}$")
     bundle: dict[str, Any]

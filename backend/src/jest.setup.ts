@@ -29,7 +29,7 @@ process.env.AUDIT_LOG_ADDRESS =
 process.env.MEDICAL_RECORD_ADDRESS =
     "0x0000000000000000000000000000000000000006";
 
-jest.mock("dotenv", () => ({
+jest.unstable_mockModule("dotenv", () => ({
     config: jest.fn(),
 }));
 

@@ -151,6 +151,52 @@ def test_invalid_contract_version_is_rejected():
     raise AssertionError("Unsupported handoff version should be rejected")
 
 
+def test_handoff_rejects_non_integer_row_counts():
+    payload = AnalyticsHandoffV1.from_patient_bundle(
+        source_patient_id="source-101",
+        fhir_patient_id="101",
+        bundle=_example_bundle(),
+        processing_id="proc-1",
+        dataset_id="dataset-1",
+        dataset_name="example.csv",
+        schema_fingerprint="fingerprint-123",
+        schema_version="schema-1",
+        validation_result=_example_validation_result(),
+        source_format="CSV",
+        mapping_complete=True,
+    ).model_dump(mode="json", by_alias=True)
+    payload["validation"]["totalRows"] = 2.5
+
+    try:
+        AnalyticsHandoffV1.model_validate(payload)
+    except ValueError:
+        return
+    raise AssertionError("Non-integer row counts must be rejected")
+
+
+def test_handoff_rejects_naive_processed_at():
+    payload = AnalyticsHandoffV1.from_patient_bundle(
+        source_patient_id="source-101",
+        fhir_patient_id="101",
+        bundle=_example_bundle(),
+        processing_id="proc-1",
+        dataset_id="dataset-1",
+        dataset_name="example.csv",
+        schema_fingerprint="fingerprint-123",
+        schema_version="schema-1",
+        validation_result=_example_validation_result(),
+        source_format="CSV",
+        mapping_complete=True,
+    ).model_dump(mode="json", by_alias=True)
+    payload["processing"]["processedAt"] = "2026-10-14T13:00:00"
+
+    try:
+        AnalyticsHandoffV1.model_validate(payload)
+    except ValueError:
+        return
+    raise AssertionError("Naive processedAt must be rejected")
+
+
 def test_pipeline_creates_one_handoff_per_valid_patient():
     dataframe = pd.DataFrame(
         {
