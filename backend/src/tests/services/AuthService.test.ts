@@ -1,4 +1,4 @@
-import { describe, expect, it, jest, beforeEach } from "@jest/globals";
+import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { Wallet } from "ethers";
 
 const mockUserFindOne: any = jest.fn();
@@ -8,7 +8,7 @@ const mockNonceFindOne: any = jest.fn();
 const mockNonceFindOneAndUpdate: any = jest.fn();
 const mockGetRole: any = jest.fn();
 
-jest.mock("../../models/User", () => ({
+jest.mock("../../models/User.ts", () => ({
     __esModule: true,
     default: {
         findOne: mockUserFindOne,

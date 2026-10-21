@@ -9,6 +9,7 @@ from __future__ import annotations
 import pandas as pd
 
 from app.models.schema_profile import SchemaProfile
+from app.mapping.schema_detector import SchemaDetector
 from app.schemas.schema_analyzer import SchemaAnalyzer
 
 
@@ -23,8 +24,10 @@ class SchemaService:
     def __init__(
         self,
         analyzer: SchemaAnalyzer | None = None,
+        schema_detector: SchemaDetector | None = None,
     ) -> None:
         self.analyzer = analyzer or SchemaAnalyzer()
+        self.schema_detector = schema_detector or SchemaDetector()
 
     def analyze_dataset(
         self,
@@ -42,7 +45,11 @@ class SchemaService:
             SchemaProfile containing the analyzed dataset information.
         """
 
-        return self.analyzer.analyze(
+        profile = self.analyzer.analyze(
             dataframe=dataframe,
             dataset_name=dataset_name,
         )
+        profile.schema_version = self.schema_detector.resolve_schema_version(
+            profile
+        )
+        return profile

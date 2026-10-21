@@ -34,3 +34,6 @@ class SchemaProfile:
     )
 
     fingerprint: str | None = None
+
+    # Populated from a registered Schema when the structural fingerprint is known.
+    schema_version: str | None = None

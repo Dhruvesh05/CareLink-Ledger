@@ -31,6 +31,20 @@ export const env = {
         "development"
     ),
 
+    ANALYTICS_BASE_URL: getString(
+        process.env.ANALYTICS_BASE_URL
+    ),
+
+    ANALYTICS_TIMEOUT_MS: getNumber(
+        process.env.ANALYTICS_TIMEOUT_MS,
+        30_000
+    ),
+
+    ANALYTICS_UPLOAD_MAX_BYTES: getNumber(
+        process.env.ANALYTICS_UPLOAD_MAX_BYTES,
+        10 * 1024 * 1024
+    ),
+
     MONGODB_URI: getString(
         process.env.MONGODB_URI
     ),

@@ -1,7 +1,6 @@
 import { IVerifyResult, VerifiablePresentation, W3CVerifiableCredential, W3CVerifiablePresentation } from "@veramo/core-types";
 import { createAgent } from "../agent/createAgent";
 import { IVerifiablePresentation } from "../interfaces/IVerifiablePresentation";
-
 export class PresentationService implements IVerifiablePresentation {
     private isValidDid(value: unknown): value is string {
         return (
@@ -165,5 +164,4 @@ export class PresentationService implements IVerifiablePresentation {
         }
     }
 }
-
 export default new PresentationService();

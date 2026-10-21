@@ -1,6 +1,6 @@
 import UserModel from "../../models/User";
 import type { UserRole } from "../../models/User";
-import UserDidService from "../../services/UserDidService";
+import { UserDidService } from "../../services/UserDidService";
 import {
     ICareLinkCredentialService,
 } from "../interfaces/ICareLinkCredentialService";
@@ -54,12 +54,22 @@ export class CareLinkCredentialService implements ICareLinkCredentialService {
             throw new Error("Subject DID does not belong to the application user.");
         }
 
-        return CredentialService.issueCredential(
+        const credential = await CredentialService.issueCredential(
             input.issuerDid,
             subjectDid,
             { role: user.role },
             CARELINK_ROLE_CREDENTIAL_TYPES
         );
+
+        if (
+            typeof credential !== "object" ||
+            credential === null ||
+            Array.isArray(credential)
+        ) {
+            throw new Error("Issued credential must be a JSON object.");
+        }
+
+        return credential as Record<string, unknown>;
     }
 
     private requireDid(value: unknown, message: string): asserts value is string {

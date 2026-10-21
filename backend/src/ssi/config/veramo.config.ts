@@ -45,7 +45,7 @@ export const veramoConfig: VeramoConfig = {
      */
     secretKey:
         configuredSecretKey ||
-        "test-only-ssi-secret-key-change-in-production-32bytes",
+        "11".repeat(32),
 
     didNetwork: configuredDidNetwork || "local"
 };

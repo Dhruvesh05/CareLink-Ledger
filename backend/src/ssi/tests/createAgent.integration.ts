@@ -3,7 +3,7 @@ import { createAgent } from "../agent/createAgent";
 async function main(): Promise<void> {
     process.env.SSI_SECRET_KEY =
         process.env.SSI_SECRET_KEY ||
-        "carelink-test-secret-key-32-characters";
+        "11".repeat(32);
 
     const agent = await createAgent();
 

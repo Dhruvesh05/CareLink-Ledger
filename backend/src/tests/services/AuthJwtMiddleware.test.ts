@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from "@jest/globals";
 import jwt from "jsonwebtoken";
-
+import { jest } from "@jest/globals";
 jest.mock("../../config/env", () => ({
     env: {
         JWT_SECRET: "test-jwt-secret-for-auth-tests",
@@ -154,7 +154,7 @@ describe("authenticate middleware", () => {
 
         const req = {
             headers: {
-                authorization: `Bearer ${token}`,
+                authorization: "Bearer " + token,
             },
         } as Request;
 

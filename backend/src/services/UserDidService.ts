@@ -83,4 +83,4 @@ export class UserDidService {
     }
 }
 
-export default UserDidService;
+export default new UserDidService();

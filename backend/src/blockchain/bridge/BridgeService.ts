@@ -10,6 +10,12 @@ import {
 import {
     IBlockchainProvider
 } from "../provider/IBlockchainProvider";
+import { createRequire } from "node:module";
+
+const runtimeRequire =
+    typeof require === "function"
+        ? require
+        : createRequire(process.cwd());
 
 import {
     CrossChainAuditService
@@ -622,7 +628,7 @@ export class BridgeService {
             switch (message.destinationChain) {
                 case BlockchainType.ETHEREUM: {
                     const { EthereumProvider } =
-                        require("../ethereum/provider/EthereumProvider");
+                        runtimeRequire("../ethereum/provider/EthereumProvider");
 
                     destinationProvider =
                         new EthereumProvider();
@@ -631,7 +637,7 @@ export class BridgeService {
 
                 case BlockchainType.POLYGON: {
                     const { PolygonProvider } =
-                        require("../polygon/provider/PolygonProvider");
+                        runtimeRequire("../polygon/provider/PolygonProvider");
 
                     destinationProvider =
                         new PolygonProvider();
@@ -640,7 +646,7 @@ export class BridgeService {
 
                 case BlockchainType.FABRIC: {
                     const { FabricProvider } =
-                        require("../fabric/provider/FabricProvider");
+                        runtimeRequire("../fabric/provider/FabricProvider");
 
                     destinationProvider =
                         new FabricProvider();

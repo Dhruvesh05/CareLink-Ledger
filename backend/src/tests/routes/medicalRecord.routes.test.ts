@@ -1,4 +1,5 @@
 import {
+    beforeEach,
     describe,
     expect,
     it,
@@ -96,12 +97,12 @@ mockConfirmMedicalRecord.mockImplementation((req: any, res: any) => {
     });
 });
 
-jest.mock("../../middleware/auth", () => ({
+jest.unstable_mockModule("../middleware/auth", () => ({
     authenticate,
     requireRole
 }));
 
-jest.mock("../../middleware/upload.middleware", () => ({
+jest.unstable_mockModule("../middleware/upload.middleware", () => ({
     __esModule: true,
     default: {
         single: uploadSingle
@@ -109,11 +110,11 @@ jest.mock("../../middleware/upload.middleware", () => ({
     requireFile
 }));
 
-jest.mock("../../ssi/middleware/carelinkAuthorization", () => ({
+jest.unstable_mockModule("../ssi/middleware/carelinkAuthorization", () => ({
     requireCareLinkRole
 }));
 
-jest.mock("../../controllers/MedicalRecordController", () => ({
+jest.unstable_mockModule("../controllers/MedicalRecordController", () => ({
     MedicalRecordController: jest.fn().mockImplementation(() => ({
         prepareMedicalRecord: mockPrepareMedicalRecord,
         confirmMedicalRecord: mockConfirmMedicalRecord,
@@ -133,6 +134,8 @@ jest.mock("../../controllers/MedicalRecordController", () => ({
         getMedicalRecord: mockGetMedicalRecord
     }))
 }));
+
+const { default: router } = await import("../../routes/medicalRecord.routes");
 
 function getRoute(router: any, path: string, method: string) {
     const layer = router.stack.find(
@@ -184,14 +187,12 @@ describe("medical record route SSI integration", () => {
     });
 
     it("requires authentication at the router level", async () => {
-        const { default: router } = await import("../../routes/medicalRecord.routes");
         const middlewareLayer = router.stack.find((layer: any) => !layer.route);
 
         expect(middlewareLayer?.handle).toBe(authenticate);
     });
 
     it("uses the required prepare middleware order", async () => {
-        const { default: router } = await import("../../routes/medicalRecord.routes");
         const prepareRoute = getRoute(router, "/prepare", "post");
 
         expect(prepareRoute.stack.map((layer: any) => layer.handle)).toEqual([
@@ -208,7 +209,6 @@ describe("medical record route SSI integration", () => {
     });
 
     it("uses SSI authorization before the existing confirm role check", async () => {
-        const { default: router } = await import("../../routes/medicalRecord.routes");
         const confirmRoute = getRoute(router, "/confirm", "post");
 
         expect(confirmRoute.stack).toHaveLength(3);
@@ -219,7 +219,6 @@ describe("medical record route SSI integration", () => {
     });
 
     it("protects content retrieval with SSI authorization before the controller", async () => {
-        const { default: router } = await import("../../routes/medicalRecord.routes");
         const contentRoute = getRoute(router, "/:recordId/content", "get");
 
         expect(contentRoute.stack).toHaveLength(2);
@@ -244,7 +243,6 @@ describe("medical record route SSI integration", () => {
     });
 
     it("allows a valid SSI-authorized Doctor request to reach confirmation business logic", async () => {
-        const { default: router } = await import("../../routes/medicalRecord.routes");
         const confirmRoute = getRoute(router, "/confirm", "post");
         const request = {
             auth: {
@@ -271,7 +269,6 @@ describe("medical record route SSI integration", () => {
     });
 
     it("rejects confirmation when SSI authorization fails before the Doctor role check", async () => {
-        const { default: router } = await import("../../routes/medicalRecord.routes");
         const confirmRoute = getRoute(router, "/confirm", "post");
         const response = createResponse();
         ssiAuthorizationAllowed = false;
@@ -288,7 +285,6 @@ describe("medical record route SSI integration", () => {
     });
 
     it("rejects confirmation when the SSI role is not Doctor", async () => {
-        const { default: router } = await import("../../routes/medicalRecord.routes");
         const confirmRoute = getRoute(router, "/confirm", "post");
         const response = createResponse();
         ssiRole = "Patient";
@@ -305,7 +301,6 @@ describe("medical record route SSI integration", () => {
     });
 
     it("preserves the existing Doctor role check after SSI authorization", async () => {
-        const { default: router } = await import("../../routes/medicalRecord.routes");
         const confirmRoute = getRoute(router, "/confirm", "post");
         const response = createResponse();
         doctorRoleAllowed = false;
@@ -322,7 +317,6 @@ describe("medical record route SSI integration", () => {
     });
 
     it("rejects confirmation when the SSI challenge is invalid or already consumed", async () => {
-        const { default: router } = await import("../../routes/medicalRecord.routes");
         const confirmRoute = getRoute(router, "/confirm", "post");
         const response = createResponse();
         ssiChallengeValid = false;
@@ -341,7 +335,6 @@ describe("medical record route SSI integration", () => {
     });
 
     it("preserves the authenticated JWT wallet after SSI authorization", async () => {
-        const { default: router } = await import("../../routes/medicalRecord.routes");
         const confirmRoute = getRoute(router, "/confirm", "post");
         const request = {
             auth: {
@@ -372,7 +365,6 @@ describe("medical record route SSI integration", () => {
     });
 
     it("leaves the disabled create route unchanged", async () => {
-        const { default: router } = await import("../../routes/medicalRecord.routes");
         const createRoute = getRoute(router, "/create", "post");
 
         expect(createRoute.stack).toHaveLength(1);

@@ -6,6 +6,9 @@ import tempfile
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app.ingestion.ingestion_service import IngestionService
+from app.mapping.schema_detector import SchemaDetector
+from app.registry.schema_registry import SchemaRegistry
+from app.schemas.analytics_handoff import AnalyticsHandoffV1
 from app.services.analytics_pipeline_service import AnalyticsPipelineService
 from app.services.mapping_service import MappingService
 from app.services.schema_service import SchemaService
@@ -17,7 +20,10 @@ router = APIRouter(prefix="/analytics", tags=["Analytics"])
 _ingestion_service = IngestionService()
 _schema_service = SchemaService()
 _mapping_service = MappingService()
-_pipeline_service = AnalyticsPipelineService()
+_schema_registry = SchemaRegistry()
+_pipeline_service = AnalyticsPipelineService(
+    schema_detector=SchemaDetector(schema_registry=_schema_registry),
+)
 
 
 def _serialize_profile(profile):
@@ -33,6 +39,7 @@ def _serialize_profile(profile):
         "potential_primary_keys": profile.potential_primary_keys,
         "statistics": profile.statistics,
         "fingerprint": profile.fingerprint,
+        "schema_version": profile.schema_version,
     }
 
 
@@ -89,20 +96,53 @@ def _serialize_validation_result(result):
     }
 
 
-def _serialize_fhir_bundle(bundle):
-    """
-    Convert a FHIR Bundle resource into JSON-compatible data.
 
-    Returns None when the dataset failed validation and no
-    FHIR Bundle was generated.
+def _serialize_fhir_bundle(fhir_bundle):
     """
-    if bundle is None:
+    Convert a single FHIR Bundle into JSON-compatible data.
+    """
+    if fhir_bundle is None:
         return None
 
-    return bundle.model_dump(
+    return fhir_bundle.model_dump(
         mode="json",
         exclude_none=True,
     )
+
+
+def _serialize_fhir_bundles(fhir_bundles):
+    """
+    Serialize patient-level FHIR Bundles keyed by patient ID.
+    """
+    if not fhir_bundles:
+        return None
+
+    return {
+        patient_id: _serialize_fhir_bundle(bundle)
+        for patient_id, bundle in fhir_bundles.items()
+    }
+
+
+def _serialize_handoffs(handoffs):
+    """Serialize versioned patient handoff payloads into JSON-compatible structure."""
+    if not handoffs:
+        return None
+
+    serialized = {}
+    for patient_id, handoff in handoffs.items():
+        if isinstance(handoff, AnalyticsHandoffV1):
+            serialized[patient_id] = handoff.model_dump(
+                mode="json",
+                by_alias=True,
+                exclude_none=True,
+            )
+        elif isinstance(handoff, dict):
+            serialized[patient_id] = {
+                key: value for key, value in handoff.items()
+            }
+        else:
+            serialized[patient_id] = handoff
+    return serialized
 
 
 async def _save_upload(upload: UploadFile) -> str:
@@ -180,18 +220,28 @@ async def analyze_dataset(
         result = _pipeline_service.process(
             dataframe,
             dataset_name=file.filename or "uploaded_dataset",
+            source_format={
+                ".csv": "CSV",
+                ".xlsx": "XLSX",
+                ".xls": "XLS",
+                ".json": "JSON",
+            }.get(os.path.splitext(file.filename or "")[1].lower()),
         )
 
         profile = result["schema_profile"]
         mapping = result["mapping_result"]
         validation = result["validation_result"]
         fhir_bundle = result["fhir_bundle"]
+        fhir_bundles = result.get("fhir_bundles")
+        handoffs = result.get("handoffs")
 
         return {
             "schema": _serialize_profile(profile),
             "mapping": _serialize_mapping_result(mapping),
             "validation": _serialize_validation_result(validation),
             "fhir": _serialize_fhir_bundle(fhir_bundle),
+            "fhir_bundles": _serialize_fhir_bundles(fhir_bundles),
+            "handoffs": _serialize_handoffs(handoffs),
         }
 
     except (

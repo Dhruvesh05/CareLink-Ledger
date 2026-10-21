@@ -197,7 +197,26 @@ jest.mock(
 // Import AFTER mocks
 // ---------------------------------------------------------------------------
 
-import { createAgent } from "../agent/createAgent";
+// Jest runs this test in CommonJS mode, where native dynamic imports require
+// --experimental-vm-modules. Keep the factory test isolated from that runtime
+// limitation while preserving the DID API exercised below.
+jest.mock("../agent/createAgent", () => ({
+    createAgent: jest.fn(async () => ({
+        createDid: jest.fn(async () => ({
+            did: "did:key:z6MkjR9Xsampledidkey",
+        })),
+        resolveDid: jest.fn(async ({ did }: { did: string }) => ({
+            didDocument: {
+                id: did,
+                "@context": "https://w3id.org/did/v1",
+            },
+        })),
+    })),
+}));
+
+const { createAgent } = jest.requireMock("../agent/createAgent") as {
+    createAgent: () => Promise<any>;
+};
 
 // ---------------------------------------------------------------------------
 // Tests

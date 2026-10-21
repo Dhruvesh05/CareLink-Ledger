@@ -1,13 +1,13 @@
 import { createAgent } from "../agent/createAgent";
 import { IVerifiableCredential } from "../interfaces/IVerifiableCredential";
-
+import type { W3CVerifiableCredential } from "@veramo/core-types";
 export class CredentialService implements IVerifiableCredential {
     async issueCredential(
         issuerDid: string,
         subjectDid: string,
         credentialSubject: Record<string, unknown>,
         credentialTypes = ["VerifiableCredential", "IdentityCredential"],
-    ): Promise<any> {
+    ): Promise<W3CVerifiableCredential> {
         if (!issuerDid || typeof issuerDid !== "string" || !issuerDid.trim()) {
             throw new Error("Issuer DID is required.");
         }
@@ -53,3 +53,4 @@ export class CredentialService implements IVerifiableCredential {
 }
 
 export default new CredentialService();
+

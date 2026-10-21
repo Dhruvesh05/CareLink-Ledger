@@ -32,7 +32,9 @@ jest.mock("../agent/createAgent", () => ({
     createAgent: mockCreateAgent,
 }));
 
-import PresentationService from "../services/PresentationService";
+import { PresentationService as PresentationServiceClass } from "../services/PresentationService";
+
+let PresentationService: PresentationServiceClass;
 
 const holderDid = "did:key:holder";
 const challengeA = "challenge-a";
@@ -55,9 +57,12 @@ const presentation = {
 describe("PresentationService", () => {
     beforeEach(() => {
         jest.clearAllMocks();
+
         mockCreateAgent.mockResolvedValue(mockAgent);
         mockAgent.createVerifiablePresentation.mockResolvedValue(presentation);
         mockAgent.verifyPresentation.mockResolvedValue({ verified: true });
+
+        PresentationService = new PresentationServiceClass();
     });
 
     it("creates a VP with the existing credential and supplied challenge", async () => {

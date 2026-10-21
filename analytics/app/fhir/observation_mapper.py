@@ -11,6 +11,7 @@ import pandas as pd
 from fhir.resources.observation import Observation
 from fhir.resources.reference import Reference
 from fhir.resources.quantity import Quantity
+from app.fhir.patient_id import normalize_patient_id
 
 
 class ObservationMapper:
@@ -46,7 +47,7 @@ class ObservationMapper:
         observation_data: dict[str, Any] = {
             "status": "final",
             "subject": Reference(
-                reference=f"Patient/{self._format_patient_id(patient_id)}"
+                reference=f"Patient/{normalize_patient_id(patient_id)}"
             ),
             "code": {
                 "coding": [

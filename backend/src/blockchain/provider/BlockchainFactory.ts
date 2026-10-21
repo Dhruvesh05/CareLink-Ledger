@@ -1,4 +1,10 @@
 import { IBlockchainProvider } from "./IBlockchainProvider";
+import { createRequire } from "node:module";
+
+const runtimeRequire =
+    typeof require === "function"
+        ? require
+        : createRequire(process.cwd());
 
 /*
 |--------------------------------------------------------------------------
@@ -7,7 +13,7 @@ import { IBlockchainProvider } from "./IBlockchainProvider";
 |
 | Selects the blockchain provider configured for the application.
 |
-| Provider implementations are loaded lazily using require().
+| Provider implementations are loaded lazily using a runtime require.
 | This prevents unnecessary blockchain configuration from being loaded
 | during application/test initialization.
 |
@@ -24,21 +30,21 @@ export class BlockchainFactory {
 
             case "ethereum": {
                 const { EthereumProvider } =
-                    require("../ethereum/provider/EthereumProvider");
+                    runtimeRequire("../ethereum/provider/EthereumProvider");
 
                 return new EthereumProvider();
             }
 
             case "polygon": {
                 const { PolygonProvider } =
-                    require("../polygon/provider/PolygonProvider");
+                    runtimeRequire("../polygon/provider/PolygonProvider");
 
                 return new PolygonProvider();
             }
 
             case "fabric": {
                 const { FabricProvider } =
-                    require("../fabric/provider/FabricProvider");
+                    runtimeRequire("../fabric/provider/FabricProvider");
 
                 return new FabricProvider();
             }

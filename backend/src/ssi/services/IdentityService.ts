@@ -1,8 +1,8 @@
-import { createAgent } from "../agent/createAgent";
-import { IIdentity } from "../interfaces/IIdentity";
-import { IIdentityService } from "../interfaces/IIdentityService";
-import CredentialService from "./CredentialService";
-import DidService from "./DidService";
+import { createAgent } from "../agent/createAgent.js";
+import type { IIdentity } from "../interfaces/IIdentity.js";
+import type { IIdentityService } from "../interfaces/IIdentityService.js";
+import CredentialService from "./CredentialService.js";
+import DidService from "./DidService.js";
 
 export class IdentityService implements IIdentityService {
     async createIdentity(alias?: string): Promise<IIdentity> {

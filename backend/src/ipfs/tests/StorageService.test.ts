@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 
-jest.mock("../services/UploadService", () => {
+jest.unstable_mockModule("../services/UploadService.ts", () => {
 	class UploadService {}
 
 	class UploadServiceError extends Error {
@@ -16,7 +16,7 @@ jest.mock("../services/UploadService", () => {
 	};
 });
 
-jest.mock("../services/MetadataService", () => {
+jest.unstable_mockModule("../services/MetadataService.ts", () => {
 	class MetadataService {}
 
 	class MetadataServiceError extends Error {
