@@ -1,4 +1,15 @@
 import { jest } from "@jest/globals";
+import { createRequire } from "node:module";
+
+const runtimeRequire =
+    typeof require === "function"
+        ? require
+        : createRequire(process.cwd());
+
+Object.assign(globalThis, {
+    jest,
+    require: runtimeRequire,
+});
 
 process.env.BLOCKCHAIN_PROVIDER = "ethereum";
 process.env.ETHEREUM_RPC = "http://127.0.0.1:8545";
@@ -30,6 +41,9 @@ process.env.MEDICAL_RECORD_ADDRESS =
     "0x0000000000000000000000000000000000000006";
 
 jest.unstable_mockModule("dotenv", () => ({
+    default: {
+        config: jest.fn(),
+    },
     config: jest.fn(),
 }));
 

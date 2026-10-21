@@ -1,6 +1,5 @@
-
 import path from "node:path";
-
+import { existsSync } from "node:fs";
 import {
     FhirValidator,
     SpecRegistry,
@@ -16,13 +15,18 @@ export interface FhirValidationResult {
     issues: OperationOutcomeIssue[];
 }
 
+const specsPath = path.resolve(
+    process.cwd(),
+    "../node_modules/@fhir-toolkit/r4-specs/specs",
+);
+
+if (!existsSync(specsPath)) {
+    throw new Error(`FHIR R4 specs directory not found: ${specsPath}`);
+}
 export class FhirValidatorService {
     private readonly registry = new SpecRegistry({
-        specsPath: path.resolve(
-            process.cwd(),
-            "../node_modules/@fhir-toolkit/r4-specs/specs",
-        ),
         fhirVersion: "R4",
+        specsPath,
     });
 
     private readonly validator = new FhirValidator({

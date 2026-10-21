@@ -124,11 +124,6 @@ describe("MedicalRecordTransactionPreparationService", () => {
 
         const uploadedBuffer =
             ipfsService.uploadFile.mock.calls[0][0] as Buffer;
-
-<<<<<<< Updated upstream
-=======
-
->>>>>>> Stashed changes
         /*
          * The preparation must be persisted server-side before
          * the unsigned transaction is returned.
@@ -242,11 +237,6 @@ describe("MedicalRecordTransactionPreparationService", () => {
             "record.pdf",
             "application/pdf"
         );
-
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
         expect(uploadedBuffer).not.toEqual(fileBuffer);
         expect(uploadedBuffer.length).toBe(fileBuffer.length);
 

@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 
 const mockCreate = jest.fn();
 
-jest.mock("ipfs-http-client", () => ({
+jest.unstable_mockModule("ipfs-http-client", () => ({
 	create: mockCreate
-}), { virtual: true });
+}));
 
 type MockHttpClient = {
 	add: jest.MockedFunction<(
@@ -58,7 +58,6 @@ describe("IPFSClient", () => {
 	let IPFSClient: typeof import("../client/IPFSClient").IPFSClient;
 
 	beforeEach(async () => {
-		jest.resetModules();
 		mockHttpClient = createMockHttpClient();
 		mockCreate.mockReset();
 		mockCreate.mockReturnValue(mockHttpClient);

@@ -6,7 +6,7 @@ import {
     jest
 } from "@jest/globals";
 
-jest.mock("../client/IPFSClient", () => ({
+jest.unstable_mockModule("../client/IPFSClient.ts", () => ({
     ipfsClient: {}
 }));
 

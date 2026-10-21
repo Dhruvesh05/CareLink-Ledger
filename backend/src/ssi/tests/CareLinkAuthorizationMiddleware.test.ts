@@ -16,15 +16,13 @@ const mockConsumeChallenge = jest.fn() as jest.MockedFunction<
 >;
 
 jest.mock("../services/PresentationService", () => ({
-    __esModule: true,
-    default: {
+    PresentationService: {
         verifyPresentation: mockVerifyPresentation,
     },
 }));
 
 jest.mock("../services/CareLinkAuthorizationService", () => ({
-    __esModule: true,
-    default: {
+    CareLinkAuthorizationService: {
         authorizeVerifiedPresentation: mockAuthorizeVerifiedPresentation,
     },
 }));
@@ -32,8 +30,8 @@ jest.mock("../services/CareLinkAuthorizationService", () => ({
 jest.mock("../../services/SsiAuthorizationChallengeService", () => ({
     __esModule: true,
     default: {
-        getPendingChallenge: (...args: [string]) => mockGetPendingChallenge(...args),
-        consumeChallenge: (...args: [string, string]) => mockConsumeChallenge(...args),
+        getPendingChallenge: mockGetPendingChallenge,
+        consumeChallenge: mockConsumeChallenge,
     },
 }));
 

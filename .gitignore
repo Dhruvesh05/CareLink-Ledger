@@ -164,3 +164,14 @@ temp/
 *.swo
 .nfs*
 benchmark-results/
+
+# Python virtual environments
+.venv/
+venv/
+env/
+analytics/source/
+
+# Python cache and test files
+__pycache__/
+*.py[cod]
+.pytest_cache/

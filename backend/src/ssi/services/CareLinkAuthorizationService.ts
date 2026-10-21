@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 import type {
     IVerifyResult,
     W3CVerifiableCredential,
@@ -146,8 +145,7 @@ export class CareLinkAuthorizationService implements ICareLinkAuthorizationServi
         return issuerDid.trim();
     }
 }
-
-=======
+/*
 import type {
     W3CVerifiableCredential,
     W3CVerifiablePresentation
@@ -294,6 +292,4 @@ export class CareLinkAuthorizationService implements ICareLinkAuthorizationServi
         return issuerDid.trim();
     }
 }
-
->>>>>>> Stashed changes
-export default new CareLinkAuthorizationService();
+*/

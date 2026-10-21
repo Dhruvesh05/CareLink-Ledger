@@ -1,3 +1,4 @@
+import { describe, expect, jest, test } from "@jest/globals";
 import { MedicalRecordController } from "../../controllers/MedicalRecordController";
 
 describe("MedicalRecordTransactionConfirmationController", () => {
@@ -13,7 +14,7 @@ describe("MedicalRecordTransactionConfirmationController", () => {
     }
 
     test("uses authenticated JWT wallet as doctor and ignores body doctor", async () => {
-        const confirm = jest.fn().mockResolvedValue({
+        const confirm = jest.fn<() => Promise<any>>().mockResolvedValue({
             preparationId: "prep-123",
             recordId: 1,
             transactionHash: "0x" + "a".repeat(64),

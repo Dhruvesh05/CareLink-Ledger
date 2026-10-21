@@ -10,7 +10,7 @@ let singletonAgent: AnyAgent | null = null;
  * Kept in a separate function so the agent construction logic
  * remains isolated and easier to test.
  */
-
+    
 async function loadVeramoDependencies() {
     const load = async <T>(
         name: string,
@@ -27,27 +27,52 @@ async function loadVeramoDependencies() {
         }
     };
 
-    const [
-        core,
-        keyManagerModule,
-        dataStore,
-        kmsLocalModule,
-        didManagerModule,
-        didProviderKey,
-        didResolverModule,
-        credentialW3c,
-        credentialJwt,
-    ] = await Promise.all([
-        load("@veramo/core", () => import("@veramo/core")),
-        load("@veramo/key-manager", () => import("@veramo/key-manager")),
-        load("@veramo/data-store", () => import("@veramo/data-store")),
-        load("@veramo/kms-local", () => import("@veramo/kms-local")),
-        load("@veramo/did-manager", () => import("@veramo/did-manager")),
-        load("@veramo/did-provider-key", () => import("@veramo/did-provider-key")),
-        load("@veramo/did-resolver", () => import("@veramo/did-resolver")),
-        load("@veramo/credential-w3c", () => import("@veramo/credential-w3c")),
-        load("@veramo/credential-jwt", () => import("@veramo/credential-jwt")),
-    ]);
+    // Load Veramo dependencies sequentially to avoid concurrent
+    // dynamic-import linking issues in Jest's ESM environment.
+    const core = await load(
+        "@veramo/core",
+        () => import("@veramo/core"),
+    );
+
+    const keyManagerModule = await load(
+        "@veramo/key-manager",
+        () => import("@veramo/key-manager"),
+    );
+
+    const dataStore = await load(
+        "@veramo/data-store",
+        () => import("@veramo/data-store"),
+    );
+
+    const kmsLocalModule = await load(
+        "@veramo/kms-local",
+        () => import("@veramo/kms-local"),
+    );
+
+    const didManagerModule = await load(
+        "@veramo/did-manager",
+        () => import("@veramo/did-manager"),
+    );
+
+    const didProviderKey = await load(
+        "@veramo/did-provider-key",
+        () => import("@veramo/did-provider-key"),
+    );
+
+    const didResolverModule = await load(
+        "@veramo/did-resolver",
+        () => import("@veramo/did-resolver"),
+    );
+
+    const credentialW3c = await load(
+        "@veramo/credential-w3c",
+        () => import("@veramo/credential-w3c"),
+    );
+
+    const credentialJwt = await load(
+        "@veramo/credential-jwt",
+        () => import("@veramo/credential-jwt"),
+    );
 
     return {
         core,
@@ -61,7 +86,6 @@ async function loadVeramoDependencies() {
         credentialJwt,
     };
 }
-
 
 export async function createAgent(): Promise<AnyAgent> {
     // Reuse the existing agent when already initialized.

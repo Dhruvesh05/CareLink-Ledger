@@ -24,6 +24,9 @@ module.exports = {
             }
         ]
     },
+    transformIgnorePatterns: [
+        "node_modules/(?!.*multiformats/)"
+    ],
     moduleNameMapper: {
         "^\\.\\./\\.\\./models/User\\.js$": "<rootDir>/src/models/User.ts",
         "^\\.\\./\\.\\./models/SsiAuthorizationChallenge\\.js$": "<rootDir>/src/models/SsiAuthorizationChallenge.ts",
@@ -36,6 +39,10 @@ module.exports = {
         "^\\.\\./\\.\\./config/env\\.js$": "<rootDir>/src/config/env.ts",
         "^\\.\\./\\.\\./utils/jwt$": "<rootDir>/src/utils/jwt.ts",
         "^\\.\\./\\.\\./utils/jwt\\.js$": "<rootDir>/src/utils/jwt.ts",
+        "^\\.\\./\\.\\./middleware/auth\\.ts$": "<rootDir>/src/middleware/auth.ts",
+        "^\\.\\./\\.\\./middleware/upload\\.middleware\\.ts$": "<rootDir>/src/middleware/upload.middleware.ts",
+        "^\\.\\.\\/\\.\\.\\/ssi\\/middleware\\/carelinkAuthorization\\.ts$": "<rootDir>/src/ssi/middleware/carelinkAuthorization.ts",
+        "^\\.\\.\\/\\.\\.\\/controllers\\/MedicalRecordController\\.ts$": "<rootDir>/src/controllers/MedicalRecordController.ts",
         "^(\\.{1,2}/.*)\\.js$": "$1"
     },
 };

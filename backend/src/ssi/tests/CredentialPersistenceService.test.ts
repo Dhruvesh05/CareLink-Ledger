@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
-
-const mockCreateAgent: any = jest.fn();
-
+import CredentialPersistenceService from "../services/CredentialPersistenceService";
 jest.mock("../agent/createAgent", () => ({
-    createAgent: mockCreateAgent,
+    createAgent: jest.fn(),
 }));
+
+import { createAgent } from "../agent/createAgent";
+
+const mockCreateAgent = createAgent as jest.MockedFunction<typeof createAgent>;
 
 describe("CredentialPersistenceService", () => {
     const mockAgent: any = {
@@ -28,8 +30,6 @@ describe("CredentialPersistenceService", () => {
 
     it("saveCredential delegates to the Veramo data store and returns the stored id", async () => {
         mockAgent.dataStoreSaveVerifiableCredential.mockResolvedValue("credential-hash");
-
-        const { default: CredentialPersistenceService } = await import("../services/CredentialPersistenceService");
         const result = await CredentialPersistenceService.saveCredential(validCredential);
 
         expect(result).toBe("credential-hash");
@@ -40,8 +40,6 @@ describe("CredentialPersistenceService", () => {
 
     it("getCredential delegates to the Veramo data store and returns the credential when found", async () => {
         mockAgent.dataStoreGetVerifiableCredential.mockResolvedValue(validCredential);
-
-        const { default: CredentialPersistenceService } = await import("../services/CredentialPersistenceService");
         const result = await CredentialPersistenceService.getCredential("credential-hash");
 
         expect(result).toEqual(validCredential);
@@ -50,8 +48,6 @@ describe("CredentialPersistenceService", () => {
 
     it("getCredential handles a missing credential by returning null", async () => {
         mockAgent.dataStoreGetVerifiableCredential.mockRejectedValue(new Error("not_found: Verifiable credential not found"));
-
-        const { default: CredentialPersistenceService } = await import("../services/CredentialPersistenceService");
         const result = await CredentialPersistenceService.getCredential("missing-hash");
 
         expect(result).toBeNull();
@@ -63,8 +59,6 @@ describe("CredentialPersistenceService", () => {
         mockAgent.dataStoreORMGetVerifiableCredentialsByClaims.mockResolvedValue([
             { verifiableCredential: credentials[0] },
         ]);
-
-        const { default: CredentialPersistenceService } = await import("../services/CredentialPersistenceService");
         const result = await CredentialPersistenceService.getCredentialsBySubject(subjectDid);
 
         expect(result).toEqual(credentials);
@@ -75,7 +69,6 @@ describe("CredentialPersistenceService", () => {
     });
 
     it("invalid inputs are rejected before hitting the datastore", async () => {
-        const { default: CredentialPersistenceService } = await import("../services/CredentialPersistenceService");
 
         await expect(CredentialPersistenceService.saveCredential({} as any)).rejects.toThrow(
             "Credential is required and must include @context, type, issuer, and credentialSubject.id.",
@@ -88,7 +81,6 @@ describe("CredentialPersistenceService", () => {
     it("datastore failures are surfaced cleanly", async () => {
         mockAgent.dataStoreSaveVerifiableCredential.mockRejectedValue(new Error("database write failed"));
 
-        const { default: CredentialPersistenceService } = await import("../services/CredentialPersistenceService");
         await expect(CredentialPersistenceService.saveCredential(validCredential)).rejects.toThrow(
             "Failed to save credential: database write failed",
         );

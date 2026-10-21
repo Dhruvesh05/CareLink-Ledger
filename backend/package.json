@@ -8,9 +8,9 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "clean": "rm -rf dist",
-    "test": "jest --runInBand",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
+    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
+    "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
     "ssi:test": "tsx src/ssi/tests/createAgent.integration.ts",
     "ssi:credential:test": "tsx src/ssi/tests/credentialLifecycle.integration.ts",
     "ssi:security:test": "tsx src/ssi/tests/credentialSecurity.integration.ts"

@@ -1,5 +1,11 @@
 import { ethers } from "ethers";
-
+import {
+    beforeEach,
+    describe,
+    expect,
+    jest,
+    test
+} from "@jest/globals";
 const mockProvider = {
     getNetwork: jest.fn(),
     getTransaction: jest.fn(),
@@ -11,7 +17,8 @@ const mockContract = {
 };
 
 jest.mock("ethers", () => {
-    const actual = jest.requireActual("ethers");
+    const actual =
+        jest.requireActual<typeof import("ethers")>("ethers");
 
     return {
         ...actual,

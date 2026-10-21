@@ -1,6 +1,4 @@
-<<<<<<< Updated upstream
 import express from "express";
-import type { Server } from "node:http";
 import type {
     IVerifyResult,
     VerifiablePresentation,
@@ -62,487 +60,6 @@ type VerifyPresentation = (
 const mockPrepare = jest.fn<
     (input: PrepareMedicalRecordInput) => Promise<PreparedMedicalRecordTransaction>
 >();
-const mockUserFindOne = jest.fn<
-    (filter: { did: string }) => Promise<TestUser | null>
->();
-const mockUserFindById = jest.fn<
-    (userId: string) => Promise<TestUser | null>
->();
-const mockChallengeCreate = jest.fn<
-    (document: Omit<ChallengeRecord, "createdAt">) => Promise<ChallengeRecord>
->();
-const mockChallengeFindOne = jest.fn<
-    (filter: ChallengeLookup) => {
-        sort: () => Promise<ChallengeRecord | null>;
-    }
->();
-const mockChallengeFindOneAndUpdate = jest.fn<
-    (
-        filter: ChallengeConsumption,
-        update: Record<string, unknown>,
-        options: Record<string, unknown>,
-    ) => Promise<ChallengeRecord | null>
->();
-const challengeRecords: ChallengeRecord[] = [];
-const users = new Map<string, TestUser>();
-
-jest.mock("../../models/User", () => ({
-    __esModule: true,
-    default: {
-        findOne: (...args: Parameters<typeof mockUserFindOne>) => mockUserFindOne(...args),
-        findById: (...args: Parameters<typeof mockUserFindById>) => mockUserFindById(...args),
-    },
-}));
-
-jest.mock("../../models/SsiAuthorizationChallenge", () => ({
-    __esModule: true,
-    default: {
-        create: (...args: Parameters<typeof mockChallengeCreate>) => mockChallengeCreate(...args),
-        findOne: (...args: Parameters<typeof mockChallengeFindOne>) => mockChallengeFindOne(...args),
-        findOneAndUpdate: (...args: Parameters<typeof mockChallengeFindOneAndUpdate>) => mockChallengeFindOneAndUpdate(...args),
-    },
-}));
-
-jest.mock("../../services/blockchain/MedicalRecordTransactionPreparationService", () => ({
-    MedicalRecordTransactionPreparationService: jest.fn().mockImplementation(() => ({
-        prepare: mockPrepare,
-    })),
-}));
-
-jest.mock("../../services/blockchain/MedicalRecordTransactionConfirmationService", () => ({
-    MedicalRecordTransactionConfirmationService: jest.fn().mockImplementation(() => ({
-        confirm: jest.fn(),
-    })),
-}));
-
-jest.mock("../../blockchain/provider/BlockchainFactory", () => ({
-    BlockchainFactory: {
-        getProvider: jest.fn(() => ({})),
-    },
-}));
-
-const DOCTOR_WALLET = "0x1111111111111111111111111111111111111111";
-const PATIENT_WALLET = "0x2222222222222222222222222222222222222222";
-
-let app: express.Express;
-let server: Server;
-let baseUrl: string;
-let createIdentity: (alias?: string) => Promise<{ did: string }>;
-let issueRoleCredential: (input: {
-    issuerDid: string;
-    subjectDid: string;
-    userId: string;
-}) => Promise<W3CVerifiableCredential>;
-let createPresentation: (
-    holderDid: string,
-    credentials: W3CVerifiableCredential[],
-    challenge: string,
-) => Promise<VerifiablePresentation>;
-let createChallenge: (userId: string) => Promise<{
-    challenge: string;
-    expiresAt: Date;
-}>;
-let generateToken: (payload: {
-    userId: string;
-    walletAddress: string;
-    role: "Doctor" | "Patient";
-}) => string;
-let issuerDid: string;
-let presentationService: {
-    verifyPresentation: VerifyPresentation;
-};
-let presentationVerificationSpy:
-    | jest.MockedFunction<VerifyPresentation>
-    | undefined;
-let scenarioNumber = 0;
-let beforeAllStep = "not started";
-
-function getRecordForUser(userId: string) {
-    return challengeRecords
-        .filter((record) => record.userId === userId && !record.used && record.expiresAt > new Date())
-        .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())[0] ?? null;
-}
-
-function getStoredRecordForUser(userId: string) {
-    return challengeRecords
-        .filter((record) => record.userId === userId)
-        .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())[0] ?? null;
-}
-
-function createUser(userId: string, did: string, role: "Doctor" | "Patient"): TestUser {
-    const user: TestUser = {
-        _id: {
-            toString: () => userId,
-        },
-        did,
-        role,
-    };
-
-    users.set(userId, user);
-    return user;
-}
-
-async function createScenario(role: "Doctor" | "Patient") {
-    scenarioNumber += 1;
-    const userId = `${role.toLowerCase()}-integration-user-${scenarioNumber}`;
-    const identity = await createIdentity(`medical-record-${userId}`);
-    createUser(userId, identity.did, role);
-
-    const credential = await issueRoleCredential({
-        issuerDid,
-        subjectDid: identity.did,
-        userId,
-    });
-    const pendingChallenge = await createChallenge(userId);
-    const token = generateToken({
-        userId,
-        walletAddress: DOCTOR_WALLET,
-        role,
-    });
-
-    return {
-        userId,
-        identity,
-        credential,
-        pendingChallenge,
-        token,
-    };
-}
-
-async function sendPrepare(
-    token: string,
-    presentation?: unknown,
-    includeFile = true,
-) {
-    const form = new FormData();
-
-    if (includeFile) {
-        form.append(
-            "file",
-            new Blob([Buffer.from("medical-record-content")], {
-                type: "application/pdf",
-            }),
-            "record.pdf",
-        );
-    }
-
-    if (presentation !== undefined) {
-        form.append("presentation", JSON.stringify(presentation));
-    }
-
-    form.append("patient", PATIENT_WALLET);
-    form.append("category", "general");
-    form.append("emergency", "false");
-
-    const response = await fetch(`${baseUrl}/prepare`, {
-        method: "POST",
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-        body: form,
-    });
-
-    return {
-        response,
-        body: await response.json(),
-    };
-}
-
-describe("medical record prepare SSI multipart integration", () => {
-    beforeAll(async () => {
-        try {
-            beforeAllStep = "loading integration dependencies";
-            const [{ default: IdentityService }, { default: CareLinkCredentialService }, { default: PresentationService }, { default: SsiAuthorizationChallengeService }, { generateToken: tokenGenerator }, { createAgent }, { env }, { default: medicalRecordRoutes }] = await Promise.all([
-                import("../../ssi/services/IdentityService"),
-                import("../../ssi/services/CareLinkCredentialService"),
-                import("../../ssi/services/PresentationService"),
-                import("../../services/SsiAuthorizationChallengeService"),
-                import("../../utils/jwt"),
-                import("../../ssi/agent/createAgent"),
-                import("../../config/env"),
-                import("../../routes/medicalRecord.routes"),
-            ]);
-
-            beforeAllStep = "creating Veramo agent";
-            const agent = null === createAgent ? await import("../../ssi/agent/createAgent").then((mod) => mod.createAgent()) : await createAgent();
-
-            beforeAllStep = "creating issuer DID";
-            const issuer = await agent.didManagerCreate({
-                provider: "did:key",
-                alias: "medical-record-integration-issuer",
-            });
-            issuerDid = issuer.did;
-            env.CARELINK_ISSUER_DID = issuerDid;
-
-            beforeAllStep = "binding SSI services";
-            createIdentity = IdentityService.createIdentity.bind(IdentityService);
-            issueRoleCredential = CareLinkCredentialService.issueRoleCredential.bind(
-                CareLinkCredentialService,
-            ) as typeof issueRoleCredential;
-            createPresentation = PresentationService.createPresentation.bind(PresentationService);
-            createChallenge = SsiAuthorizationChallengeService.createChallenge.bind(SsiAuthorizationChallengeService);
-            generateToken = tokenGenerator;
-            presentationService = PresentationService;
-
-            beforeAllStep = "mounting medical-record route";
-            app = express();
-            app.use(medicalRecordRoutes);
-
-            beforeAllStep = "starting integration server";
-            server = await new Promise<Server>((resolve) => {
-                const listeningServer = app.listen(0, () => resolve(listeningServer));
-            });
-            const address = server.address();
-            if (!address || typeof address === "string") {
-                throw new Error("Integration test server did not expose a port.");
-            }
-            baseUrl = `http://127.0.0.1:${address.port}/prepare`;
-
-            beforeAllStep = "installing model mocks";
-            mockUserFindOne.mockImplementation(async ({ did }) => {
-                return [...users.values()].find((user) => user.did === did) ?? null;
-            });
-            mockUserFindById.mockImplementation(async (userId) => users.get(String(userId)) ?? null);
-            mockChallengeCreate.mockImplementation(async (document) => {
-                const record = {
-                    ...document,
-                    createdAt: new Date(),
-                };
-                challengeRecords.push(record);
-                return record;
-            });
-            mockChallengeFindOne.mockImplementation((filter) => ({
-                sort: async () => getRecordForUser(filter.userId),
-            }));
-            mockChallengeFindOneAndUpdate.mockImplementation(async (filter) => {
-                const record = challengeRecords.find(
-                    (candidate) =>
-                        candidate.userId === filter.userId &&
-                        candidate.challenge === filter.challenge &&
-                        !candidate.used &&
-                        candidate.expiresAt > new Date(),
-                );
-                if (!record) {
-                    return null;
-                }
-                record.used = true;
-                return record;
-            });
-        } catch (error) {
-            const details = error instanceof Error
-                ? `${error.name}: ${error.message}\n${error.stack ?? ""}`
-                : String(error);
-            throw new Error(
-                `SSI multipart integration setup failed during ${beforeAllStep}.\n${details}`,
-            );
-        }
-    });
-
-    beforeEach(() => {
-        challengeRecords.length = 0;
-        users.clear();
-        mockPrepare.mockReset();
-        mockPrepare.mockResolvedValue({
-            preparationId: "preparation-1",
-            transaction: {
-                to: DOCTOR_WALLET,
-                data: "0x",
-                chainId: 1,
-                value: "0",
-            },
-            doctorWallet: DOCTOR_WALLET,
-            hospitalWallet: "0x3333333333333333333333333333333333333333",
-            patientWallet: PATIENT_WALLET,
-            cid: "bafy-medical-record",
-            fileHash: "a".repeat(64),
-            fileName: "record.pdf",
-            mimeType: "application/pdf",
-            fileSize: 21,
-            category: "general",
-            emergency: false,
-            encryption: {} as PreparedMedicalRecordTransaction["encryption"],
-        });
-        if (!presentationService) {
-            throw new Error(
-                `SSI multipart integration setup did not complete; last step: ${beforeAllStep}`,
-            );
-        }
-        if (!presentationVerificationSpy) {
-            presentationVerificationSpy = jest.spyOn(
-                presentationService,
-                "verifyPresentation",
-            ) as unknown as jest.MockedFunction<VerifyPresentation>;
-        } else {
-            presentationVerificationSpy.mockClear();
-        }
-    });
-
-    afterAll(async () => {
-    presentationVerificationSpy?.mockRestore();
-
-    if (server) {
-        await new Promise<void>((resolve, reject) => {
-            server.close((error) => (error ? reject(error) : resolve()));
-        });
-    }
-});
-
-    it("accepts a real SSI-authorized multipart Doctor request", async () => {
-        const scenario = await createScenario("Doctor");
-        const presentation = await createPresentation(
-            scenario.identity.did,
-            [scenario.credential],
-            scenario.pendingChallenge.challenge,
-        );
-
-        const result = await sendPrepare(scenario.token, presentation);
-        const preparationInput = mockPrepare.mock.calls[0][0];
-
-        expect(result.response.status).toBe(200);
-        expect(result.body).toEqual(expect.objectContaining({ success: true }));
-        expect(presentationVerificationSpy).toBeDefined();
-        const verificationSpy = presentationVerificationSpy!;
-        const verificationCall = verificationSpy.mock.calls.find(
-            ([, challenge]) => challenge === scenario.pendingChallenge.challenge,
-        );
-        expect(verificationCall?.[0]).toEqual(
-            expect.objectContaining({ holder: scenario.identity.did }),
-        );
-        expect(verificationCall?.[1]).toBe(scenario.pendingChallenge.challenge);
-        expect(mockPrepare).toHaveBeenCalledTimes(1);
-        expect(preparationInput).toEqual(expect.objectContaining({
-            doctorWallet: DOCTOR_WALLET,
-            patientWallet: PATIENT_WALLET,
-            category: "general",
-            emergency: false,
-        }));
-        expect(preparationInput.file.buffer).toEqual(Buffer.from("medical-record-content"));
-        expect(getStoredRecordForUser(scenario.userId).used).toBe(true);
-    });
-
-    it("rejects a VP created with the wrong challenge without consuming the valid challenge", async () => {
-        const scenario = await createScenario("Doctor");
-        const presentation = await createPresentation(
-            scenario.identity.did,
-            [scenario.credential],
-            "wrong-challenge",
-        );
-
-        const result = await sendPrepare(scenario.token, presentation);
-
-        expect(result.response.status).toBe(403);
-        expect(result.body.message).toBe("Verifiable presentation is invalid");
-        expect(mockPrepare).not.toHaveBeenCalled();
-        expect(getStoredRecordForUser(scenario.userId).used).toBe(false);
-    });
-
-    it("rejects a valid non-Doctor CareLink presentation before the controller", async () => {
-        const scenario = await createScenario("Patient");
-        const presentation = await createPresentation(
-            scenario.identity.did,
-            [scenario.credential],
-            scenario.pendingChallenge.challenge,
-        );
-
-        const result = await sendPrepare(scenario.token, presentation);
-
-        expect(result.response.status).toBe(403);
-        expect(result.body.message).toBe("Insufficient CareLink role");
-        expect(mockPrepare).not.toHaveBeenCalled();
-        expect(getStoredRecordForUser(scenario.userId).used).toBe(false);
-    });
-
-    it("rejects a multipart request without a presentation before the controller", async () => {
-        const scenario = await createScenario("Doctor");
-        const result = await sendPrepare(scenario.token);
-
-        expect(result.response.status).toBe(403);
-        expect(result.body.message).toBe("Verifiable presentation is required");
-        expect(mockPrepare).not.toHaveBeenCalled();
-        expect(getStoredRecordForUser(scenario.userId).used).toBe(false);
-    });
-
-    it("consumes SSI authorization before requireFile rejects a missing file", async () => {
-        const scenario = await createScenario("Doctor");
-        const presentation = await createPresentation(
-            scenario.identity.did,
-            [scenario.credential],
-            scenario.pendingChallenge.challenge,
-        );
-
-        const result = await sendPrepare(scenario.token, presentation, false);
-
-        expect(result.response.status).toBe(400);
-        expect(result.body.message).toBe("Missing file upload");
-        expect(mockPrepare).not.toHaveBeenCalled();
-        expect(challengeRecords.find((record) => record.userId === scenario.userId)?.used).toBe(true);
-    });
-});
-=======
-
-import {
-    afterAll,
-    beforeAll,
-    beforeEach,
-    describe,
-    expect,
-    it,
-    jest
-} from "@jest/globals";
-import type {
-    IVerifyResult,
-    VerifiablePresentation,
-    W3CVerifiableCredential,
-    W3CVerifiablePresentation,
-} from "@veramo/core-types";
-import express from "express";
-import type { Server } from "node:http";
-
-import type {
-    PrepareMedicalRecordInput,
-    PreparedMedicalRecordTransaction,
-} from "../../services/blockchain/MedicalRecordTransactionPreparationService.ts";
-
-process.env.JWT_SECRET = "medical-record-ssi-integration-jwt-secret";
-process.env.SSI_SECRET_KEY = "11".repeat(32);
-process.env.SSI_DATABASE = ":memory:";
-
-type TestUser = {
-    _id: { toString: () => string };
-    did: string;
-    role: "Doctor" | "Patient";
-};
-
-type ChallengeRecord = {
-    userId: string;
-    challenge: string;
-    expiresAt: Date;
-    used: boolean;
-    createdAt: Date;
-};
-
-type ChallengeLookup = {
-    userId: string;
-    used: boolean;
-    expiresAt: { $gt: Date };
-};
-
-type ChallengeConsumption = {
-    userId: string;
-    challenge: string;
-    used: boolean;
-    expiresAt: { $gt: Date };
-};
-
-type VerifyPresentation = (
-    presentation: W3CVerifiablePresentation,
-    challenge: string,
-    domain?: string,
-) => Promise<IVerifyResult>;
-
-const mockPrepare = jest.fn<
-    (input: PrepareMedicalRecordInput) => Promise<PreparedMedicalRecordTransaction>
->();
 
 const mockUserFindOne = jest.fn<
     (filter: { did: string }) => Promise<TestUser | null>
@@ -573,7 +90,8 @@ const mockChallengeFindOneAndUpdate = jest.fn<
 const challengeRecords: ChallengeRecord[] = [];
 const users = new Map<string, TestUser>();
 
-jest.unstable_mockModule("../../models/User.js", () => ({
+jest.unstable_mockModule("../../models/User", () => ({
+    __esModule: true,
     default: {
         findOne: (...args: Parameters<typeof mockUserFindOne>) =>
             mockUserFindOne(...args),
@@ -582,23 +100,21 @@ jest.unstable_mockModule("../../models/User.js", () => ({
     },
 }));
 
-jest.unstable_mockModule(
-    "../../models/SsiAuthorizationChallenge.js",
-    () => ({
-        default: {
-            create: (...args: Parameters<typeof mockChallengeCreate>) =>
-                mockChallengeCreate(...args),
-            findOne: (...args: Parameters<typeof mockChallengeFindOne>) =>
-                mockChallengeFindOne(...args),
-            findOneAndUpdate: (
-                ...args: Parameters<typeof mockChallengeFindOneAndUpdate>
-            ) => mockChallengeFindOneAndUpdate(...args),
-        },
-    }),
-);
+jest.unstable_mockModule("../models/SsiAuthorizationChallenge", () => ({
+    __esModule: true,
+    default: {
+        create: (...args: Parameters<typeof mockChallengeCreate>) =>
+            mockChallengeCreate(...args),
+        findOne: (...args: Parameters<typeof mockChallengeFindOne>) =>
+            mockChallengeFindOne(...args),
+        findOneAndUpdate: (
+            ...args: Parameters<typeof mockChallengeFindOneAndUpdate>
+        ) => mockChallengeFindOneAndUpdate(...args),
+    },
+}));
 
 jest.unstable_mockModule(
-    "../../services/blockchain/MedicalRecordTransactionPreparationService.js",
+    "../services/blockchain/MedicalRecordTransactionPreparationService",
     () => ({
         MedicalRecordTransactionPreparationService: jest
             .fn()
@@ -609,7 +125,7 @@ jest.unstable_mockModule(
 );
 
 jest.unstable_mockModule(
-    "../../services/blockchain/MedicalRecordTransactionConfirmationService.js",
+    "../services/blockchain/MedicalRecordTransactionConfirmationService",
     () => ({
         MedicalRecordTransactionConfirmationService: jest
             .fn()
@@ -620,7 +136,7 @@ jest.unstable_mockModule(
 );
 
 jest.unstable_mockModule(
-    "../../blockchain/provider/BlockchainFactory.js",
+    "../blockchain/provider/BlockchainFactory",
     () => ({
         BlockchainFactory: {
             getProvider: jest.fn(() => ({})),
@@ -628,14 +144,42 @@ jest.unstable_mockModule(
     }),
 );
 
+const { default: IdentityService } =
+    await import("../../ssi/services/IdentityService");
+
+const { default: CareLinkCredentialService } =
+    await import("../../ssi/services/CareLinkCredentialService");
+
+const { PresentationService } =
+    await import("../../ssi/services/PresentationService");
+
+const { default: SsiAuthorizationChallengeService } =
+    await import("../../services/SsiAuthorizationChallengeService");
+
+const { createAgent } =
+    await import("../../ssi/agent/createAgent");
+
+const { env } =
+    await import("../../config/env");
+
+const { generateToken: tokenGenerator } =
+    await import("../../utils/jwt");
+
+const { default: medicalRecordRoutes } =
+    await import("../../routes/medicalRecord.routes");
+
+const presentationServiceInstance = new PresentationService();
+
 const DOCTOR_WALLET = "0x1111111111111111111111111111111111111111";
 const PATIENT_WALLET = "0x2222222222222222222222222222222222222222";
 
 let app: express.Express;
-let server: Server;
+let server: ReturnType<express.Express["listen"]>;
 let baseUrl: string;
 
-let createIdentity: (alias?: string) => Promise<{ did: string }>;
+let createIdentity: (
+    alias?: string,
+) => Promise<{ did: string }>;
 
 let issueRoleCredential: (input: {
     issuerDid: string;
@@ -662,16 +206,47 @@ let generateToken: (payload: {
 
 let issuerDid: string;
 
-let presentationService: {
-    verifyPresentation: VerifyPresentation;
-};
+let presentationService: Pick<
+    InstanceType<typeof PresentationService>,
+    "verifyPresentation"
+>;
 
 let presentationVerificationSpy:
-    | jest.MockedFunction<VerifyPresentation>
+    | jest.SpiedFunction<VerifyPresentation>
     | undefined;
 
 let scenarioNumber = 0;
 let beforeAllStep = "not started";
+
+function isVerifiableCredential(
+    credential: unknown,
+): credential is W3CVerifiableCredential {
+    if (typeof credential !== "object" || credential === null) {
+        return false;
+    }
+
+    const candidate = credential as Record<string, unknown>;
+
+    return (
+        Array.isArray(candidate["@context"]) &&
+        Array.isArray(candidate.type) &&
+        Boolean(candidate.issuer) &&
+        Boolean(candidate.credentialSubject) &&
+        Boolean(candidate.proof)
+    );
+}
+
+function toVerifiableCredential(
+    credential: unknown,
+): W3CVerifiableCredential {
+    if (!isVerifiableCredential(credential)) {
+        throw new Error(
+            "Issued credential is not a W3C verifiable credential.",
+        );
+    }
+
+    return credential;
+}
 
 function getRecordForUser(userId: string): ChallengeRecord | null {
     return (
@@ -689,7 +264,9 @@ function getRecordForUser(userId: string): ChallengeRecord | null {
     );
 }
 
-function getStoredRecordForUser(userId: string): ChallengeRecord | null {
+function getStoredRecordForUser(
+    userId: string,
+): ChallengeRecord | null {
     return (
         challengeRecords
             .filter((record) => record.userId === userId)
@@ -714,14 +291,19 @@ function createUser(
     };
 
     users.set(userId, user);
+
     return user;
 }
 
 async function createScenario(role: "Doctor" | "Patient") {
     scenarioNumber += 1;
 
-    const userId = `${role.toLowerCase()}-integration-user-${scenarioNumber}`;
-    const identity = await createIdentity(`medical-record-${userId}`);
+    const userId =
+        `${role.toLowerCase()}-integration-user-${scenarioNumber}`;
+
+    const identity = await createIdentity(
+        `medical-record-${userId}`,
+    );
 
     createUser(userId, identity.did, role);
 
@@ -758,15 +340,19 @@ async function sendPrepare(
     if (includeFile) {
         form.append(
             "file",
-            new Blob([Buffer.from("medical-record-content")], {
-                type: "application/pdf",
-            }),
+            new Blob(
+                [Buffer.from("medical-record-content")],
+                { type: "application/pdf" },
+            ),
             "record.pdf",
         );
     }
 
     if (presentation !== undefined) {
-        form.append("presentation", JSON.stringify(presentation));
+        form.append(
+            "presentation",
+            JSON.stringify(presentation),
+        );
     }
 
     form.append("patient", PATIENT_WALLET);
@@ -790,29 +376,8 @@ async function sendPrepare(
 describe("medical record prepare SSI multipart integration", () => {
     beforeAll(async () => {
         try {
-            beforeAllStep = "loading integration dependencies";
-
-            const [
-                { default: IdentityService },
-                { default: CareLinkCredentialService },
-                { default: PresentationService },
-                { default: SsiAuthorizationChallengeService },
-                { generateToken: tokenGenerator },
-                { createAgent },
-                { env },
-                { default: medicalRecordRoutes },
-            ] = await Promise.all([
-                import("../../ssi/services/IdentityService.js"),
-                import("../../ssi/services/CareLinkCredentialService.js"),
-                import("../../ssi/services/PresentationService.js"),
-                import("../../services/SsiAuthorizationChallengeService.js"),
-                import("../../utils/jwt.js"),
-                import("../../ssi/agent/createAgent.js"),
-                import("../../config/env.js"),
-                import("../../routes/medicalRecord.routes.js"),
-            ]);
-
             beforeAllStep = "creating Veramo agent";
+
             const agent = await createAgent();
 
             beforeAllStep = "creating issuer DID";
@@ -827,16 +392,19 @@ describe("medical record prepare SSI multipart integration", () => {
 
             beforeAllStep = "binding SSI services";
 
-            createIdentity = IdentityService.createIdentity.bind(IdentityService);
+            createIdentity =
+                IdentityService.createIdentity.bind(IdentityService);
 
-            issueRoleCredential =
-                CareLinkCredentialService.issueRoleCredential.bind(
-                    CareLinkCredentialService,
-                ) as typeof issueRoleCredential;
+            issueRoleCredential = async (input) =>
+                toVerifiableCredential(
+                    await CareLinkCredentialService.issueRoleCredential(
+                        input,
+                    ),
+                );
 
             createPresentation =
-                PresentationService.createPresentation.bind(
-                    PresentationService,
+                presentationServiceInstance.createPresentation.bind(
+                    presentationServiceInstance,
                 );
 
             createChallenge =
@@ -845,7 +413,21 @@ describe("medical record prepare SSI multipart integration", () => {
                 );
 
             generateToken = tokenGenerator;
-            presentationService = PresentationService;
+
+            Object.assign(PresentationService, {
+                verifyPresentation: (
+                    ...args: Parameters<
+                        InstanceType<
+                            typeof PresentationService
+                        >["verifyPresentation"]
+                    >
+                ) =>
+                    presentationServiceInstance.verifyPresentation(
+                        ...args,
+                    ),
+            });
+
+            presentationService = presentationServiceInstance;
 
             beforeAllStep = "mounting medical-record route";
 
@@ -854,12 +436,13 @@ describe("medical record prepare SSI multipart integration", () => {
 
             beforeAllStep = "starting integration server";
 
-            server = await new Promise<Server>((resolve, reject) => {
-                const listeningServer = app.listen(0, () =>
-                    resolve(listeningServer),
+            server = await new Promise<
+                ReturnType<typeof app.listen>
+            >((resolve) => {
+                const listeningServer = app.listen(
+                    0,
+                    () => resolve(listeningServer),
                 );
-
-                listeningServer.on("error", reject);
             });
 
             const address = server.address();
@@ -876,8 +459,9 @@ describe("medical record prepare SSI multipart integration", () => {
 
             mockUserFindOne.mockImplementation(async ({ did }) => {
                 return (
-                    [...users.values()].find((user) => user.did === did) ??
-                    null
+                    [...users.values()].find(
+                        (user) => user.did === did,
+                    ) ?? null
                 );
             });
 
@@ -892,6 +476,7 @@ describe("medical record prepare SSI multipart integration", () => {
                 };
 
                 challengeRecords.push(record);
+
                 return record;
             });
 
@@ -914,13 +499,14 @@ describe("medical record prepare SSI multipart integration", () => {
                     }
 
                     record.used = true;
+
                     return record;
                 },
             );
         } catch (error) {
             const details =
                 error instanceof Error
-                    ? error.stack ?? `${error.name}: ${error.message}`
+                    ? `${error.name}: ${error.message}\n${error.stack ?? ""}`
                     : String(error);
 
             throw new Error(
@@ -967,7 +553,7 @@ describe("medical record prepare SSI multipart integration", () => {
             presentationVerificationSpy = jest.spyOn(
                 presentationService,
                 "verifyPresentation",
-            ) as unknown as jest.MockedFunction<VerifyPresentation>;
+            );
         } else {
             presentationVerificationSpy.mockClear();
         }
@@ -994,8 +580,12 @@ describe("medical record prepare SSI multipart integration", () => {
             scenario.pendingChallenge.challenge,
         );
 
-        const result = await sendPrepare(scenario.token, presentation);
-        const preparationInput = mockPrepare.mock.calls[0][0];
+        const result = await sendPrepare(
+            scenario.token,
+            presentation,
+        );
+
+        const preparationInput = mockPrepare.mock.calls[0]?.[0];
 
         expect(result.response.status).toBe(200);
         expect(result.body).toEqual(
@@ -1004,7 +594,9 @@ describe("medical record prepare SSI multipart integration", () => {
 
         expect(presentationVerificationSpy).toBeDefined();
 
-        const verificationCall = presentationVerificationSpy!.mock.calls.find(
+        const verificationSpy = presentationVerificationSpy!;
+
+        const verificationCall = verificationSpy.mock.calls.find(
             ([, challenge]) =>
                 challenge === scenario.pendingChallenge.challenge,
         );
@@ -1030,7 +622,7 @@ describe("medical record prepare SSI multipart integration", () => {
             }),
         );
 
-        expect(preparationInput.file.buffer).toEqual(
+        expect(preparationInput!.file.buffer).toEqual(
             Buffer.from("medical-record-content"),
         );
 
@@ -1046,7 +638,10 @@ describe("medical record prepare SSI multipart integration", () => {
             "wrong-challenge",
         );
 
-        const result = await sendPrepare(scenario.token, presentation);
+        const result = await sendPrepare(
+            scenario.token,
+            presentation,
+        );
 
         expect(result.response.status).toBe(403);
         expect(result.body.message).toBe(
@@ -1054,6 +649,7 @@ describe("medical record prepare SSI multipart integration", () => {
         );
 
         expect(mockPrepare).not.toHaveBeenCalled();
+
         expect(getStoredRecordForUser(scenario.userId)?.used).toBe(false);
     });
 
@@ -1066,17 +662,24 @@ describe("medical record prepare SSI multipart integration", () => {
             scenario.pendingChallenge.challenge,
         );
 
-        const result = await sendPrepare(scenario.token, presentation);
+        const result = await sendPrepare(
+            scenario.token,
+            presentation,
+        );
 
         expect(result.response.status).toBe(403);
-        expect(result.body.message).toBe("Insufficient CareLink role");
+        expect(result.body.message).toBe(
+            "Insufficient CareLink role",
+        );
 
         expect(mockPrepare).not.toHaveBeenCalled();
+
         expect(getStoredRecordForUser(scenario.userId)?.used).toBe(false);
     });
 
     it("rejects a multipart request without a presentation before the controller", async () => {
         const scenario = await createScenario("Doctor");
+
         const result = await sendPrepare(scenario.token);
 
         expect(result.response.status).toBe(403);
@@ -1085,6 +688,7 @@ describe("medical record prepare SSI multipart integration", () => {
         );
 
         expect(mockPrepare).not.toHaveBeenCalled();
+
         expect(getStoredRecordForUser(scenario.userId)?.used).toBe(false);
     });
 
@@ -1115,4 +719,3 @@ describe("medical record prepare SSI multipart integration", () => {
         ).toBe(true);
     });
 });
->>>>>>> Stashed changes

@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import type {
     IVerifyResult,
@@ -170,7 +169,7 @@ describe("CareLinkAuthorizationService", () => {
         })).rejects.toThrow("not trusted");
         expect(mockFindOne).not.toHaveBeenCalled();
     });
-=======
+/*
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import type {
     IVerifyResult,
@@ -342,5 +341,5 @@ describe("CareLinkAuthorizationService", () => {
         })).rejects.toThrow("not trusted");
         expect(mockFindOne).not.toHaveBeenCalled();
     });
->>>>>>> Stashed changes
+*/
 });

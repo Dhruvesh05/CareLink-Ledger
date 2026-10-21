@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 
 type TestUser = {
@@ -43,7 +42,7 @@ jest.mock("../../models/User", () => ({
 
 jest.mock("../../services/UserDidService", () => ({
     __esModule: true,
-    default: jest.fn().mockImplementation(() => ({
+    UserDidService: jest.fn().mockImplementation(() => ({
         getDid: mockGetDid,
     })),
 }));
@@ -139,7 +138,7 @@ describe("CareLinkCredentialService", () => {
             "Subject DID does not belong to the application user"
         );
     });
-=======
+/*
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 
 type TestUser = {
@@ -280,5 +279,5 @@ describe("CareLinkCredentialService", () => {
             "Subject DID does not belong to the application user"
         );
     });
->>>>>>> Stashed changes
+*/
 });
