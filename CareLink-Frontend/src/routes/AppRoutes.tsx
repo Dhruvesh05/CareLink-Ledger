@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import { ProtectedRoute } from "../components/ProtectedRoute";
+import AnalyticsPlayground from "../pages/dev/AnalyticsPlayground";
 
 // Auth Pages
 import Welcome from "../pages/auth/Welcome";
@@ -61,6 +62,10 @@ function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
+        {import.meta.env.DEV && (
+          <Route path="/dev/analytics" element={<AnalyticsPlayground />} />
+        )}
+
         <Route path="/" element={<Welcome />} />
         <Route path="/welcome" element={<Welcome />} />
         <Route path="/welcome/login" element={<Login />} />
