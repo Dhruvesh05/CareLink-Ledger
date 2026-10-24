@@ -22,8 +22,8 @@ jest.mock("../services/PresentationService", () => ({
 }));
 
 jest.mock("../services/CareLinkAuthorizationService", () => ({
-    CareLinkAuthorizationService: {
-        authorizeVerifiedPresentation: mockAuthorizeVerifiedPresentation,
+    CareLinkAuthorizationService: class {
+        authorizeVerifiedPresentation = mockAuthorizeVerifiedPresentation;
     },
 }));
 
