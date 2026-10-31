@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { User, Stethoscope, Building2, ShieldAlert } from "lucide-react";
+import { User, Stethoscope, Building2, ShieldAlert, ArrowRight, ArrowLeft } from "lucide-react";
 import logo from "../../assets/images/logo.png";
 
 function RoleSelection() {
@@ -10,33 +10,29 @@ function RoleSelection() {
       title: "Patient",
       description: "Manage your health records, appointments, and access requests.",
       icon: User,
-      color: "from-blue-500 to-blue-700",
-      badge: "bg-blue-50 text-blue-700",
-      border: "border-blue-100 hover:border-blue-300",
+      color: "from-cyan-500 to-blue-600",
+      badge: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20",
     },
     {
       title: "Doctor",
       description: "Review patient activity, records, and treatment workflows.",
       icon: Stethoscope,
-      color: "from-emerald-500 to-emerald-700",
-      badge: "bg-emerald-50 text-emerald-700",
-      border: "border-emerald-100 hover:border-emerald-300",
+      color: "from-emerald-500 to-teal-700",
+      badge: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
     },
     {
       title: "Hospital",
       description: "Oversee departments, doctors, records, and operations.",
       icon: Building2,
-      color: "from-violet-500 to-violet-700",
-      badge: "bg-violet-50 text-violet-700",
-      border: "border-violet-100 hover:border-violet-300",
+      color: "from-blue-600 to-indigo-700",
+      badge: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20",
     },
     {
       title: "Admin",
       description: "Monitor system health, users, blockchain, and analytics.",
       icon: ShieldAlert,
-      color: "from-amber-500 to-orange-600",
-      badge: "bg-orange-50 text-orange-700",
-      border: "border-orange-100 hover:border-orange-300",
+      color: "from-violet-600 to-purple-700",
+      badge: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20",
     },
   ];
 
@@ -46,49 +42,41 @@ function RoleSelection() {
   };
 
   return (
-    <div className="min-h-screen bg-[#edf5ff] px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mx-auto w-full max-w-5xl overflow-hidden rounded-[28px] border border-[#dfeafc] bg-white shadow-[0_35px_100px_rgba(17,73,179,0.16)] ring-1 ring-white/80">
-        <div className="flex items-center justify-between gap-3 border-b border-[#eaf1ff] bg-[#f8fbff] px-4 py-4 sm:px-6 lg:px-8">
+    <div className="relative min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] px-4 py-8 sm:px-6 lg:px-8 flex items-center justify-center transition-colors duration-300">
+      {/* Background Ambient Glow */}
+      <div className="fixed top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-cyan-500/5 dark:bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="relative mx-auto w-full max-w-5xl overflow-hidden rounded-[32px] border border-slate-200/80 dark:border-white/10 bg-white/95 dark:bg-zinc-950/80 shadow-2xl shadow-slate-200/50 dark:shadow-none backdrop-blur-xl ring-1 ring-slate-100/80 dark:ring-white/5">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-200/80 dark:border-white/10 bg-slate-50/60 dark:bg-white/[0.02] px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => navigate("/welcome")}
-              className="group flex h-11 w-11 items-center justify-center rounded-full border border-sky-200 bg-white text-sky-700 shadow-[0_8px_20px_rgba(14,116,144,0.10)] transition-all duration-200 hover:-translate-y-0.5 hover:border-sky-300 hover:bg-sky-50 hover:shadow-[0_12px_24px_rgba(14,116,144,0.14)] focus:outline-none focus:ring-4 focus:ring-sky-100"
+              className="group flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-white/5 text-slate-700 dark:text-slate-300 shadow-sm transition hover:bg-slate-100 dark:hover:bg-white/10 focus:outline-none"
               aria-label="Go back to welcome"
             >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5"
-                aria-hidden="true"
-              >
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
+              <ArrowLeft className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
             </button>
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-sky-100 bg-white p-1.5 shadow-sm sm:h-14 sm:w-14">
+              <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-black p-1.5 shadow-sm">
                 <img src={logo} alt="CareLink Ledger Logo" className="h-full w-full object-contain" />
               </div>
               <div>
-                <h1 className="text-lg font-extrabold tracking-tight text-[#0f2b6d] sm:text-xl">CareLink Ledger</h1>
-                <p className="text-[10px] font-medium text-slate-500 sm:text-[11px]">Trusted healthcare access platform</p>
+                <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">CareLink Ledger</h1>
+                <p className="text-[10px] sm:text-[11px] font-medium text-slate-500 dark:text-slate-400">Trusted healthcare access platform</p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.18em] text-blue-700 sm:text-[10px]">
+          <div className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
             Secure Access
           </div>
         </div>
 
-        <div className="px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-8">
-          <div className="mb-6 text-center">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-700 sm:text-[11px]">Select your role</p>
-            <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-[#0f2b6d] sm:text-3xl">Choose the right access path</h2>
+        <div className="px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+          <div className="mb-8 text-center">
+            <p className="text-xs font-bold uppercase tracking-widest text-cyan-600 dark:text-cyan-400">Select your role</p>
+            <h2 className="mt-2 text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">Choose the right access path</h2>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -98,29 +86,29 @@ function RoleSelection() {
                 <button
                   key={role.title}
                   onClick={() => handleRoleSelect(role.title)}
-                  className={`group rounded-[24px] border bg-white p-4 text-left shadow-[0_10px_24px_rgba(15,23,42,0.04)] ring-1 ring-slate-100 transition-all duration-200 hover:-translate-y-1 hover:border-blue-200 hover:shadow-[0_20px_38px_rgba(37,99,235,0.12)] ${role.border} focus:outline-none focus:ring-4 focus:ring-blue-100`}
+                  className="group rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-zinc-900/40 p-5 text-left shadow-sm hover:border-cyan-500/50 dark:hover:border-cyan-400/50 hover:shadow-lg dark:hover:shadow-cyan-950/20 hover:-translate-y-1 transition-all duration-200 focus:outline-none"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${role.color} text-white shadow-sm sm:h-14 sm:w-14`}>
+                    <div className="flex items-center gap-3.5">
+                      <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${role.color} text-white shadow-md shadow-cyan-600/10 group-hover:scale-105 transition-transform`}>
                         <Icon className="w-6 h-6" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-bold text-[#0f2b6d] sm:text-xl">{role.title}</h3>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">{role.title}</h3>
                       </div>
                     </div>
 
-                    <span className={`rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-[0.14em] ${role.badge}`}>
+                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${role.badge}`}>
                       Open
                     </span>
                   </div>
 
-                  <p className="mt-4 text-sm leading-relaxed text-slate-500">{role.description}</p>
+                  <p className="mt-4 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{role.description}</p>
 
-                  <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-3">
-                    <span className="text-sm font-semibold text-blue-700">Continue as {role.title}</span>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-base text-slate-600 transition group-hover:bg-blue-100 group-hover:text-blue-700">
-                      →
+                  <div className="mt-5 flex items-center justify-between border-t border-slate-100 dark:border-white/5 pt-3">
+                    <span className="text-sm font-semibold text-cyan-600 dark:text-cyan-400">Continue as {role.title}</span>
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 transition group-hover:bg-cyan-500/10 group-hover:text-cyan-500">
+                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
                     </div>
                   </div>
                 </button>
@@ -128,9 +116,9 @@ function RoleSelection() {
             })}
           </div>
 
-          <div className="mt-6 flex flex-col items-center justify-between gap-3 border-t border-slate-100 pt-4 text-sm text-slate-500 sm:flex-row">
+          <div className="mt-8 flex flex-col items-center justify-between gap-3 border-t border-slate-100 dark:border-white/10 pt-5 text-sm text-slate-500 dark:text-slate-400 sm:flex-row">
             <span>Already have an account?</span>
-            <button onClick={() => navigate("/login")} className="font-semibold text-blue-700 transition hover:text-blue-900">
+            <button onClick={() => navigate("/login")} className="font-semibold text-cyan-600 dark:text-cyan-400 hover:underline">
               Login here
             </button>
           </div>

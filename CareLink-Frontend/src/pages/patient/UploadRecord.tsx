@@ -1,10 +1,16 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { confirmMedicalRecord, prepareMedicalRecord } from "../../api/medicalRecords";
+import { confirmMedicalRecord, prepareMedicalRecord, uploadFabricMedicalRecord } from "../../api/medicalRecords";
+import {
+  createOrLoadAuthenticatedDid,
+  createSsiAuthorizationPresentation,
+  requestSsiAuthorizationChallenge,
+} from "../../api/ssi";
 import { useAuth } from "../../auth/AuthContext";
 import DashboardLayout from "../../components/DashboardLayout";
-import { connectWallet, ensurePolygonAmoy, sendMetaMaskTransaction } from "../../api/wallet";
+import { connectWallet, ensureWalletNetwork, sendMetaMaskTransaction } from "../../api/wallet";
+import { ContentPanel, ErrorState, PageHeader, StatusBadge } from "../../components/ui";
 
 function UploadRecord() {
   const navigate = useNavigate();
@@ -12,6 +18,7 @@ function UploadRecord() {
   const [patientWallet, setPatientWallet] = useState(user?.walletAddress ?? "");
   const [category, setCategory] = useState("General");
   const [emergency, setEmergency] = useState(false);
+  const [destination, setDestination] = useState<"evm" | "fabric">("evm");
   const [file, setFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -43,21 +50,55 @@ function UploadRecord() {
     setResult(null);
 
     try {
+      if (destination === "fabric") {
+        // Fabric uses the authenticated backend Gateway, not a MetaMask chain switch.
+        await createOrLoadAuthenticatedDid();
+        await requestSsiAuthorizationChallenge();
+        const presentation = await createSsiAuthorizationPresentation();
+
+        const fabricForm = new FormData();
+        fabricForm.append("file", file);
+        fabricForm.append("patient", patientWallet.trim());
+        fabricForm.append("category", category);
+        fabricForm.append("emergency", String(emergency));
+        fabricForm.append("presentation", JSON.stringify(presentation));
+
+        const uploaded = await uploadFabricMedicalRecord(fabricForm);
+        setResult({
+          recordId: uploaded.recordId,
+          transactionHash: uploaded.transactionId,
+          cid: uploaded.cid,
+        });
+        setFeedback({
+          type: "success",
+          text: `Record ${uploaded.recordId} was committed to Hyperledger Fabric. Cross-chain relay is asynchronous; verify the backend bridge logs and Polygon record before considering the relay complete.`,
+        });
+        return;
+      }
+
       const connectedWallet = await connectWallet();
 
       if (connectedWallet.toLowerCase() !== user.walletAddress.toLowerCase()) {
         throw new Error("MetaMask must be connected to the authenticated doctor wallet.");
       }
 
+      // Ensure the authenticated doctor has a persisted DID first.
+      await createOrLoadAuthenticatedDid();
+
+      // /prepare consumes its own one-time authorization challenge.
+      await requestSsiAuthorizationChallenge();
+      const preparePresentation = await createSsiAuthorizationPresentation();
+
       const preparedForm = new FormData();
       preparedForm.append("file", file);
       preparedForm.append("patient", patientWallet.trim());
       preparedForm.append("category", category);
       preparedForm.append("emergency", String(emergency));
+      preparedForm.append("presentation", JSON.stringify(preparePresentation));
 
       const prepared = await prepareMedicalRecord(preparedForm);
 
-      await ensurePolygonAmoy();
+      await ensureWalletNetwork(prepared.transaction.chainId);
 
       const hash = await sendMetaMaskTransaction({
         from: connectedWallet,
@@ -67,7 +108,15 @@ function UploadRecord() {
         chainId: prepared.transaction.chainId,
       });
 
-      const confirmed = await confirmMedicalRecord(prepared.preparationId, hash);
+      // Generate the one-time /confirm proof after MetaMask returns the hash.
+      await requestSsiAuthorizationChallenge();
+      const confirmPresentation = await createSsiAuthorizationPresentation();
+
+      const confirmed = await confirmMedicalRecord(
+        prepared.preparationId,
+        hash,
+        confirmPresentation,
+      );
       setResult({
         recordId: confirmed.recordId,
         transactionHash: confirmed.transactionHash,
@@ -92,15 +141,38 @@ function UploadRecord() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-blue-800">Doctor Record Upload</h1>
-          <p className="mt-2 text-gray-500">Prepare and confirm a patient medical record using the authenticated doctor wallet and the hospital-backed transaction flow.</p>
-        </div>
+        <PageHeader eyebrow="Clinical records" title="Doctor record upload" description="Prepare and confirm a patient medical record using the authenticated doctor wallet and the hospital-backed transaction flow." />
+
+        <ContentPanel title="Blockchain destination">
+          <label
+            htmlFor="record-destination"
+            className="mb-2 block text-sm font-semibold text-gray-700"
+          >
+            Blockchain destination
+          </label>
+          <select
+            id="record-destination"
+            value={destination}
+            onChange={(event) =>
+              setDestination(event.target.value as "evm" | "fabric")
+            }
+            disabled={isSubmitting}
+            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="evm">
+              Current EVM network (Ethereum Sepolia / Polygon Amoy)
+            </option>
+            <option value="fabric">Hyperledger Fabric</option>
+          </select>
+          <p className="mt-2 text-xs text-gray-500">
+            {destination === "fabric"
+              ? "Uses the authenticated Fabric Gateway. The patient, doctor, and linked hospital must already be registered in Fabric."
+              : "Uses the selected EVM network and the existing MetaMask prepare/confirm flow."}
+          </p>
+        </ContentPanel>
 
         {feedback && (
-          <div className={`rounded-xl border px-4 py-3 text-sm ${feedback.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"}`}>
-            {feedback.text}
-          </div>
+          feedback.type === "error" ? <ErrorState message={feedback.text} /> : <p className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-700"><StatusBadge tone="success">Success</StatusBadge><span className="ml-2">{feedback.text}</span></p>
         )}
 
         <div className="mt-8 rounded-2xl bg-white p-8 shadow">

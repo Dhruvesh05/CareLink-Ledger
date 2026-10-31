@@ -8,6 +8,8 @@ import {
   type AnalyticsResult,
 } from "../../api/analytics";
 import DashboardLayout from "../../components/DashboardLayout";
+import { ContentPanel, EmptyState, ErrorState, LoadingState, MetricCard, PageHeader } from "../../components/ui";
+import { Building2, FileCheck2, Users } from "lucide-react";
 
 type MappingPreview = Awaited<ReturnType<typeof mapDataset>>;
 
@@ -150,20 +152,10 @@ function Analytics() {
   return (
     <DashboardLayout>
       <div className="space-y-8 pb-8">
-        <header>
-          <h1 className="text-3xl font-bold text-purple-700">
-            Analytics
-          </h1>
-          <p className="mt-2 text-gray-500">
-            Monitor the CareLink Ledger ecosystem and process healthcare
-            datasets through the analytics pipeline.
-          </p>
-        </header>
+        <PageHeader title="Analytics" description="Monitor the CareLink Ledger ecosystem and process healthcare datasets through the analytics pipeline." />
 
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            Unable to load ecosystem metrics: {error}
-          </div>
+          <ErrorState message={`Unable to load ecosystem metrics: ${error}`} />
         )}
 
         <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
@@ -173,33 +165,15 @@ function Analytics() {
             { label: "Doctors", display: value(counts.doctors) },
             { label: "Records", display: value(counts.records) },
           ].map((item) => (
-            <div
-              key={item.label}
-              className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm"
-            >
-              <p className="text-sm text-gray-500">{item.label}</p>
-              <p className="mt-3 text-3xl font-bold text-purple-700">
-                {item.display}
-              </p>
-            </div>
+            <MetricCard key={item.label} label={item.label} value={item.display} icon={item.label === "Hospitals" ? Building2 : item.label === "Doctors" ? Users : FileCheck2} />
           ))}
         </section>
 
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+        <ContentPanel title="Dataset Processing Workspace" subtitle="Upload a healthcare dataset to inspect its schema, map source fields, validate data quality and generate FHIR output.">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wider text-cyan-700">
-              Data Analytics Layer
-            </p>
-            <h2 className="mt-2 text-2xl font-bold text-gray-900">
-              Dataset Processing Workspace
-            </h2>
-            <p className="mt-2 text-sm text-gray-500">
-              Upload a healthcare dataset to inspect its schema, map source
-              fields, validate data quality and generate FHIR output.
-            </p>
           </div>
 
-          <div className="mt-6 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-6">
+          <div className="rounded-xl border-2 border-dashed border-[#DCE5E7] bg-[#F4F7F8] p-6">
             <label
               htmlFor="analytics-dataset"
               className="block text-sm font-semibold text-gray-800"
@@ -250,11 +224,7 @@ function Analytics() {
               </button>
             </div>
 
-            {isProcessing && (
-              <p role="status" className="mt-4 text-sm text-purple-700">
-                The analytics service is processing your file. Please wait.
-              </p>
-            )}
+            {isProcessing && <div className="mt-4"><LoadingState label="The analytics service is processing your file…" /></div>}
 
             {uploadError && (
               <div
@@ -557,17 +527,9 @@ function Analytics() {
               </div>
             </div>
           )}
-        </section>
+        </ContentPanel>
 
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-bold text-gray-900">
-            System Activity
-          </h2>
-          <p className="mt-3 text-sm text-gray-500">
-            Detailed ecosystem activity is not exposed by the current
-            application backend contract.
-          </p>
-        </section>
+        <ContentPanel title="System Activity"><EmptyState title="Activity unavailable" description="Detailed ecosystem activity is not exposed by the current application backend contract." /></ContentPanel>
       </div>
     </DashboardLayout>
   );

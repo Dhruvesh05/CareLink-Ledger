@@ -1,3 +1,4 @@
+import { randomInt } from "crypto";
 import { IBlockchainProvider } from "../blockchain/provider/IBlockchainProvider";
 
 import {
@@ -25,6 +26,11 @@ export type MedicalRecordAccessContext = {
     role: "Admin" | "Patient" | "Doctor" | "Hospital";
 };
 
+export type MedicalRecordChainScope = {
+    chainId: number;
+    contractAddress: string;
+};
+
 export class MedicalRecordService {
 
     private readonly blockchainService:
@@ -39,6 +45,8 @@ export class MedicalRecordService {
     private readonly encryptionService:
         MedicalRecordEncryptionService;
 
+    private readonly recordScope?: MedicalRecordChainScope;
+
     constructor(
         ipfsService: IPFSService,
         blockchainService: IBlockchainProvider,
@@ -47,7 +55,8 @@ export class MedicalRecordService {
                 defaultKeyManagementService,
         encryptionService:
             MedicalRecordEncryptionService =
-                new MedicalRecordEncryptionService()
+                new MedicalRecordEncryptionService(),
+        recordScope?: MedicalRecordChainScope
     ) {
 
         this.blockchainService =
@@ -61,6 +70,44 @@ export class MedicalRecordService {
 
         this.encryptionService =
             encryptionService;
+
+        this.recordScope = recordScope;
+    }
+
+    private getCurrentRecordScope():
+        { chainId: number; contractAddress: string } | undefined {
+        if (this.recordScope) {
+            return {
+                chainId: this.recordScope.chainId,
+                contractAddress: this.recordScope.contractAddress.toLowerCase()
+            };
+        }
+
+        if (process.env.BLOCKCHAIN_PROVIDER?.toLowerCase() !== "polygon") {
+            return undefined;
+        }
+
+        const network = (process.env.POLYGON_NETWORK || "amoy").toLowerCase();
+        const chainId =
+            network === "amoy" ? 80002 :
+            network === "polygon" || network === "mainnet" ? 137 :
+            undefined;
+
+        const contractAddress =
+            process.env.POLYGON_MEDICAL_RECORD_ADDRESS?.trim().toLowerCase();
+
+        if (!chainId || !contractAddress) {
+            return undefined;
+        }
+
+        return { chainId, contractAddress };
+    }
+
+    private getScopedRecordFilter(recordId: number) {
+        return {
+            recordId,
+            ...(this.getCurrentRecordScope() ?? {})
+        };
     }
 
     private getEncryptionMetadata(
@@ -209,6 +256,8 @@ export class MedicalRecordService {
                 await MedicalRecordModel.create({
 
                     recordId,
+
+                    ...(this.getCurrentRecordScope() ?? {}),
 
                     patientWallet:
                         patient,
@@ -372,10 +421,7 @@ export class MedicalRecordService {
             );
         }
 
-        const metadata =
-            await MedicalRecordModel.findOne({
-                recordId
-            });
+        let metadata = await MedicalRecordModel.findOne(this.getScopedRecordFilter(recordId));
 
         const fileHash =
             String(
@@ -388,6 +434,58 @@ export class MedicalRecordService {
             throw new Error(
                 "Medical record file hash is missing or invalid"
             );
+        }
+
+        const hasEncryptionMetadata = (candidate: any): boolean =>
+            Boolean(
+                candidate &&
+                candidate.encryptionVersion !== undefined &&
+                candidate.encryptionVersion !== null &&
+                candidate.encryptionAlgorithm &&
+                candidate.encryptionIv &&
+                candidate.encryptionAuthTag &&
+                candidate.encryptionKeyReference
+            );
+
+        /*
+         * A bridged record can have its CID and file hash on the
+         * destination chain while its encryption metadata remains
+         * associated with the original record in MongoDB.
+         *
+         * Reuse metadata only for the exact same encrypted content.
+         * The record access check above and file integrity check below
+         * remain in place.
+         */
+        if (!hasEncryptionMetadata(metadata)) {
+            const sharedContentMetadata =
+                await MedicalRecordModel.findOne({
+                    cid,
+                    fileHash,
+                    encryptionVersion: {
+                        $exists: true,
+                        $ne: null
+                    },
+                    encryptionAlgorithm: {
+                        $exists: true,
+                        $nin: ["", null]
+                    },
+                    encryptionIv: {
+                        $exists: true,
+                        $nin: ["", null]
+                    },
+                    encryptionAuthTag: {
+                        $exists: true,
+                        $nin: ["", null]
+                    },
+                    encryptionKeyReference: {
+                        $exists: true,
+                        $nin: ["", null]
+                    }
+                });
+
+            if (sharedContentMetadata) {
+                metadata = sharedContentMetadata;
+            }
         }
 
         const content =
@@ -431,6 +529,215 @@ export class MedicalRecordService {
                           metadata.fileSize
                   }
                 : {})
+        };
+    }
+
+
+    /**
+     * Retrieves content referenced by a Fabric ledger record.
+     * The Fabric route must authorize the caller before invoking this method.
+     */
+    async createFabricMedicalRecord(input: {
+        patientId: string;
+        patientWallet: string;
+        doctorId: string;
+        hospitalId: string;
+        file: Express.Multer.File;
+        category: string;
+        emergency: boolean;
+    }) {
+        const {
+            patientId,
+            patientWallet,
+            doctorId,
+            hospitalId,
+            file,
+            category,
+            emergency
+        } = input;
+
+        if (!file?.buffer?.length) {
+            throw new Error("Medical record file is required.");
+        }
+
+        if (!patientId || !doctorId || !hospitalId) {
+            throw new Error(
+                "Fabric patient, doctor, and hospital identities are required."
+            );
+        }
+
+        const normalizedCategory = category.trim();
+        if (!normalizedCategory) {
+            throw new Error("Medical record category is required.");
+        }
+
+        const fileName = file.originalname?.trim() || "medical-record";
+        const mimeType = file.mimetype?.trim() || "application/octet-stream";
+        const fileSize = file.buffer.length;
+
+        const managedKey = await this.keyManagementService.createKey();
+        const encrypted = this.encryptionService.encrypt(
+            file.buffer,
+            managedKey.key,
+            managedKey.reference
+        );
+
+        const fileHash = sha256FromBuffer(encrypted.ciphertext);
+        const uploadResult = await this.ipfsService.uploadFile(
+            encrypted.ciphertext,
+            fileName,
+            mimeType
+        );
+        const cid = uploadResult.cid;
+
+        // Keep the Fabric ID numeric-compatible because the EVM bridge accepts
+        // uint256 source IDs. A random safe integer avoids reusing low test IDs.
+        const recordId = randomInt(1_000_000_000_000, 9_000_000_000_000);
+        let blockchainCommitted = false;
+
+        try {
+            const creator = (
+                this.blockchainService as IBlockchainProvider & {
+                    createNativeMedicalRecord?: (
+                        ...args: any[]
+                    ) => Promise<any>;
+                }
+            ).createNativeMedicalRecord;
+
+            if (typeof creator !== "function") {
+                throw new Error(
+                    "Fabric-native record creation is unavailable on this provider."
+                );
+            }
+
+            const transaction = await creator.call(
+                this.blockchainService,
+                String(recordId),
+                patientId,
+                doctorId,
+                hospitalId,
+                cid,
+                fileHash,
+                normalizedCategory,
+                emergency
+            );
+
+            blockchainCommitted = true;
+
+            // Persist the encryption key reference and integrity metadata.
+            // Content retrieval uses the exact CID + encrypted-file hash.
+            await MedicalRecordModel.create({
+                recordId,
+                patientWallet: patientWallet.toLowerCase(),
+                fileName,
+                mimeType,
+                fileSize,
+                fileHash,
+                cid,
+                encryptionVersion: encrypted.metadata.version,
+                encryptionAlgorithm: encrypted.metadata.algorithm,
+                encryptionIv: encrypted.metadata.iv,
+                encryptionAuthTag: encrypted.metadata.authTag,
+                encryptionKeyReference: encrypted.metadata.keyReference,
+                category: normalizedCategory,
+                emergency,
+                transactionHash: transaction?.transactionId || undefined
+            });
+
+            return {
+                recordId,
+                transactionId: transaction?.transactionId,
+                cid,
+                fileHash,
+                fileName,
+                mimeType,
+                fileSize,
+                category: normalizedCategory,
+                emergency
+            };
+        } catch (error) {
+            // Once committed on Fabric, never unpin content referenced by ledger.
+            if (!blockchainCommitted) {
+                try {
+                    await this.ipfsService.unpinFile(cid);
+                } catch (cleanupError) {
+                    console.error(
+                        "Failed to unpin Fabric upload after creation failure",
+                        cleanupError
+                    );
+                }
+            }
+
+            throw error;
+        }
+    }
+
+    async getMedicalRecordContentFromLedgerRecord(record: any) {
+        const active = record?.active ?? record?.Active;
+
+        if (active !== true) {
+            throw new Error("InactiveRecord");
+        }
+
+        const cid = String(
+            record?.ipfsHash ?? record?.cid ?? record?.CID ?? ""
+        ).trim();
+
+        const fileHash = String(
+            record?.fileHash ?? record?.FileHash ?? ""
+        ).trim();
+
+        if (!cid) {
+            throw new Error("Medical record CID is missing");
+        }
+
+        if (!/^[a-f0-9]{64}$/i.test(fileHash)) {
+            throw new Error("Medical record file hash is missing or invalid");
+        }
+
+        // Match encryption metadata only to this exact encrypted content.
+        const metadata = await MedicalRecordModel.findOne({
+            cid,
+            fileHash: new RegExp(`^${fileHash}$`, "i"),
+            encryptionVersion: { $exists: true, $ne: null },
+            encryptionAlgorithm: { $exists: true, $nin: ["", null] },
+            encryptionIv: { $exists: true, $nin: ["", null] },
+            encryptionAuthTag: { $exists: true, $nin: ["", null] },
+            encryptionKeyReference: { $exists: true, $nin: ["", null] }
+        });
+
+        if (!metadata) {
+            throw new Error(
+                "Medical record encryption metadata is unavailable for this CID and file hash"
+            );
+        }
+
+        const encryptedContent = await this.ipfsService.downloadFile(cid);
+
+        if (!verifySha256(encryptedContent, fileHash)) {
+            throw new Error("Medical record content integrity verification failed");
+        }
+
+        const encryptionMetadata = this.getEncryptionMetadata(metadata);
+
+        const key = await this.keyManagementService.getKey(
+            encryptionMetadata.keyReference
+        );
+
+        const decryptedContent = this.encryptionService.decrypt(
+            encryptedContent,
+            key,
+            encryptionMetadata
+        );
+
+        return {
+            content: decryptedContent,
+            cid,
+            fileHash,
+            record,
+            fileName: metadata.fileName,
+            mimeType: metadata.mimeType,
+            fileSize: metadata.fileSize
         };
     }
 
@@ -582,15 +889,11 @@ export class MedicalRecordService {
              */
             try {
 
-                const existing =
-                    await MedicalRecordModel.findOne({
-                        recordId
-                    });
+                const existing = await MedicalRecordModel.findOne(this.getScopedRecordFilter(recordId));
 
                 if (existing) {
 
-                    await MedicalRecordModel.updateOne(
-                        { recordId },
+                    await MedicalRecordModel.updateOne(this.getScopedRecordFilter(recordId),
 
                         {
                             $set: {
@@ -800,12 +1103,7 @@ export class MedicalRecordService {
                             )
                     )
                 ),
-                MedicalRecordModel
-                    .find({
-                        recordId: {
-                            $in: ids
-                        }
-                    })
+                MedicalRecordModel.find({ recordId: { $in: ids }, ...(this.getCurrentRecordScope() ?? {}) })
                     .lean()
             ]);
 

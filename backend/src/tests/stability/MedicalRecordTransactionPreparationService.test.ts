@@ -1,16 +1,26 @@
 import { describe, expect, it, jest } from "@jest/globals";
+import type { IBlockchainProvider } from "../../blockchain/provider/IBlockchainProvider";
 
-jest.mock("../../models/PreparedMedicalRecordModel", () => ({
+jest.unstable_mockModule("../../models/PreparedMedicalRecordModel", () => ({
     __esModule: true,
     default: {
         create: jest.fn()
     }
 }));
 
-import { IBlockchainProvider } from "../../blockchain/provider/IBlockchainProvider";
-import PreparedMedicalRecordModel from "../../models/PreparedMedicalRecordModel";
-import { MedicalRecordTransactionPreparationService } from "../../services/blockchain/MedicalRecordTransactionPreparationService.ts";
-import { sha256FromBuffer } from "../../utils/hash";
+process.env.MEDICAL_RECORD_KEY_ENCRYPTION_SECRET =
+    "carelink-unit-test-only-wrapping-secret-32chars";
+
+const { default: PreparedMedicalRecordModel } =
+    await import("../../models/PreparedMedicalRecordModel");
+
+const { MedicalRecordTransactionPreparationService } =
+    await import("../../services/blockchain/MedicalRecordTransactionPreparationService.ts");
+
+const { sha256FromBuffer } = await import("../../utils/hash");
+
+const { InMemoryEncryptedKeyStore, KeyManagementService } =
+    await import("../../services/encryption/KeyManagementService");
 
 describe("MedicalRecordTransactionPreparationService", () => {
 
@@ -99,7 +109,8 @@ describe("MedicalRecordTransactionPreparationService", () => {
                 ipfsService as any,
                 blockchainService as IBlockchainProvider,
                 preflightService as any,
-                transactionBuilder as any
+                transactionBuilder as any,
+                new KeyManagementService(new InMemoryEncryptedKeyStore())
             );
 
         const createMock =

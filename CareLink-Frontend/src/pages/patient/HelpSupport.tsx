@@ -1,32 +1,40 @@
 import DashboardLayout from "../../components/DashboardLayout";
 import { Mail, Phone } from "lucide-react";
+import { ContentPanel, PageHeader } from "../../components/ui";
 
 function HelpSupport() {
   return (
     <DashboardLayout>
-      <h1 className="text-3xl font-bold text-blue-800">Help & Support</h1>
+      <div className="space-y-6">
+        <PageHeader eyebrow="CareLink support" title="Help & support" description="Get assistance with your CareLink Ledger account and records." />
+        <ContentPanel title="Contact support">
+          <div className="space-y-6 max-w-2xl">
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-8">
+              <div className="flex items-center gap-3 text-slate-700 dark:text-slate-300 font-medium">
+                <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <span>support@carelink.com</span>
+              </div>
 
-      <div className="bg-white rounded-2xl shadow p-8 mt-8">
-        <div className="space-y-5">
-          <p className="flex items-center gap-2.5 text-slate-800 font-medium">
-            <Mail className="w-5 h-5 text-blue-600" />
-            <span>Email : support@carelink.com</span>
-          </p>
+              <div className="flex items-center gap-3 text-slate-700 dark:text-slate-300 font-medium">
+                <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
+                  <Phone className="w-5 h-5" />
+                </div>
+                <span>+91 9876543210</span>
+              </div>
+            </div>
 
-          <p className="flex items-center gap-2.5 text-slate-800 font-medium">
-            <Phone className="w-5 h-5 text-blue-600" />
-            <span>Phone : +91 9876543210</span>
-          </p>
+            <textarea
+              placeholder="Describe your issue..."
+              className="w-full border border-slate-200 dark:border-white/10 rounded-xl p-4 h-40 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/20 transition-all"
+            />
 
-          <textarea
-            placeholder="Describe your issue..."
-            className="w-full border rounded-xl p-4 h-40 outline-none focus:ring-2 focus:ring-blue-500"
-          />
-
-          <button className="bg-blue-700 hover:bg-blue-800 transition text-white font-semibold px-8 py-4 rounded-xl">
-            Submit
-          </button>
-        </div>
+            <button className="bg-cyan-600 hover:bg-cyan-500 transition-all text-white font-bold px-8 py-3.5 rounded-xl shadow-lg shadow-cyan-600/20">
+              Submit
+            </button>
+          </div>
+        </ContentPanel>
       </div>
     </DashboardLayout>
   );

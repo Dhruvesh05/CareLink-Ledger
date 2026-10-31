@@ -1,63 +1,30 @@
+import { useState } from "react";
 import DashboardLayout from "../../components/DashboardLayout";
-import { FileText, ArrowRight } from "lucide-react";
+import { getAdminReport } from "../../api/admin";
+import { ContentPanel, ErrorState, PageHeader } from "../../components/ui";
 
-function Reports() {
-  const reports = [
-    {
-      title: "Monthly System Report",
-      date: "August 2026",
-    },
-    {
-      title: "Blockchain Transaction Report",
-      date: "August 2026",
-    },
-    {
-      title: "Hospital Verification Report",
-      date: "August 2026",
-    },
-    {
-      title: "User Activity Report",
-      date: "August 2026",
-    },
-  ];
+const reportTypes = [
+  ["users", "User registrations"],
+  ["appointments", "Appointments"],
+  ["invoices", "Invoices"],
+  ["medical-records", "Medical-record metadata"],
+  ["blockchain", "Blockchain transfers"],
+  ["verifications", "Verification history"],
+  ["audit", "Audit events"],
+  ["hospital-activity", "Hospital activity"],
+];
 
-  return (
-    <DashboardLayout>
-      <h1 className="text-3xl font-bold text-purple-700">
-        Reports
-      </h1>
-
-      <p className="text-slate-500 mt-2">
-        Generate and view system reports.
-      </p>
-
-      <div className="grid md:grid-cols-2 gap-6 mt-8">
-        {reports.map((report) => (
-          <div
-            key={report.title}
-            className="bg-white rounded-2xl shadow p-6 border border-slate-100"
-          >
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-50 text-purple-700">
-              <FileText className="w-6 h-6" />
-            </div>
-
-            <h2 className="text-xl font-bold mt-4 text-slate-800">
-              {report.title}
-            </h2>
-
-            <p className="text-slate-500 mt-2 text-sm">
-              {report.date}
-            </p>
-
-            <button className="mt-5 text-purple-700 font-semibold inline-flex items-center gap-1.5 hover:text-purple-900 transition">
-              <span>View Report</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        ))}
-      </div>
-    </DashboardLayout>
-  );
+export default function Reports() {
+  const [error, setError] = useState("");
+  async function download(type: string) {
+    try {
+      const csv = await getAdminReport(type);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url; link.download = `carelink-${type}-report.csv`; link.click();
+      URL.revokeObjectURL(url);
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to generate report"); }
+  }
+  return <DashboardLayout><div className="space-y-6"><PageHeader title="Reports" description="Reports are generated from currently available backend data. CSV export is provided; PDF export is not configured." />{error && <ErrorState message={error} />}<div className="grid gap-4 md:grid-cols-2">{reportTypes.map(([type, title]) => <ContentPanel key={type} title={title} subtitle="Download the latest persisted records."><button onClick={() => void download(type)} className="rounded-xl bg-[#0F8B78] px-4 py-2 text-sm font-bold text-white">Download CSV</button></ContentPanel>)}</div></div></DashboardLayout>;
 }
-
-export default Reports;

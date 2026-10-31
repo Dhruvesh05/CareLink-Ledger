@@ -495,6 +495,39 @@ export class FabricProvider implements IBlockchainProvider {
         );
     }
 
+    async createNativeMedicalRecord(
+        recordId: string,
+        patientID: string,
+        doctorID: string,
+        hospitalID: string,
+        cid: string,
+        fileHash: string,
+        category: string,
+        emergency: boolean
+    ): Promise<any> {
+        if (
+            !/^\d+$/.test(recordId) ||
+            !Number.isSafeInteger(Number(recordId)) ||
+            Number(recordId) <= 0
+        ) {
+            throw new Error(
+                "Fabric bridge-compatible record ID must be a positive safe integer."
+            );
+        }
+
+        return await this.submitWithTransactionId(
+            "CreateMedicalRecord",
+            recordId,
+            patientID,
+            doctorID,
+            hospitalID,
+            cid,
+            fileHash,
+            category,
+            String(emergency)
+        );
+    }
+
     async updateMedicalRecord(
         _recordId: number,
         _ipfsHash: string,
@@ -559,7 +592,7 @@ export class FabricProvider implements IBlockchainProvider {
     }
 
     async getMedicalRecord(
-        recordId: number
+        recordId: number | string
     ): Promise<any> {
         return await this.evaluate(
             "GetMedicalRecord",

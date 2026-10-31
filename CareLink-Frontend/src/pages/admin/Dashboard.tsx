@@ -1,87 +1,22 @@
-import { useNavigate } from "react-router-dom";
-import { Users, Building2, UserCheck, CheckCircle2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import DashboardLayout from "../../components/DashboardLayout";
+import { getAdminStats, type AdminStats } from "../../api/admin";
+import { ContentPanel, EmptyState, ErrorState, LoadingState, MetricCard, PageHeader } from "../../components/ui";
+import { Activity, Building2, FileCheck2, Link2, Users } from "lucide-react";
 
 function Dashboard() {
-  const navigate = useNavigate();
-
-  const stats = [
-    { title: "Users", value: "Not configured", icon: Users, tone: "bg-blue-50 text-blue-700" },
-    { title: "Hospitals", value: "Available in Analytics", icon: Building2, tone: "bg-emerald-50 text-emerald-700" },
-    { title: "Doctors", value: "Available in Analytics", icon: UserCheck, tone: "bg-violet-50 text-violet-700" },
-    { title: "Verified", value: "Not configured", icon: CheckCircle2, tone: "bg-amber-50 text-amber-700" },
-  ];
-
-  const quickLinks = [
-    { title: "Users", path: "/admin/users", desc: "Manage all users" },
-    { title: "Hospitals", path: "/admin/hospitals", desc: "Review institutions" },
-    { title: "Doctors", path: "/admin/doctors", desc: "Verify providers" },
-    { title: "Analytics", path: "/admin/analytics", desc: "View insights" },
-  ];
-
-  return (
-    <DashboardLayout>
-      <div className="space-y-8">
-        <section className="rounded-[28px] border border-amber-100 bg-gradient-to-r from-amber-500 via-orange-500 to-orange-600 p-6 text-white shadow-[0_24px_55px_rgba(249,115,22,0.25)] sm:p-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-sm uppercase tracking-[0.2em] text-amber-100">Control center</p>
-              <h1 className="mt-3 text-3xl font-bold sm:text-4xl">Admin Dashboard</h1>
-            </div>
-            <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-amber-50 backdrop-blur-sm">
-              System healthy
-            </div>
-          </div>
-        </section>
-
-        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-          {stats.map((item) => {
-            const Icon = item.icon;
-            return (
-              <div key={item.title} className="rounded-[24px] border border-slate-200 bg-white/90 p-5 shadow-[0_18px_35px_rgba(15,23,42,0.05)] ring-1 ring-slate-100 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(251,146,60,0.10)]">
-                <div className="flex items-center justify-between">
-                  <span className={`flex h-12 w-12 items-center justify-center rounded-xl text-2xl ${item.tone}`}>
-                    <Icon className="w-6 h-6" />
-                  </span>
-                  <span className="text-sm font-semibold text-slate-500">Live</span>
-                </div>
-                <p className="mt-6 text-3xl font-bold text-slate-800">{item.value}</p>
-                <p className="mt-2 text-sm text-slate-500">{item.title}</p>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="grid gap-6 xl:grid-cols-[1.25fr_1fr]">
-          <div className="rounded-3xl border border-amber-100 bg-white p-6 shadow-[0_12px_30px_rgba(14,116,144,0.06)]">
-            <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-800">Quick Access</h2>
-              <button className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">Manage</button>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              {quickLinks.map((link) => (
-                <button
-                  key={link.title}
-                  onClick={() => navigate(link.path)}
-                  className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-200 hover:bg-amber-50"
-                >
-                  <p className="text-lg font-bold text-slate-800">{link.title}</p>
-                  <p className="mt-2 text-sm text-slate-500">{link.desc}</p>
-                  <div className="mt-4 text-sm font-medium text-amber-700">View details →</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-3xl border border-amber-100 bg-white p-6 shadow-[0_12px_30px_rgba(14,116,144,0.06)]">
-            <h2 className="text-xl font-bold text-slate-800">Recent Activity</h2>
-            <p className="mt-5 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-slate-500">Activity feed is not exposed by the current backend contract.</p>
-          </div>
-        </div>
-      </div>
-    </DashboardLayout>
-  );
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => { getAdminStats().then(setStats).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Unable to load platform metrics")); }, []);
+  const cards = stats ? [["Users", stats.users], ["Patients", stats.patients], ["Doctors", stats.doctors], ["Hospitals", stats.hospitals], ["Medical records", stats.medicalRecords], ["Cross-chain events", stats.crossChain], ["Failed operations", stats.failedOperations]] : [];
+  const roleData = stats?.roleDistribution ?? [];
+  const maxRole = Math.max(...roleData.map((item) => item.count), 1);
+  const icons = [Users, Users, Users, Building2, FileCheck2, Link2, Activity];
+  return <DashboardLayout><div className="space-y-6"><PageHeader eyebrow="Platform governance" title="Admin dashboard" description="Infrastructure and account metadata only. Private medical record contents remain outside the admin view." />
+    {error && <ErrorState message={error} />}
+    {!stats && !error && <LoadingState label="Loading platform metrics…" />}
+    {stats && <><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map(([label, value], index) => <MetricCard key={label} label={String(label)} value={value} icon={icons[index]} tone="indigo" />)}</div><div className="grid gap-5 lg:grid-cols-2"><ContentPanel title="Users by role">{roleData.length ? roleData.map((item) => <div key={item._id} className="mb-4"><div className="mb-1 flex justify-between text-xs font-semibold text-[#697586]"><span>{item._id}</span><span>{item.count}</span></div><div className="h-2 rounded-full bg-slate-100"><div className="h-2 rounded-full bg-indigo-500" style={{ width: `${(item.count / maxRole) * 100}%` }} /></div></div>) : <EmptyState title="No role history available" />}</ContentPanel><ContentPanel title="Registration trend">{stats.registrationTrend?.length ? <div className="flex min-h-40 items-end gap-3">{stats.registrationTrend.map((item) => { const max = Math.max(...(stats.registrationTrend ?? []).map((entry) => entry.count), 1); return <div key={item._id} className="flex flex-1 flex-col items-center gap-2"><div className="w-full rounded-t bg-[#0F8B78]" style={{ height: `${Math.max((item.count / max) * 120, 4)}px` }} /><span className="text-[10px] text-[#697586]">{item._id}</span></div>; })}</div> : <EmptyState title="No historical registration data" />}</ContentPanel><ContentPanel title="Cross-chain transaction status">{stats.transactionStatus?.length ? stats.transactionStatus.map((item) => <div key={item._id} className="mb-2 flex justify-between rounded-xl bg-[#F5F7F8] p-3 text-sm"><span>{item._id}</span><strong>{item.count}</strong></div>) : <EmptyState title="No cross-chain transactions" />}</ContentPanel><ContentPanel title="Platform activity categories">{stats.auditCategory?.length ? stats.auditCategory.map((item) => <div key={item._id} className="mb-2 flex justify-between rounded-xl bg-[#F5F7F8] p-3 text-sm"><span>{item._id}</span><strong>{item.count}</strong></div>) : <EmptyState title="No audit activity" />}</ContentPanel></div></>}
+  </div></DashboardLayout>;
 }
 
 export default Dashboard;

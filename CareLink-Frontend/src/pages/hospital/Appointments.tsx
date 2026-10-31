@@ -1,15 +1,17 @@
 import DashboardLayout from "../../components/DashboardLayout";
 import { Calendar } from "lucide-react";
+import { ContentPanel, PageHeader } from "../../components/ui";
 
 function Appointments() {
   return (
     <DashboardLayout>
-      <h1 className="text-3xl font-bold text-red-700">Hospital Appointments</h1>
-
-      <div className="bg-white rounded-2xl shadow p-8 mt-8 flex items-center gap-3 font-semibold text-slate-800">
-        <Calendar className="w-5 h-5 text-red-600" />
+      <PageHeader eyebrow="Hospital operations" title="Hospital Appointments" description="Review the appointment schedule for your hospital." />
+      <ContentPanel title="Appointment schedule">
+        <div className="flex items-center gap-3 text-sm font-semibold text-[#17212F]">
+        <Calendar className="h-5 w-5 text-[#0F8B78]" />
         <span>Appointment Schedule</span>
-      </div>
+        </div>
+      </ContentPanel>
     </DashboardLayout>
   );
 }

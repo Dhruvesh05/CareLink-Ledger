@@ -52,6 +52,7 @@ export interface VerifyWalletInput {
     walletAddress: string;
     message: string;
     signature: string;
+    chainId?: number;
 }
 
 const PASSWORD_SALT_ROUNDS = 12;
@@ -305,8 +306,12 @@ export class AuthService {
             );
         }
 
+        const roleService = input.chainId === undefined
+            ? this.blockchainRoleService
+            : new BlockchainRoleService(input.chainId);
+
         const blockchainRole =
-            await this.blockchainRoleService.getRole(
+            await roleService.getRole(
                 walletAddress
             );
 

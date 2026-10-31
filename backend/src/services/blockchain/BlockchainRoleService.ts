@@ -1,7 +1,9 @@
 import { ethers } from "ethers";
 
 import AccessControlABI from "../../blockchain/polygon/abi/AccessControl.json";
+import EthereumAccessControlABI from "../../blockchain/ethereum/abi/AccessControl.json";
 import { env } from "../../config/env";
+import { getSupportedEvmNetwork } from "../../blockchain/config/supportedNetworks";
 
 export type BlockchainRole =
     | "Admin"
@@ -16,13 +18,29 @@ export class BlockchainRoleService {
 
     private readonly accessControl: ethers.Contract;
 
-    constructor() {
+    constructor(chainId?: number) {
+
+        if (chainId !== undefined) {
+            const network = getSupportedEvmNetwork(chainId);
+            const accessControlAddress = network.accessControlAddress;
+            if (!accessControlAddress) {
+                throw new Error(`AccessControl address is not configured for ${network.name}`);
+            }
+            this.provider = new ethers.JsonRpcProvider(network.rpcUrl);
+            this.accessControl = new ethers.Contract(
+                accessControlAddress,
+                network.provider === "polygon" ? AccessControlABI.abi : EthereumAccessControlABI.abi,
+                this.provider
+            );
+            return;
+        }
 
         const blockchainProvider =
             process.env.BLOCKCHAIN_PROVIDER?.toLowerCase();
 
         let rpc: string | undefined;
         let accessControlAddress: string | undefined;
+        let accessControlAbi: typeof AccessControlABI.abi = AccessControlABI.abi;
 
         switch (blockchainProvider) {
 
@@ -36,6 +54,7 @@ export class BlockchainRoleService {
                 rpc = env.ETHEREUM_RPC;
                 accessControlAddress =
                     env.ACCESS_CONTROL_ADDRESS;
+                accessControlAbi = EthereumAccessControlABI.abi;
                 break;
 
             default:
@@ -62,7 +81,7 @@ export class BlockchainRoleService {
         this.accessControl =
             new ethers.Contract(
                 accessControlAddress,
-                AccessControlABI.abi,
+                accessControlAbi,
                 this.provider
             );
     }

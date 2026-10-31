@@ -15,27 +15,29 @@ const mockConsumeChallenge = jest.fn() as jest.MockedFunction<
     (userId: string, challenge: string) => Promise<boolean>
 >;
 
-jest.mock("../services/PresentationService", () => ({
-    PresentationService: {
+jest.unstable_mockModule("../services/PresentationService", () => ({
+    default: {
         verifyPresentation: mockVerifyPresentation,
     },
 }));
 
-jest.mock("../services/CareLinkAuthorizationService", () => ({
-    CareLinkAuthorizationService: {
-        authorizeVerifiedPresentation: mockAuthorizeVerifiedPresentation,
+jest.unstable_mockModule("../services/CareLinkAuthorizationService", () => ({
+    CareLinkAuthorizationService: class {
+        authorizeVerifiedPresentation(...args: any[]) {
+            return mockAuthorizeVerifiedPresentation(...args);
+        }
     },
 }));
 
-jest.mock("../../services/SsiAuthorizationChallengeService", () => ({
-    __esModule: true,
+jest.unstable_mockModule("../../services/SsiAuthorizationChallengeService", () => ({
     default: {
         getPendingChallenge: mockGetPendingChallenge,
         consumeChallenge: mockConsumeChallenge,
     },
 }));
 
-import { requireCareLinkRole } from "../middleware/carelinkAuthorization";
+const { requireCareLinkRole } =
+    await import("../middleware/carelinkAuthorization");
 
 function createResponseMock() {
     const response: any = {};

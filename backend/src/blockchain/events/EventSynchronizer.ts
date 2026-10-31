@@ -117,6 +117,36 @@ function serializeArgument(value: unknown): unknown {
     return value;
 }
 
+type TupleField = readonly [string, number];
+
+function normalizeStruct(
+    value: unknown,
+    fields: ReadonlyArray<TupleField>
+): Record<string, unknown> | undefined {
+    if (value === undefined || value === null) {
+        return undefined;
+    }
+
+    const tuple = value as Record<string, unknown> & {
+        [index: number]: unknown;
+    };
+
+    const normalized: Record<string, unknown> = {};
+
+    for (const [name, index] of fields) {
+        const entry =
+            tuple[name] !== undefined
+                ? tuple[name]
+                : tuple[index];
+
+        if (entry !== undefined) {
+            normalized[name] = serializeArgument(entry);
+        }
+    }
+
+    return normalized;
+}
+
 function buildEventPayload(
     contract: string,
     eventName: string,
@@ -247,26 +277,61 @@ export class EventSynchronizer {
         }
 
         let record: unknown;
+        let fields: ReadonlyArray<TupleField>;
 
         if (eventName === "PatientRegistered") {
             record = await this.contracts.patientRegistry?.getPatient?.(
                 wallet
             );
+
+            fields = [
+                ["patientId", 0],
+                ["wallet", 1],
+                ["fullNameHash", 2],
+                ["dobHash", 3],
+                ["bloodGroup", 4],
+                ["gender", 5],
+                ["recordCount", 6],
+                ["createdAt", 7],
+                ["updatedAt", 8],
+                ["active", 9],
+            ];
         } else if (eventName === "DoctorRegistered") {
             record = await this.contracts.doctorRegistry?.getDoctor?.(
                 wallet
             );
+
+            fields = [
+                ["doctorId", 0],
+                ["wallet", 1],
+                ["fullNameHash", 2],
+                ["licenseNumberHash", 3],
+                ["specialization", 4],
+                ["hospital", 5],
+                ["verified", 6],
+                ["active", 7],
+                ["createdAt", 8],
+                ["updatedAt", 9],
+            ];
         } else {
             record = await this.contracts.hospitalRegistry?.getHospital?.(
                 wallet
             );
+
+            fields = [
+                ["hospitalId", 0],
+                ["wallet", 1],
+                ["hospitalNameHash", 2],
+                ["registrationNumberHash", 3],
+                ["locationHash", 4],
+                ["verified", 5],
+                ["active", 6],
+                ["createdAt", 7],
+                ["updatedAt", 8],
+            ];
         }
 
-        if (record === undefined) {
-            return undefined;
-        }
-
-        return serializeArgument(record);
+        return normalizeStruct(record, fields);
     }
 
     private async enrichMedicalRecordEvent(
@@ -293,14 +358,20 @@ export class EventSynchronizer {
             await this.contracts.medicalRecord
                 ?.getMedicalRecord?.(recordId as any);
 
-        if (
-            record === undefined ||
-            record === null
-        ) {
-            return undefined;
-        }
-
-        return serializeArgument(record);
+        return normalizeStruct(record, [
+            ["recordId", 0],
+            ["patient", 1],
+            ["doctor", 2],
+            ["hospital", 3],
+            ["ipfsHash", 4],
+            ["fileHash", 5],
+            ["category", 6],
+            ["createdAt", 7],
+            ["updatedAt", 8],
+            ["version", 9],
+            ["active", 10],
+            ["emergency", 11],
+        ]);
     }
 
     private async handleEvent(
@@ -400,7 +471,7 @@ export class EventSynchronizer {
         };
 
         const message = createCrossChainMessage({
-            messageId: `${this.sourceChain}:${contractName}:${eventIdentity}`,
+            messageId: `${this.sourceChain}:${this.destinationChain}:${contractName}:${eventIdentity}`,
             sourceChain: this.sourceChain,
             destinationChain: this.destinationChain,
             messageType: eventName,

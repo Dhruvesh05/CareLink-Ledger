@@ -15,7 +15,7 @@ import {
 // Google Font DM Sans dynamic injection
 const DM_SANS_STYLE = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
-
+  
   .font-dm-sans {
     font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   }

@@ -1,4 +1,3 @@
-import { ethers } from "ethers";
 import {
     beforeEach,
     describe,
@@ -6,17 +5,22 @@ import {
     jest,
     test
 } from "@jest/globals";
+import { createRequire } from "node:module";
+
+const testRequire = createRequire(import.meta.url);
+
 const mockProvider = {
     getNetwork: jest.fn(),
     getTransaction: jest.fn(),
-    getTransactionReceipt: jest.fn()
+    getTransactionReceipt: jest.fn(),
+    getBlock: jest.fn()
 };
 
 const mockContract = {
     recordExists: jest.fn()
 };
 
-jest.mock("ethers", () => {
+jest.unstable_mockModule("ethers", () => {
     const actual =
         jest.requireActual<typeof import("ethers")>("ethers");
 
@@ -27,7 +31,7 @@ jest.mock("ethers", () => {
     };
 });
 
-jest.mock("../../config/env", () => ({
+jest.unstable_mockModule("../../config/env", () => ({
     env: {
         POLYGON_RPC: "http://mock-polygon-rpc",
         POLYGON_MEDICAL_RECORD_ADDRESS:
@@ -35,7 +39,7 @@ jest.mock("../../config/env", () => ({
     }
 }));
 
-jest.mock("../../models/PreparedMedicalRecordModel", () => ({
+jest.unstable_mockModule("../../models/PreparedMedicalRecordModel", () => ({
     __esModule: true,
     default: {
         findOne: jest.fn(),
@@ -43,7 +47,7 @@ jest.mock("../../models/PreparedMedicalRecordModel", () => ({
     }
 }));
 
-jest.mock("../../models/MedicalRecordModel", () => ({
+jest.unstable_mockModule("../../models/MedicalRecordModel", () => ({
     __esModule: true,
     default: {
         create: jest.fn(),
@@ -51,11 +55,19 @@ jest.mock("../../models/MedicalRecordModel", () => ({
     }
 }));
 
-import MedicalRecordModel from "../../models/MedicalRecordModel";
-import PreparedMedicalRecordModel from "../../models/PreparedMedicalRecordModel";
-import {
+const { ethers } = await import("ethers");
+
+const { default: MedicalRecordModel } =
+    await import("../../models/MedicalRecordModel");
+
+const { default: PreparedMedicalRecordModel } =
+    await import("../../models/PreparedMedicalRecordModel");
+
+const {
     MedicalRecordTransactionConfirmationService
-} from "../../services/blockchain/MedicalRecordTransactionConfirmationService.ts";
+} = await import(
+    "../../services/blockchain/MedicalRecordTransactionConfirmationService.ts"
+);
 
 const preparedModel =
     PreparedMedicalRecordModel as any;
@@ -211,10 +223,14 @@ describe(
             provider.getNetwork.mockResolvedValue({
                 chainId: 80002n
             });
+
+            provider.getBlock.mockResolvedValue({
+                timestamp: Math.floor(Date.now() / 1000)
+            });
         });
 
         test(
-            "rejects expired preparation before reading blockchain transaction",
+            "rejects a transaction mined after preparation expiry",
             async () => {
 
                 const preparation =
@@ -226,6 +242,19 @@ describe(
                 preparedModel.findOne.mockResolvedValue(
                     preparation
                 );
+
+                provider.getTransaction.mockResolvedValue(
+                    createTransaction()
+                );
+
+                provider.getTransactionReceipt.mockResolvedValue(
+                    createReceipt()
+                );
+
+                provider.getBlock.mockResolvedValue({
+                    timestamp:
+                        Math.floor(preparation.expiresAt.getTime() / 1000) + 1
+                });
 
                 await expect(
                     service.confirm({
@@ -239,7 +268,7 @@ describe(
                             DOCTOR
                     })
                 ).rejects.toThrow(
-                    "Medical record preparation has expired"
+                    "Medical record transaction was mined after preparation expiry"
                 );
 
                 expect(
@@ -248,7 +277,7 @@ describe(
 
                 expect(
                     provider.getTransaction
-                ).not.toHaveBeenCalled();
+                ).toHaveBeenCalledTimes(1);
             }
         );
 
@@ -457,7 +486,7 @@ describe(
 
                 const iface =
                     new ethers.Interface([
-                        ...require("../../blockchain/polygon/abi/MedicalRecord.json").abi
+                        ...testRequire("../../blockchain/polygon/abi/MedicalRecord.json").abi
                     ]);
 
                 const eventLog =
@@ -664,7 +693,7 @@ describe(
 
                 const iface =
                     new ethers.Interface([
-                        ...require("../../blockchain/polygon/abi/MedicalRecord.json").abi
+                        ...testRequire("../../blockchain/polygon/abi/MedicalRecord.json").abi
                     ]);
 
                 const eventLog =
@@ -736,7 +765,9 @@ describe(
                 expect(
                     medicalRecordModel.findOne
                 ).toHaveBeenCalledWith({
-                    recordId: 42
+                    recordId: 42,
+                    chainId: 80002,
+                    contractAddress: CONTRACT.toLowerCase()
                 });
 
                 expect(
@@ -766,7 +797,7 @@ describe(
 
                 const iface =
                     new ethers.Interface([
-                        ...require("../../blockchain/polygon/abi/MedicalRecord.json").abi
+                        ...testRequire("../../blockchain/polygon/abi/MedicalRecord.json").abi
                     ]);
 
                 const eventLog =

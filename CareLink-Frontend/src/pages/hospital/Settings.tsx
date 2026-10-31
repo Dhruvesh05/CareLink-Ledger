@@ -1,30 +1,22 @@
 import DashboardLayout from "../../components/DashboardLayout";
+import { ContentPanel, PageHeader } from "../../components/ui";
 
 function Settings() {
   return (
     <DashboardLayout>
 
-      <h1 className="text-3xl font-bold text-red-700">
-        Settings
-      </h1>
-
-      <div className="bg-white rounded-2xl shadow p-8 mt-8">
-
-        <label className="flex gap-4 mb-5">
-          <input type="checkbox" />
+      <PageHeader eyebrow="Hospital administration" title="Settings" description="Configure hospital notification preferences." />
+      <ContentPanel title="Notification preferences"><form className="space-y-5">
+        <label className="flex gap-4 text-sm font-medium text-[#17212F]"><input type="checkbox" className="mt-1" />
           Enable Notifications
         </label>
-
-        <label className="flex gap-4 mb-5">
-          <input type="checkbox" />
+        <label className="flex gap-4 text-sm font-medium text-[#17212F]"><input type="checkbox" className="mt-1" />
           Email Alerts
         </label>
-
-        <button className="bg-red-700 text-white px-8 py-3 rounded-xl">
+        <button type="submit" className="rounded-lg bg-[#0F8B78] px-4 py-2 text-sm font-bold text-white">
           Save Settings
         </button>
-
-      </div>
+      </form></ContentPanel>
 
     </DashboardLayout>
   );

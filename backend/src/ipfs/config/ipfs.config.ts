@@ -69,10 +69,18 @@ const timeout =
  * Pinata is selected only when a JWT is configured.
  * Otherwise the backend uses local/self-hosted Kubo.
  */
+const requestedProvider =
+    process.env.IPFS_PROVIDER?.trim().toLowerCase();
+
+const pinataConfigured =
+    env.PINATA_JWT.trim().length > 0;
+
 const provider: IpfsProvider =
-    env.PINATA_JWT.trim().length > 0
-        ? "pinata"
-        : "kubo";
+    requestedProvider === "kubo"
+        ? "kubo"
+        : pinataConfigured
+            ? "pinata"
+            : "kubo";
 
 export const ipfsConfig: IIpfsConfig = {
     host: ipfsHost,

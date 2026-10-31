@@ -3,6 +3,8 @@ import { ethers } from "ethers";
 import { env } from "../../config/env";
 
 import MedicalRecordABI from "../../blockchain/polygon/abi/MedicalRecord.json";
+import EthereumMedicalRecordABI from "../../blockchain/ethereum/abi/MedicalRecord.json";
+import { getSupportedEvmNetwork, type SupportedEvmNetwork } from "../../blockchain/config/supportedNetworks";
 
 import PreparedMedicalRecordModel from "../../models/PreparedMedicalRecordModel";
 import MedicalRecordModel from "../../models/MedicalRecordModel";
@@ -50,15 +52,23 @@ export class MedicalRecordTransactionConfirmationService {
     private readonly medicalRecordContract:
         ethers.Contract;
 
+    private readonly selectedNetwork?: SupportedEvmNetwork;
+
     constructor(
         provider?: ethers.JsonRpcProvider,
-        medicalRecordContract?: ethers.Contract
+        medicalRecordContract?: ethers.Contract,
+        chainId?: number
     ) {
-        const rpc =
-            env.POLYGON_RPC;
+        // Preserve the legacy Polygon default for older callers/tests, while
+        // selected-network requests explicitly pass their validated chain ID.
+        this.selectedNetwork = chainId === undefined
+            ? undefined
+            : getSupportedEvmNetwork(chainId);
+
+        const rpc = this.selectedNetwork?.rpcUrl ?? env.POLYGON_RPC;
 
         const contractAddress =
-            env.POLYGON_MEDICAL_RECORD_ADDRESS;
+            this.selectedNetwork?.medicalRecordAddress ?? env.POLYGON_MEDICAL_RECORD_ADDRESS;
 
         if (!rpc) {
             throw new Error(
@@ -81,10 +91,11 @@ export class MedicalRecordTransactionConfirmationService {
                 contractAddress
             );
 
-        this.medicalRecordInterface =
-            new ethers.Interface(
-                MedicalRecordABI.abi
-            );
+        const abi = this.selectedNetwork?.provider === "ethereum"
+            ? EthereumMedicalRecordABI.abi
+            : MedicalRecordABI.abi;
+
+        this.medicalRecordInterface = new ethers.Interface(abi);
 
         /*
          * IMPORTANT:
@@ -100,7 +111,7 @@ export class MedicalRecordTransactionConfirmationService {
             medicalRecordContract ??
             new ethers.Contract(
                 this.medicalRecordAddress,
-                MedicalRecordABI.abi,
+                abi,
                 this.provider
             );
     }
@@ -154,6 +165,20 @@ export class MedicalRecordTransactionConfirmationService {
             );
         }
 
+        if (
+            this.selectedNetwork &&
+            preparation.chainId !== this.selectedNetwork.chainId
+        ) {
+            throw new Error("Medical record preparation belongs to a different blockchain network");
+        }
+
+        if (
+            this.selectedNetwork &&
+            preparation.contractAddress.toLowerCase() !== this.medicalRecordAddress.toLowerCase()
+        ) {
+            throw new Error("Prepared MedicalRecord contract does not match the selected blockchain network");
+        }
+
         /*
          * ------------------------------------------------------
          * STEP 2: Prevent replay / duplicate confirmation
@@ -177,20 +202,8 @@ export class MedicalRecordTransactionConfirmationService {
          * TTL deletion is asynchronous, therefore expiry
          * must also be checked explicitly.
          */
-        if (
-            preparation.expiresAt.getTime() <=
-            Date.now()
-        ) {
-
-            preparation.status =
-                "expired";
-
-            await preparation.save();
-
-            throw new Error(
-                "Medical record preparation has expired"
-            );
-        }
+        // Expiry is checked against the mined block timestamp below.
+        // This allows recovery of a transaction already mined before expiry.
 
         /*
          * ------------------------------------------------------
@@ -398,6 +411,20 @@ export class MedicalRecordTransactionConfirmationService {
             );
         }
 
+        const minedBlock = await this.provider.getBlock(receipt.blockNumber);
+
+        if (!minedBlock) {
+            throw new Error("Medical record transaction block is unavailable");
+        }
+
+        if (minedBlock.timestamp * 1000 > preparation.expiresAt.getTime()) {
+            preparation.status = "expired";
+            await preparation.save();
+            throw new Error(
+                "Medical record transaction was mined after preparation expiry"
+            );
+        }
+
         /*
          * ------------------------------------------------------
          * STEP 10: Verify RecordCreated event
@@ -582,6 +609,10 @@ export class MedicalRecordTransactionConfirmationService {
 
                 recordId,
 
+                chainId: preparation.chainId,
+
+                contractAddress: preparation.contractAddress.toLowerCase(),
+
                 patientWallet:
                     preparation.patientWallet,
 
@@ -636,13 +667,15 @@ export class MedicalRecordTransactionConfirmationService {
             ) {
                 const existing =
                     await MedicalRecordModel.findOne({
-                        recordId
+                        recordId,
+                        chainId: preparation.chainId,
+                        contractAddress: preparation.contractAddress.toLowerCase()
                     });
 
                 if (
                     existing &&
-                    existing.transactionHash ===
-                    input.transactionHash
+                    existing.transactionHash?.toLowerCase() ===
+                    input.transactionHash.toLowerCase()
                 ) {
                     /*
                      * Existing identical persistence is safe.
@@ -668,11 +701,7 @@ export class MedicalRecordTransactionConfirmationService {
                         preparation._id,
 
                     status:
-                        "prepared",
-
-                    expiresAt: {
-                        $gt: new Date()
-                    }
+                        "prepared"
                 },
                 {
                     $set: {

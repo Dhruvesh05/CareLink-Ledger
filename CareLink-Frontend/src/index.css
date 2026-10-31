@@ -1,23 +1,24 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 @layer base {
   :root {
-    --bg-primary: #FBFBFD;
-    --bg-secondary: #F5F5F7;
+    --bg-primary: #F5F7F8;
+    --bg-secondary: #F5F7F8;
     --bg-card: #FFFFFF;
     --bg-glass: rgba(255, 255, 255, 0.85);
-    --text-primary: #1D1D1F;
-    --text-secondary: #6E6E73;
-    --border-color: rgba(0, 0, 0, 0.08);
+    --text-primary: #17212F;
+    --text-secondary: #697586;
+    --border-color: #E4E8EC;
     --border-hover: rgba(0, 113, 227, 0.3);
-    --accent-blue: #0071E3;
-    --accent-blue: #0071E3;
-    --accent-teal: #00F2FE;
+    --accent-blue: #0F8B78;
+    --accent-teal: #0F8B78;
     --card-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05);
     --glow-color: rgba(0, 113, 227, 0.15);
   }
@@ -38,6 +39,47 @@
   }
 }
 
+@layer components {
+  .enterprise-panel {
+    border: 1px solid #E4E8EC;
+    border-radius: 16px;
+    background: #FFFFFF;
+    box-shadow: 0 2px 10px rgba(23, 33, 47, 0.04);
+  }
+  .enterprise-table {
+    width: 100%;
+    min-width: 720px;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+  .enterprise-table th {
+    border-bottom: 1px solid #E4E8EC;
+    color: #697586;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 0.75rem;
+    text-align: left;
+    text-transform: uppercase;
+  }
+  .enterprise-table td {
+    border-bottom: 1px solid #EEF1F3;
+    color: #17212F;
+    padding: 0.875rem 0.75rem;
+    vertical-align: top;
+  }
+  .enterprise-table tbody tr:hover { background: #F8FAFA; }
+  .enterprise-input {
+    border: 1px solid #E4E8EC;
+    border-radius: 10px;
+    background: #FFFFFF;
+    color: #17212F;
+    outline: none;
+    padding: 0.625rem 0.75rem;
+  }
+  .enterprise-input:focus { border-color: #0F8B78; box-shadow: 0 0 0 3px rgba(15, 139, 120, 0.12); }
+}
+
 html, body, *, button, input, select, textarea {
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
 }
@@ -50,7 +92,19 @@ html, body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Typography Apple Style */
+/* Shared enterprise surface primitives */
+.enterprise-panel {
+  border: 1px solid #E4E8EC;
+  border-radius: 16px;
+  background: #FFFFFF;
+  box-shadow: 0 2px 10px rgba(23, 33, 47, 0.04);
+}
+
+.enterprise-muted {
+  color: #697586;
+}
+
+/* Typography */
 .apple-heading {
   letter-spacing: -0.03em;
   font-weight: 700;
@@ -65,7 +119,7 @@ html, body {
   color: #38bdf8;
 }
 
-/* Glassmorphism utility */
+/* Legacy utility retained for landing pages */
 .glass-panel {
   background: var(--bg-card);
   backdrop-filter: blur(20px);
@@ -135,4 +189,60 @@ html, body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-secondary);
+}
+
+/* Normalize legacy authenticated page bodies while individual screens migrate. */
+main .bg-white {
+  border: 1px solid #E4E8EC;
+  border-radius: 16px;
+  box-shadow: 0 2px 10px rgba(23, 33, 47, 0.04);
+}
+
+main h1 {
+  letter-spacing: -0.02em;
+}
+
+main input:not([type="checkbox"]):not([type="radio"]),
+main select,
+main textarea {
+  border-color: #E4E8EC;
+  border-radius: 10px;
+  background-color: #FFFFFF;
+  color: #17212F;
+}
+
+main input:not([type="checkbox"]):not([type="radio"]):focus,
+main select:focus,
+main textarea:focus {
+  border-color: #0F8B78;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(15, 139, 120, 0.12);
+}
+
+main table {
+  border-color: #E4E8EC;
+}
+
+main table thead th {
+  color: #697586;
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+main table tbody tr {
+  border-color: #EEF1F3;
+}
+
+main table tbody tr:hover {
+  background-color: #F8FAFA;
+}
+
+@media (max-width: 640px) {
+  main {
+    overflow-x: hidden;
+  }
+  main table {
+    min-width: 680px;
+  }
 }

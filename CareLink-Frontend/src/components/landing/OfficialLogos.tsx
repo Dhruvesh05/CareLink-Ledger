@@ -78,3 +78,4 @@ export const SlowTransferLogo: React.FC<{ className?: string }> = ({ className =
     <path d="M12 12.5V14L13 15" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round" />
   </svg>
 );
+

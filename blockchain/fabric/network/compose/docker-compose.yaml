@@ -3,6 +3,7 @@ services:
   orderer.carelink.com:
     container_name: orderer.carelink.com
     image: hyperledger/fabric-orderer:2.5.16
+    restart: unless-stopped
 
     environment:
       - FABRIC_LOGGING_SPEC=INFO
@@ -52,6 +53,7 @@ services:
   peer0.carelink.com:
     container_name: peer0.carelink.com
     image: hyperledger/fabric-peer:2.5.16
+    restart: unless-stopped
 
     environment:
       - FABRIC_LOGGING_SPEC=INFO
@@ -74,6 +76,8 @@ services:
       # Chaincode
       - CORE_PEER_CHAINCODEADDRESS=peer0.carelink.com:7052
       - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
+      - CORE_PEER_KEEPALIVE_MININTERVAL=30s
+      - CORE_PEER_KEEPALIVE_DELIVERYCLIENT_INTERVAL=120s
 
       # Docker chaincode execution
       - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock

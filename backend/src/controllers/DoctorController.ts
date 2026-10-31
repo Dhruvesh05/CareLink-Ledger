@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import AdminAuditEventModel from "../models/AdminAuditEvent";
 import { serializeBigInt } from "../utils/bigint";
 import { DoctorService } from "../services/DoctorService";
 import { IBlockchainProvider } from "../blockchain/provider/IBlockchainProvider";
@@ -6,21 +7,17 @@ import { BlockchainFactory } from "../blockchain/provider/BlockchainFactory";
 
 export class DoctorController {
 
-    private doctorService?: DoctorService;
-
     constructor(
         private readonly blockchainService?: IBlockchainProvider
     ) {}
 
-    private getDoctorService(): DoctorService {
-        if (!this.doctorService) {
-            this.doctorService = new DoctorService(
-                this.blockchainService ??
-                BlockchainFactory.getProvider()
-            );
-        }
-
-        return this.doctorService;
+    private getDoctorService(req: Request): DoctorService {
+        const blockchainService = this.blockchainService ?? (
+            req.careLinkNetwork
+                ? BlockchainFactory.getProviderForChainId(req.careLinkNetwork.chainId)
+                : BlockchainFactory.getProvider()
+        );
+        return new DoctorService(blockchainService);
     }
 
     /*
@@ -60,7 +57,7 @@ export class DoctorController {
                 });
             }
 
-            const transaction = await this.getDoctorService().registerDoctor(
+            const transaction = await this.getDoctorService(req).registerDoctor(
                 fullNameHashStr,
                 licenseNumberHashStr,
                 specializationStr,
@@ -103,7 +100,7 @@ export class DoctorController {
                 return res.status(400).json({ success: false, message: "wallet param is required" });
             }
 
-            const doctor = await this.getDoctorService().getDoctor(wallet);
+            const doctor = await this.getDoctorService(req).getDoctor(wallet);
 
             return res.json({
                 success: true,
@@ -141,7 +138,7 @@ export class DoctorController {
                 return res.status(400).json({ success: false, message: "wallet param is required" });
             }
 
-            const active = await this.getDoctorService().isDoctorActive(wallet2);
+            const active = await this.getDoctorService(req).isDoctorActive(wallet2);
 
             return res.json({
                 success: true,
@@ -179,7 +176,7 @@ export class DoctorController {
                 return res.status(400).json({ success: false, message: "wallet param is required" });
             }
 
-            const verified = await this.getDoctorService().isDoctorVerified(wallet3);
+            const verified = await this.getDoctorService(req).isDoctorVerified(wallet3);
 
             return res.json({
                 success: true,
@@ -217,7 +214,7 @@ export class DoctorController {
                 return res.status(400).json({ success: false, message: "wallet param is required" });
             }
 
-            const hospital = await this.getDoctorService().getDoctorHospital(wallet4);
+            const hospital = await this.getDoctorService(req).getDoctorHospital(wallet4);
 
             return res.json({
                 success: true,
@@ -260,9 +257,10 @@ export class DoctorController {
                 });
             }
 
-            const transaction = await this.getDoctorService().verifyDoctor(walletStr);
+            const transaction = await this.getDoctorService(req).verifyDoctor(walletStr);
 
-            const verified = await this.getDoctorService().isDoctorVerified(walletStr);
+            const verified = await this.getDoctorService(req).isDoctorVerified(walletStr);
+            await AdminAuditEventModel.create({ category: "verification", actorUserId: req.auth?.userId, actorRole: req.auth?.role, event: "Doctor verified", resource: "doctor-registry", resourceId: walletStr, transactionReference: transaction?.hash ?? transaction?.transactionHash, result: "success" });
 
             return res.json({
                 success: true,
@@ -307,9 +305,10 @@ export class DoctorController {
                 });
             }
 
-            const transaction = await this.getDoctorService().revokeVerification(walletStr);
+            const transaction = await this.getDoctorService(req).revokeVerification(walletStr);
 
-            const verified = await this.getDoctorService().isDoctorVerified(walletStr);
+            const verified = await this.getDoctorService(req).isDoctorVerified(walletStr);
+            await AdminAuditEventModel.create({ category: "verification", actorUserId: req.auth?.userId, actorRole: req.auth?.role, event: "Doctor verification revoked", resource: "doctor-registry", resourceId: walletStr, transactionReference: transaction?.hash ?? transaction?.transactionHash, result: "success" });
 
             return res.json({
                 success: true,
@@ -346,7 +345,7 @@ export class DoctorController {
         try {
 
             const transaction =
-                await this.getDoctorService().deactivateDoctor();
+                await this.getDoctorService(req).deactivateDoctor();
 
             return res.json({
                 success: true,
@@ -389,7 +388,7 @@ export class DoctorController {
                 });
             }
 
-            const transaction = await this.getDoctorService().reactivateDoctor(walletStr);
+            const transaction = await this.getDoctorService(req).reactivateDoctor(walletStr);
 
             return res.json({
                 success: true,
@@ -434,7 +433,7 @@ export class DoctorController {
                 });
             }
 
-            const transaction = await this.getDoctorService().updateSpecialization(specializationStr);
+            const transaction = await this.getDoctorService(req).updateSpecialization(specializationStr);
 
             return res.json({
                 success: true,
@@ -467,7 +466,7 @@ export class DoctorController {
         try {
 
             const total =
-                await this.getDoctorService().totalDoctors();
+                await this.getDoctorService(req).totalDoctors();
 
             return res.json({
                 success: true,

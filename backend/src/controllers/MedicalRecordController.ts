@@ -22,6 +22,10 @@ import IPFSServiceAdapter
 
 import { BlockchainFactory } from "../blockchain/provider/BlockchainFactory";
 import { IBlockchainProvider } from "../blockchain/provider/IBlockchainProvider";
+import { MedicalRecordPreflightService } from "../services/blockchain/MedicalRecordPreflightService";
+import { MedicalRecordTransactionBuilder } from "../blockchain/common/MedicalRecordTransactionBuilder";
+import { BlockchainRoleService } from "../services/blockchain/BlockchainRoleService";
+import type { SupportedEvmNetwork } from "../blockchain/config/supportedNetworks";
 
 import AuthorizationService
     from "../ssi/services/AuthorizationService";
@@ -308,13 +312,19 @@ export class MedicalRecordController {
 
     private medicalRecordService?: MedicalRecordService;
 
+    private readonly medicalRecordServices = new Map<number | "default", MedicalRecordService>();
+
     private readonly blockchainService?: IBlockchainProvider;
 
-    private readonly transactionPreparationService:
+    private readonly transactionPreparationService?:
         MedicalRecordTransactionPreparationService;
 
-    private readonly transactionConfirmationService:
+    private readonly transactionPreparationServices = new Map<number | "default", MedicalRecordTransactionPreparationService>();
+
+    private readonly transactionConfirmationService?:
         MedicalRecordTransactionConfirmationService;
+
+    private readonly transactionConfirmationServices = new Map<number | "default", MedicalRecordTransactionConfirmationService>();
 
     private readonly authorizationService:
         typeof AuthorizationService;
@@ -339,17 +349,8 @@ export class MedicalRecordController {
         this.medicalRecordService = medicalRecordService;
         this.blockchainService = blockchainService;
 
-        this.transactionPreparationService =
-            transactionPreparationService ??
-            new MedicalRecordTransactionPreparationService(
-                new IPFSServiceAdapter(),
-                blockchainService ??
-                BlockchainFactory.getProvider()
-            );
-
-        this.transactionConfirmationService =
-            transactionConfirmationService ??
-            new MedicalRecordTransactionConfirmationService();
+        this.transactionPreparationService = transactionPreparationService;
+        this.transactionConfirmationService = transactionConfirmationService;
 
         this.presentationService =
             presentationService;
@@ -358,17 +359,93 @@ export class MedicalRecordController {
             authorizationService;
     }
 
-    private getMedicalRecordService(): MedicalRecordService {
-        if (!this.medicalRecordService) {
-            this.medicalRecordService =
-                new MedicalRecordService(
-                    new IPFSServiceAdapter(),
-                    this.blockchainService ??
-                    BlockchainFactory.getProvider()
-                );
+    private getBlockchainService(req: Request): IBlockchainProvider {
+        return this.blockchainService ?? (
+            req.careLinkNetwork
+                ? BlockchainFactory.getProviderForChainId(req.careLinkNetwork.chainId)
+                : BlockchainFactory.getProvider()
+        );
+    }
+
+    private getMedicalRecordService(req: Request): MedicalRecordService {
+        // Dependency-injected services remain supported by unit tests and callers.
+        if (this.medicalRecordService) {
+            return this.medicalRecordService;
         }
 
-        return this.medicalRecordService;
+        const network = req.careLinkNetwork;
+        const key = network?.chainId ?? "default";
+        const existing = this.medicalRecordServices.get(key);
+        if (existing) {
+            return existing;
+        }
+
+        const scope = network
+            ? { chainId: network.chainId, contractAddress: network.medicalRecordAddress }
+            : undefined;
+        const service = new MedicalRecordService(
+            new IPFSServiceAdapter(),
+            this.getBlockchainService(req),
+            undefined,
+            undefined,
+            scope
+        );
+        this.medicalRecordServices.set(key, service);
+        return service;
+    }
+
+    private getTransactionPreparationService(req: Request): MedicalRecordTransactionPreparationService {
+        if (this.transactionPreparationService) {
+            return this.transactionPreparationService;
+        }
+
+        const network: SupportedEvmNetwork | undefined = req.careLinkNetwork;
+        const key = network?.chainId ?? "default";
+        const existing = this.transactionPreparationServices.get(key);
+        if (existing) {
+            return existing;
+        }
+
+        const blockchainService = this.getBlockchainService(req);
+        const service = network
+            ? new MedicalRecordTransactionPreparationService(
+                new IPFSServiceAdapter(),
+                blockchainService,
+                new MedicalRecordPreflightService(
+                    new BlockchainRoleService(network.chainId),
+                    blockchainService
+                ),
+                new MedicalRecordTransactionBuilder(new ethers.JsonRpcProvider(network.rpcUrl)),
+                undefined,
+                undefined,
+                network
+            )
+            : new MedicalRecordTransactionPreparationService(
+                new IPFSServiceAdapter(),
+                blockchainService
+            );
+
+        this.transactionPreparationServices.set(key, service);
+        return service;
+    }
+
+    private getTransactionConfirmationService(req: Request): MedicalRecordTransactionConfirmationService {
+        if (this.transactionConfirmationService) {
+            return this.transactionConfirmationService;
+        }
+
+        const network = req.careLinkNetwork;
+        const key = network?.chainId ?? "default";
+        const existing = this.transactionConfirmationServices.get(key);
+        if (existing) {
+            return existing;
+        }
+
+        const service = network
+            ? new MedicalRecordTransactionConfirmationService(undefined, undefined, network.chainId)
+            : new MedicalRecordTransactionConfirmationService();
+        this.transactionConfirmationServices.set(key, service);
+        return service;
     }
 
     async prepareMedicalRecord(
@@ -415,7 +492,7 @@ export class MedicalRecordController {
             }
 
             const prepared =
-                await this.transactionPreparationService.prepare({
+                await this.getTransactionPreparationService(req).prepare({
                     doctorWallet:
                         req.auth.walletAddress,
                     patientWallet,
@@ -471,7 +548,7 @@ export class MedicalRecordController {
                 );
 
             const confirmed =
-                await this.transactionConfirmationService.confirm({
+                await this.getTransactionConfirmationService(req).confirm({
                     preparationId,
                     transactionHash,
                     doctorWallet:
@@ -533,7 +610,7 @@ export class MedicalRecordController {
             }
 
             const transaction =
-                await this.getMedicalRecordService()
+                await this.getMedicalRecordService(req)
                     .createMedicalRecord(
                         patient,
                         file,
@@ -582,7 +659,7 @@ export class MedicalRecordController {
                 );
 
             const record =
-                await this.getMedicalRecordService()
+                await this.getMedicalRecordService(req)
                     .getMedicalRecord(
                         recordId,
                         req.auth.walletAddress
@@ -643,7 +720,7 @@ export class MedicalRecordController {
             }
 
             const result =
-                await this.getMedicalRecordService()
+                await this.getMedicalRecordService(req)
                     .getMedicalRecordContent(
                         recordId,
                         {
@@ -661,12 +738,42 @@ export class MedicalRecordController {
                 );
             }
 
+            // Only PDF documents may be rendered inline. All other file
+            // types remain downloads, even if a client requests inline.
+            const requestedDisposition =
+                String(req.query.disposition ?? "attachment").toLowerCase();
+
+            const isPdf =
+                String(result.mimeType ?? "")
+                    .toLowerCase()
+                    .split(";")[0]
+                    .trim() === "application/pdf";
+
+            const disposition =
+                requestedDisposition === "inline" && isPdf
+                    ? "inline"
+                    : "attachment";
+
             if (result.fileName) {
+                const originalFileName = String(result.fileName);
+                const safeFileName =
+                    originalFileName.replace(/[\/\\\r\n"]/g, "_");
+
+                const encodedFileName =
+                    encodeURIComponent(originalFileName).replace(
+                        /['()]/g,
+                        (character) =>
+                            `%${character.charCodeAt(0).toString(16).toUpperCase()}`
+                    );
+
                 res.setHeader(
                     "Content-Disposition",
-                    `attachment; filename="${result.fileName}"`
+                    `${disposition}; filename="${safeFileName}"; filename*=UTF-8''${encodedFileName}`
                 );
             }
+
+            res.setHeader("X-Content-Type-Options", "nosniff");
+            res.setHeader("Cache-Control", "private, no-store");
 
             return res.status(200).send(
                 result.content
@@ -695,7 +802,7 @@ export class MedicalRecordController {
                 );
 
             const record =
-                await this.getMedicalRecordService()
+                await this.getMedicalRecordService(req)
                     .viewRecord(recordId);
 
             return res.json({
@@ -744,7 +851,7 @@ export class MedicalRecordController {
             }
 
             const transaction =
-                await this.getMedicalRecordService()
+                await this.getMedicalRecordService(req)
                     .updateMedicalRecord(
                         recordId,
                         req.file,
@@ -778,7 +885,7 @@ export class MedicalRecordController {
                 );
 
             const transaction =
-                await this.getMedicalRecordService()
+                await this.getMedicalRecordService(req)
                     .deactivateMedicalRecord(
                         recordId
                     );
@@ -815,7 +922,7 @@ export class MedicalRecordController {
                 );
 
             const transaction =
-                await this.getMedicalRecordService()
+                await this.getMedicalRecordService(req)
                     .grantAccess(
                         recordId,
                         doctor
@@ -853,7 +960,7 @@ export class MedicalRecordController {
                 );
 
             const transaction =
-                await this.getMedicalRecordService()
+                await this.getMedicalRecordService(req)
                     .revokeAccess(
                         recordId,
                         doctor
@@ -891,7 +998,7 @@ export class MedicalRecordController {
                 );
 
             const authorized =
-                await this.getMedicalRecordService()
+                await this.getMedicalRecordService(req)
                     .isAuthorizedDoctor(
                         recordId,
                         wallet
@@ -974,7 +1081,7 @@ export class MedicalRecordController {
             }
 
             const records =
-                await this.getMedicalRecordService()
+                await this.getMedicalRecordService(req)
                     .getPatientRecords(wallet, req.auth!.walletAddress);
 
             return res.json({
@@ -1014,7 +1121,7 @@ export class MedicalRecordController {
             }
 
             const records =
-                await this.getMedicalRecordService()
+                await this.getMedicalRecordService(req)
                     .getDoctorRecords(wallet, req.auth!.walletAddress);
 
             return res.json({
@@ -1054,7 +1161,7 @@ export class MedicalRecordController {
             }
 
             const records =
-                await this.getMedicalRecordService()
+                await this.getMedicalRecordService(req)
                     .getHospitalRecords(wallet, req.auth!.walletAddress);
 
             return res.json({
@@ -1084,7 +1191,7 @@ export class MedicalRecordController {
                 );
 
             const transaction =
-                await this.getMedicalRecordService()
+                await this.getMedicalRecordService(req)
                     .logDownload(recordId);
 
             return res.json({
@@ -1113,7 +1220,7 @@ export class MedicalRecordController {
                 );
 
             const exists =
-                await this.getMedicalRecordService()
+                await this.getMedicalRecordService(req)
                     .recordExists(recordId);
 
             return res.json({
@@ -1128,14 +1235,14 @@ export class MedicalRecordController {
     }
 
     async totalRecords(
-        _req: Request,
+        req: Request,
         res: Response
     ) {
 
         try {
 
             const total =
-                await this.getMedicalRecordService()
+                await this.getMedicalRecordService(req)
                     .totalRecords();
 
             return res.json({

@@ -105,21 +105,17 @@ function parseRecordId(value: any): number | null {
 
 export class AuditController {
 
-    private auditService?: AuditService;
-
     constructor(
         private readonly blockchainService?: IBlockchainProvider
     ) {}
 
-    private getAuditService(): AuditService {
-        if (!this.auditService) {
-            this.auditService = new AuditService(
-                this.blockchainService ??
-                BlockchainFactory.getProvider()
-            );
-        }
-
-        return this.auditService;
+    private getAuditService(req: Request): AuditService {
+        const blockchainService = this.blockchainService ?? (
+            req.careLinkNetwork
+                ? BlockchainFactory.getProviderForChainId(req.careLinkNetwork.chainId)
+                : BlockchainFactory.getProvider()
+        );
+        return new AuditService(blockchainService);
     }
 
     /*
@@ -146,7 +142,7 @@ export class AuditController {
             }
 
             const audit =
-                await this.getAuditService().getAudit(
+                await this.getAuditService(req).getAudit(
                     logId
                 );
 
@@ -191,7 +187,7 @@ export class AuditController {
             }
 
             const logs =
-                await this.getAuditService().getRecordAuditLogs(
+                await this.getAuditService(req).getRecordAuditLogs(
                     recordId
                 );
 
@@ -227,7 +223,7 @@ export class AuditController {
         try {
 
             const total =
-                await this.getAuditService().totalAuditLogs();
+                await this.getAuditService(req).totalAuditLogs();
 
             return res.json({
                 success: true,

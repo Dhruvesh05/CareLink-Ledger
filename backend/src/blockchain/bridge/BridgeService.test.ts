@@ -769,6 +769,54 @@ describe("BridgeService medical-record interoperability", () => {
         );
     });
 
+
+    it("relays a positional Solidity tuple using canonical record field indices", async () => {
+        const a = audit();
+        const p = provider();
+
+        const bridge = new BridgeService(
+            a as any,
+            { [BlockchainType.POLYGON]: p as any }
+        );
+
+        const positionalRecord = [
+            42,
+            patient,
+            doctor,
+            hospital,
+            "bafy-test-cid",
+            "sha256-test",
+            "E2E_TEST",
+            1750000000,
+            1750000001,
+            1,
+            true,
+            false
+        ];
+
+        const result = await bridge.relay(
+            message(
+                "RecordCreated",
+                [42, patient, doctor, hospital, "E2E_TEST", 100],
+                positionalRecord
+            )
+        );
+
+        expect(result.status).toBe("confirmed");
+        expect(p.createMedicalRecordFromBridge).toHaveBeenCalledWith(
+            expect.any(String),
+            BlockchainType.ETHEREUM,
+            42,
+            patient,
+            doctor,
+            hospital,
+            "bafy-test-cid",
+            "sha256-test",
+            "E2E_TEST",
+            false
+        );
+    });
+
     it("relays RecordUpdated exactly once", async () => {
         const a = audit();
         const p = provider();

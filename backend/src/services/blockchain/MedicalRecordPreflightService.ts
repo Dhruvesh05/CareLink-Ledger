@@ -7,6 +7,7 @@ import {
 import {
     BlockchainFactory
 } from "../../blockchain/provider/BlockchainFactory";
+import { IBlockchainProvider } from "../../blockchain/provider/IBlockchainProvider";
 
 export interface MedicalRecordPreflightResult {
     doctor: string;
@@ -19,17 +20,18 @@ export interface MedicalRecordPreflightResult {
 
 export class MedicalRecordPreflightService {
 
-    private readonly blockchainService =
-        BlockchainFactory.getProvider();
+    private readonly blockchainService: IBlockchainProvider;
 
     private readonly roleService:
         BlockchainRoleService;
 
     constructor(
         roleService: BlockchainRoleService =
-            new BlockchainRoleService()
+            new BlockchainRoleService(),
+        blockchainService: IBlockchainProvider = BlockchainFactory.getProvider()
     ) {
         this.roleService = roleService;
+        this.blockchainService = blockchainService;
     }
 
     async validateDoctor(

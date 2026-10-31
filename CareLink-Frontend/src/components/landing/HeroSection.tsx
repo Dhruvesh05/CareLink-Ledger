@@ -78,25 +78,34 @@ export const HeroSection: React.FC = () => {
         <FHIRLogo className="w-6 h-6" />
       </motion.div>
 
-      {/* Live Stats Cards Grid */}
+      {/* Live Stats Cards Unified Connected Rectangle */}
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: false, amount: 0.2 }}
         transition={{ duration: 0.7, delay: 0.35 }}
-        className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 w-full max-w-4xl"
+        className="mt-16 w-full max-w-4xl rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 bg-slate-200 dark:bg-white/10 p-[1px] shadow-lg shadow-slate-200/50 dark:shadow-none overflow-hidden"
       >
-        {[
-          { stat: "99.99%", label: "Cross-Chain Uptime" },
-          { stat: "<350ms", label: "Consensus Latency" },
-          { stat: "HL7 FHIR", label: "Native Compliance" },
-          { stat: "Zero-Knowledge", label: "Privacy Engine" },
-        ].map((item, idx) => (
-          <div key={idx} className="p-6 rounded-2xl bg-white dark:bg-zinc-950 border border-slate-200 dark:border-white/10 flex flex-col items-center">
-            <span className="text-3xl sm:text-4xl font-black text-cyan-600 dark:text-cyan-400">{item.stat}</span>
-            <span className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-400 mt-1">{item.label}</span>
-          </div>
-        ))}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-[1px]">
+          {[
+            { stat: "99.99%", label: "Cross-Chain Uptime" },
+            { stat: "<350ms", label: "Consensus Latency" },
+            { stat: "HL7 FHIR", label: "Native Compliance" },
+            { stat: "Zero-Knowledge", label: "Privacy Engine" },
+          ].map((item, idx) => (
+            <div
+              key={idx}
+              className="bg-white dark:bg-black p-6 sm:p-8 flex flex-col items-center justify-center text-center transition-colors duration-200 hover:bg-slate-50 dark:hover:bg-zinc-950"
+            >
+              <span className="text-3xl sm:text-4xl font-black text-cyan-600 dark:text-cyan-400 tracking-tight">
+                {item.stat}
+              </span>
+              <span className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-400 mt-2">
+                {item.label}
+              </span>
+            </div>
+          ))}
+        </div>
       </motion.div>
 
       {/* Network Visualization Section Widget */}

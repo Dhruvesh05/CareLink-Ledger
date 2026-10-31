@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import type { W3CVerifiablePresentation } from "@veramo/core-types";
 import type { UserRole } from "../../models/User";
 import { sendError } from "../../utils/response";
-import { PresentationService } from "../services/PresentationService";
+import PresentationService from "../services/PresentationService";
 import { CareLinkAuthorizationService } from "../services/CareLinkAuthorizationService";
 import SsiAuthorizationChallengeService from "../../services/SsiAuthorizationChallengeService";
 
@@ -102,7 +102,12 @@ export function requireCareLinkRole(...requiredRoles: UserRole[]) {
                 presentation as W3CVerifiablePresentation,
                 pendingChallenge.challenge,
             );
-        } catch {
+        } catch (error) {
+            console.error(
+                "[ssi-auth] Presentation verifier threw:",
+                error instanceof Error ? error.message : "Unknown verifier error",
+            );
+
             return sendError(
                 res,
                 "Verifiable presentation is invalid",
@@ -111,6 +116,47 @@ export function requireCareLinkRole(...requiredRoles: UserRole[]) {
         }
 
         if (!verification?.verified) {
+            const details = verification as PresentationVerification & {
+                error?: {
+                    message?: unknown;
+                    errorCode?: unknown;
+                };
+            };
+
+            const vp = presentation as Record<string, unknown>;
+            const proof =
+                vp.proof && typeof vp.proof === "object"
+                    ? vp.proof as Record<string, unknown>
+                    : undefined;
+            const credentials = Array.isArray(vp.verifiableCredential)
+                ? vp.verifiableCredential
+                : [];
+
+            console.warn("[ssi-auth] Presentation verification rejected:", {
+                errorCode:
+                    typeof details.error?.errorCode === "string"
+                        ? details.error.errorCode
+                        : "not provided",
+                errorMessage:
+                    typeof details.error?.message === "string"
+                        ? details.error.message
+                        : "No verifier message provided",
+                presentationType: typeof presentation,
+                hasHolder: typeof vp.holder === "string",
+                proofType: proof?.type ?? "missing",
+                credentialCount: credentials.length,
+                credentialProofPresent: credentials.map(
+                    (credential) =>
+                        Boolean(
+                            credential &&
+                            typeof credential === "object" &&
+                            "proof" in credential &&
+                            (credential as Record<string, unknown>).proof,
+                        ),
+                ),
+                challengeAvailable: Boolean(pendingChallenge.challenge),
+            });
+
             return sendError(
                 res,
                 "Verifiable presentation is invalid",

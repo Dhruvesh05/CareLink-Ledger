@@ -1,5 +1,6 @@
 import { ethers } from "ethers";
 import { randomUUID } from "crypto";
+import type { SupportedEvmNetwork } from "../../blockchain/config/supportedNetworks";
 
 import { env } from "../../config/env";
 
@@ -89,6 +90,8 @@ export class MedicalRecordTransactionPreparationService {
     private readonly encryptionService:
         MedicalRecordEncryptionService;
 
+    private readonly network?: SupportedEvmNetwork;
+
     constructor(
         ipfsService: IPFSService,
         blockchainService: IBlockchainProvider,
@@ -109,7 +112,8 @@ export class MedicalRecordTransactionPreparationService {
                         defaultKeyManagementService,
         encryptionService:
             MedicalRecordEncryptionService =
-                new MedicalRecordEncryptionService()
+                new MedicalRecordEncryptionService(),
+        network?: SupportedEvmNetwork
     ) {
         this.ipfsService = ipfsService;
         this.blockchainService = blockchainService;
@@ -117,6 +121,7 @@ export class MedicalRecordTransactionPreparationService {
         this.transactionBuilder = transactionBuilder;
         this.keyManagementService = keyManagementService;
         this.encryptionService = encryptionService;
+        this.network = network;
     }
 
     async prepare(
@@ -225,8 +230,9 @@ export class MedicalRecordTransactionPreparationService {
          * No wallet/private key is involved here.
          * No blockchain transaction is submitted.
          */
-        const transaction =
-            await this.transactionBuilder
+        let transaction: Awaited<ReturnType<MedicalRecordTransactionBuilder["buildCreateMedicalRecordTransaction"]>>;
+        try {
+            transaction = await this.transactionBuilder
                 .buildCreateMedicalRecordTransaction(
                     patientWallet,
                     uploadResult.cid,
@@ -234,6 +240,22 @@ export class MedicalRecordTransactionPreparationService {
                     input.category,
                     input.emergency
                 );
+
+            if (
+                this.network &&
+                (transaction.chainId !== this.network.chainId ||
+                    transaction.to.toLowerCase() !== this.network.medicalRecordAddress.toLowerCase())
+            ) {
+                throw new Error("Prepared transaction does not match the selected CareLink blockchain network");
+            }
+        } catch (error) {
+            try {
+                await this.ipfsService.unpinFile(uploadResult.cid);
+            } catch (cleanupError) {
+                console.error("Failed to unpin IPFS CID after transaction preparation failed:", cleanupError);
+            }
+            throw error;
+        }
 
         /*
          * Create a short-lived server-side preparation record.

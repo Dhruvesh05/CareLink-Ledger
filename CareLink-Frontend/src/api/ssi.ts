@@ -28,6 +28,20 @@ export async function getAuthenticatedDid(): Promise<string> {
   return response.did;
 }
 
+export async function createOrLoadAuthenticatedDid(): Promise<string> {
+  const token = getToken();
+  if (!token) {
+    throw new Error("Authentication is required for identity verification.");
+  }
+
+  const response = await apiPost<DidResponse>("/identity/did", {}, token);
+  if (!response?.did) {
+    throw new Error("The backend did not create or return a CareLink DID.");
+  }
+
+  return response.did;
+}
+
 export async function requestSsiAuthorizationChallenge(): Promise<SsiAuthorizationChallenge> {
   const token = getToken();
   if (!token) {

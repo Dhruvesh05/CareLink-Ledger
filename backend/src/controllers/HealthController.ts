@@ -19,13 +19,15 @@ export class HealthController {
 		);
 	}
 
-	readiness(_req: Request, res: Response) {
+	readiness(req: Request, res: Response) {
 		const database = getDatabaseHealth();
 
 		const deps = {
 			database,
 			blockchain: {
-				provider: process.env.BLOCKCHAIN_PROVIDER || "ethereum",
+                provider: req.careLinkNetwork?.provider ?? process.env.BLOCKCHAIN_PROVIDER ?? "ethereum",
+                chainId: req.careLinkNetwork?.chainId,
+                network: req.careLinkNetwork?.name,
 				ethereumRpcConfigured: isConfigured(process.env.ETHEREUM_RPC)
 			},
 			ipfs: {

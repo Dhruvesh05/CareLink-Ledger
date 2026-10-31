@@ -1,32 +1,12 @@
 import DashboardLayout from "../../components/DashboardLayout";
+import { ContentPanel, PageHeader } from "../../components/ui";
 
 function Billing() {
   return (
     <DashboardLayout>
 
-      <h1 className="text-3xl font-bold text-red-700">
-        Billing
-      </h1>
-
-      <div className="bg-white rounded-2xl shadow p-8 mt-8">
-
-        <input
-          type="text"
-          placeholder="Patient Name"
-          className="w-full border rounded-xl p-4 mb-4"
-        />
-
-        <input
-          type="number"
-          placeholder="Amount"
-          className="w-full border rounded-xl p-4 mb-4"
-        />
-
-        <button className="bg-red-700 text-white px-8 py-3 rounded-xl">
-          Generate Bill
-        </button>
-
-      </div>
+      <PageHeader eyebrow="Hospital operations" title="Billing" description="Create billing records for hospital services." />
+      <ContentPanel title="Generate bill"><form className="space-y-4"><input type="text" placeholder="Patient Name" className="enterprise-input w-full" /><input type="number" placeholder="Amount" className="enterprise-input w-full" /><button type="submit" className="rounded-lg bg-[#0F8B78] px-4 py-2 text-sm font-bold text-white">Generate Bill</button></form></ContentPanel>
 
     </DashboardLayout>
   );

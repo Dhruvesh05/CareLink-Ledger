@@ -1,22 +1,18 @@
 import DashboardLayout from "../../components/DashboardLayout";
-import { User } from "lucide-react";
+import { useEffect, useState } from "react";
+import { getDoctorPatients, type ClinicalPatient } from "../../api/clinical";
+import { ContentPanel, EmptyState, ErrorState, LoadingState, PageHeader } from "../../components/ui";
 
 function MyPatients() {
+  const [patients, setPatients] = useState<ClinicalPatient[]>([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  useEffect(() => { getDoctorPatients().then(setPatients).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Unable to load patients")).finally(() => setLoading(false)); }, []);
   return (
     <DashboardLayout>
-      <h1 className="text-3xl font-bold text-green-700">My Patients</h1>
-
-      <div className="grid grid-cols-2 gap-6 mt-8">
-        <div className="bg-white shadow rounded-2xl p-8 flex items-center gap-3 font-semibold text-slate-800">
-          <User className="w-5 h-5 text-green-600" />
-          <span>Rahul Patil</span>
-        </div>
-
-        <div className="bg-white shadow rounded-2xl p-8 flex items-center gap-3 font-semibold text-slate-800">
-          <User className="w-5 h-5 text-green-600" />
-          <span>Sneha Joshi</span>
-        </div>
-      </div>
+      <PageHeader eyebrow="Clinical relationships" title="My patients" description="Patients associated through your authorized clinical relationships." />
+      {error && <ErrorState message={error} />}
+      <ContentPanel title="Associated patients" className="overflow-x-auto">{loading ? <LoadingState label="Loading patients…" /> : patients.length ? <table className="min-w-full text-left text-sm"><thead><tr className="border-b"><th className="p-3">Patient wallet</th><th className="p-3">Appointments</th><th className="p-3">Last appointment</th></tr></thead><tbody>{patients.map((item) => <tr key={item.patient._id} className="border-b"><td className="p-3 font-mono">{item.patient.walletAddress}</td><td className="p-3">{item.appointments}</td><td className="p-3">{new Date(item.lastAppointment).toLocaleString()}</td></tr>)}</tbody></table> : <EmptyState title="No associated patients found" />}</ContentPanel>
     </DashboardLayout>
   );
 }

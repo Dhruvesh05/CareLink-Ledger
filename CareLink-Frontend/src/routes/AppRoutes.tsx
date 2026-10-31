@@ -14,7 +14,8 @@ import IdentityVerification from "../pages/auth/IdentityVerification";
 import PatientDashboard from "../pages/patient/Dashboard";
 import MedicalRecords from "../pages/patient/MedicalRecords";
 import UploadRecord from "../pages/patient/UploadRecord";
-import Appointments from "../pages/patient/Appointments";
+import Appointments from "../pages/operations/Appointments";
+import Invoices from "../pages/operations/Invoices";
 import AccessManagement from "../pages/patient/AccessManagement";
 import Notifications from "../pages/patient/Notifications";
 import Profile from "../pages/patient/Profile";
@@ -33,15 +34,16 @@ import SettingsDoctor from "../pages/doctor/Settings";
 import HelpSupportDoctor from "../pages/doctor/HelpSupport";
 // Hospital Pages
 import HospitalDashboard from "../pages/hospital/Dashboard";
+import HospitalAnalytics from "../pages/hospital/Analytics";
 import PatientRecords from "../pages/hospital/PatientRecords";
 import Doctors from "../pages/hospital/Doctors";
 import Departments from "../pages/hospital/Departments";
-import HospitalAppointments from "../pages/hospital/Appointments";
-import Billing from "../pages/hospital/Billing";
 import HospitalNotifications from "../pages/hospital/Notifications";
 import HospitalProfile from "../pages/hospital/Profile";
 import HospitalSettings from "../pages/hospital/Settings";
 import HospitalHelpSupport from "../pages/hospital/HelpSupport";
+import HospitalPatients from "../pages/hospital/Patients";
+import HospitalActivityLogs from "../pages/hospital/ActivityLogs";
 // Admin Pages
 import AdminDashboard from "../pages/admin/Dashboard";
 import Users from "../pages/admin/Users";
@@ -79,6 +81,7 @@ function AppRoutes() {
           <Route path="/patient-dashboard" element={<PatientDashboard />} />
           <Route path="/medical-records" element={<MedicalRecords />} />
           <Route path="/appointments" element={<Appointments />} />
+          <Route path="/billing" element={<Invoices />} />
           <Route path="/access-management" element={<AccessManagement />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/profile" element={<Profile />} />
@@ -93,6 +96,7 @@ function AppRoutes() {
           <Route path="/doctor/medical-records" element={<MedicalRecordsDoctor />} />
           <Route path="/doctor/upload-record" element={<UploadRecord />} />
           <Route path="/doctor/treatment-notes" element={<TreatmentNotes />} />
+          <Route path="/doctor/appointments" element={<Appointments />} />
           <Route path="/doctor/notifications" element={<NotificationsDoctor />} />
           <Route path="/doctor/profile" element={<ProfileDoctor />} />
           <Route path="/doctor/settings" element={<SettingsDoctor />} />
@@ -102,10 +106,13 @@ function AppRoutes() {
         <Route element={<ProtectedRoute allowedRoles={["Hospital"]} />}>
           <Route path="/hospital/dashboard" element={<HospitalDashboard />} />
           <Route path="/hospital/patient-records" element={<PatientRecords />} />
+          <Route path="/hospital/patients" element={<HospitalPatients />} />
           <Route path="/hospital/doctors" element={<Doctors />} />
           <Route path="/hospital/departments" element={<Departments />} />
-          <Route path="/hospital/appointments" element={<HospitalAppointments />} />
-          <Route path="/hospital/billing" element={<Billing />} />
+          <Route path="/hospital/appointments" element={<Appointments />} />
+          <Route path="/hospital/billing" element={<Invoices />} />
+          <Route path="/hospital/analytics" element={<HospitalAnalytics />} />
+          <Route path="/hospital/activity-logs" element={<HospitalActivityLogs />} />
           <Route path="/hospital/notifications" element={<HospitalNotifications />} />
           <Route path="/hospital/profile" element={<HospitalProfile />} />
           <Route path="/hospital/settings" element={<HospitalSettings />} />

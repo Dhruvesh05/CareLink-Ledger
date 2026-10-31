@@ -31,6 +31,12 @@ module.exports = {
     "node_modules/(?!.*multiformats/)"
   ],
   moduleNameMapper: {
+    "^\\.\\./services/PresentationService$":
+      "<rootDir>/src/ssi/services/PresentationService.ts",
+    "^\\.\\./services/CareLinkAuthorizationService$":
+      "<rootDir>/src/ssi/services/CareLinkAuthorizationService.ts",
+    "^\\.\\./\\.\\./services/SsiAuthorizationChallengeService$":
+      "<rootDir>/src/services/SsiAuthorizationChallengeService.ts",
     "^\\.\\./middleware/auth$":
     "<rootDir>/src/middleware/auth.ts",
     "^\\.\\./middleware/upload\\.middleware$":

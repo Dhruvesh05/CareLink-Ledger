@@ -7,6 +7,8 @@ export interface IMedicalRecord
     extends Document {
 
     recordId: number;
+    chainId?: number;
+    contractAddress?: string;
 
     patientWallet: string;
 
@@ -40,9 +42,17 @@ const MedicalRecordSchema =
         {
             recordId: {
                 type: Number,
-                required: true,
-                unique: true,
-                index: true
+                required: true
+            },
+
+            chainId: {
+                type: Number
+            },
+
+            contractAddress: {
+                type: String,
+                trim: true,
+                lowercase: true
             },
 
             patientWallet: {
@@ -130,6 +140,18 @@ const MedicalRecordSchema =
             versionKey: false
         }
     );
+
+MedicalRecordSchema.index(
+    { chainId: 1, contractAddress: 1, recordId: 1 },
+    {
+        unique: true,
+        name: "chainId_1_contractAddress_1_recordId_1",
+        partialFilterExpression: {
+            chainId: { $type: "number" },
+            contractAddress: { $type: "string" }
+        } as any
+    }
+);
 
 MedicalRecordSchema.index({
     patientWallet: 1,

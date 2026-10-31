@@ -1,5 +1,5 @@
-import { createAgent } from "../agent/createAgent.js";
-import type { IDID } from "../interfaces/IDID.js";
+import { createAgent } from "../agent/createAgent";
+import type { IDID } from "../interfaces/IDID";
 
 export class DidService implements IDID {
     async createDid(alias?: string): Promise<string> {

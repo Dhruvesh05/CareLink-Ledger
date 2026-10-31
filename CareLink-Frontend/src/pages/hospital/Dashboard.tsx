@@ -1,94 +1,50 @@
+import { useEffect, useState } from "react";
 import DashboardLayout from "../../components/DashboardLayout";
-import { Building2, UserCheck, Building, Calendar } from "lucide-react";
+import { getHospitalStats, type HospitalStats } from "../../api/organization";
+import { ContentPanel, EmptyState, ErrorState, LoadingState, MetricCard, PageHeader } from "../../components/ui";
+import { Building2, Calendar, Users, UserRound } from "lucide-react";
 
 function Dashboard() {
-  const stats = [
-    { title: "Patients", value: "Use Patient Records", icon: Building2, tone: "bg-blue-50 text-blue-700" },
-    { title: "Doctors", value: "Not configured", icon: UserCheck, tone: "bg-emerald-50 text-emerald-700" },
-    { title: "Departments", value: "Not configured", icon: Building, tone: "bg-violet-50 text-violet-700" },
-    { title: "Appointments", value: "Not configured", icon: Calendar, tone: "bg-amber-50 text-amber-700" },
-  ];
+  const [stats, setStats] = useState<HospitalStats | null>(null);
+  const [error, setError] = useState("");
 
-  const departmentStatus = [
-    { name: "Cardiology", count: "128", tone: "bg-blue-50 text-blue-700" },
-    { name: "Pediatrics", count: "94", tone: "bg-emerald-50 text-emerald-700" },
-    { name: "Orthopedics", count: "76", tone: "bg-violet-50 text-violet-700" },
-    { name: "Neurology", count: "58", tone: "bg-amber-50 text-amber-700" },
-  ];
+  useEffect(() => {
+    getHospitalStats().then(setStats).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Unable to load hospital data"));
+  }, []);
 
-  const alerts = [
-    { type: "Emergency", item: "ICU bed availability", status: "4 open" },
-    { type: "Lab", item: "Test reports pending", status: "12 pending" },
-    { type: "Surgery", item: "Operation schedule", status: "3 today" },
+  const cards = [
+    ["Associated doctors", stats?.associatedDoctors ?? 0],
+    ["Active doctors", stats?.activeDoctors ?? 0],
+    ["Verified doctors", stats?.verifiedDoctors ?? "Unavailable"],
+    ["Associated patients", stats?.associatedPatients ?? 0],
+    ["Appointments", stats?.appointments ?? 0],
+    ["Departments", stats?.departments ?? 0],
+    ["Pending requests", stats?.pendingAssociations ?? 0],
   ];
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
-        <section className="rounded-[28px] border border-violet-100 bg-gradient-to-r from-violet-700 via-indigo-700 to-blue-700 p-6 text-white shadow-[0_24px_55px_rgba(79,70,229,0.22)] sm:p-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-sm uppercase tracking-[0.2em] text-violet-100">Operations</p>
-              <h1 className="mt-3 text-3xl font-bold sm:text-4xl">Hospital Dashboard</h1>
+      <div className="space-y-6">
+        <PageHeader eyebrow="Hospital operations" title="Hospital dashboard" description="Organization metrics are scoped to your hospital and never expose unrelated patient content." />
+        {error && <ErrorState message={error} />}
+        {!stats && !error ? <LoadingState label="Loading hospital metrics…" /> : (
+          <>
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {cards.map(([label, value], index) => (
+                <MetricCard key={label} label={String(label)} value={value} icon={[Users, UserRound, UserRound, Users, Calendar, Building2, Users][index]} tone="teal" />
+              ))}
             </div>
-            <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-violet-50 backdrop-blur-sm">
-              24 active requests
-            </div>
-          </div>
-        </section>
-
-        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-          {stats.map((item) => {
-            const Icon = item.icon;
-            return (
-              <div key={item.title} className="rounded-[24px] border border-slate-200 bg-white/90 p-5 shadow-[0_18px_35px_rgba(15,23,42,0.05)] ring-1 ring-slate-100 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(99,102,241,0.10)]">
-                <div className="flex items-center justify-between">
-                  <span className={`flex h-12 w-12 items-center justify-center rounded-xl text-2xl ${item.tone}`}>
-                    <Icon className="w-6 h-6" />
-                  </span>
-                  <span className="text-sm font-semibold text-slate-500">Today</span>
-                </div>
-                <p className="mt-6 text-3xl font-bold text-slate-800">{item.value}</p>
-                <p className="mt-2 text-sm text-slate-500">{item.title}</p>
+            <ContentPanel title="Recent activity" subtitle="Latest organization events returned by the hospital activity service.">
+              <div className="mt-4 space-y-3">
+                {stats?.recentActivities?.length ? stats.recentActivities.map((activity) => (
+                  <div key={activity._id} className="flex justify-between rounded-xl bg-teal-50 p-4 text-sm text-teal-900 dark:bg-teal-500/10 dark:text-teal-200">
+                    <span>{activity.action}</span><span>{new Date(activity.createdAt).toLocaleString()}</span>
+                  </div>
+                )) : <EmptyState title="No recent organization activity" />}
               </div>
-            );
-          })}
-        </div>
-
-        <div className="grid gap-6 xl:grid-cols-[1.3fr_1fr]">
-          <div className="rounded-3xl border border-violet-100 bg-white p-6 shadow-[0_12px_30px_rgba(14,116,144,0.06)]">
-            <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-800">Department Status</h2>
-              <button className="rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">View all</button>
-            </div>
-
-            <div className="space-y-4">
-              {departmentStatus.map((item) => (
-                <div key={item.name} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                  <div>
-                    <p className="font-semibold text-slate-800">{item.name}</p>
-                  </div>
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${item.tone}`}>{item.count}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-3xl border border-violet-100 bg-white p-6 shadow-[0_12px_30px_rgba(14,116,144,0.06)]">
-            <h2 className="text-xl font-bold text-slate-800">Operational Alerts</h2>
-            <div className="mt-5 space-y-4">
-              {alerts.map((alert) => (
-                <div key={alert.item} className="rounded-2xl bg-violet-50 px-4 py-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold uppercase tracking-[0.15em] text-violet-700">{alert.type}</span>
-                    <span className="text-xs text-slate-500">{alert.status}</span>
-                  </div>
-                  <p className="mt-2 text-sm font-medium text-slate-700">{alert.item}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+            </ContentPanel>
+          </>
+        )}
       </div>
     </DashboardLayout>
   );

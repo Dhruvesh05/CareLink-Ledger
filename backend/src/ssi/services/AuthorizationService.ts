@@ -49,11 +49,15 @@ export class AuthorizationService implements IAuthorizationService {
         }
 
         const role = attributes.role;
-        if (typeof role !== "string") {
+        if (typeof role !== "string" || !role.trim()) {
             return false;
         }
 
-        return ROLE_ACTIONS[role]?.includes(action) ?? false;
+        // User roles are stored/displayed as "Patient", "Doctor", etc.,
+        // while the authorization policy keys are lowercase.
+        const normalizedRole = role.trim().toLowerCase();
+
+        return ROLE_ACTIONS[normalizedRole]?.includes(action) ?? false;
     }
 }
 

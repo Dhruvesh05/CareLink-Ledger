@@ -5,6 +5,7 @@ import EthereumMedicalRecordABI
 
 import PolygonMedicalRecordABI
     from "../polygon/abi/MedicalRecord.json";
+import { getSupportedEvmNetwork } from "../config/supportedNetworks";
 
 import { BlockchainTransaction } from "./BlockchainTransaction";
 
@@ -39,31 +40,11 @@ export class MedicalRecordTransactionBuilder {
         const chainId =
             Number(network.chainId);
 
-        let abi: any;
-        let contractAddress: string | undefined;
-
-        if (chainId === 80002) {
-
-            abi =
-                PolygonMedicalRecordABI.abi;
-
-            contractAddress =
-                process.env.POLYGON_MEDICAL_RECORD_ADDRESS;
-
-        } else {
-
-            abi =
-                EthereumMedicalRecordABI.abi;
-
-            contractAddress =
-                process.env.MEDICAL_RECORD_ADDRESS;
-        }
-
-        if (!contractAddress) {
-            throw new Error(
-                `MedicalRecord contract address is not configured for chain ${chainId}`
-            );
-        }
+        const selectedNetwork = getSupportedEvmNetwork(chainId);
+        const abi = selectedNetwork.provider === "polygon"
+            ? PolygonMedicalRecordABI.abi
+            : EthereumMedicalRecordABI.abi;
+        const contractAddress = selectedNetwork.medicalRecordAddress;
 
         const medicalRecordInterface =
             new ethers.Interface(abi);

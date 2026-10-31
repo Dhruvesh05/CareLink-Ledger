@@ -1,29 +1,12 @@
+import { useEffect, useState } from "react";
 import DashboardLayout from "../../components/DashboardLayout";
-import { Bell, Calendar, Lock } from "lucide-react";
+import { getNotifications, markNotificationRead, type Notification } from "../../api/clinical";
+import { ContentPanel, EmptyState, ErrorState, LoadingState, PageHeader, StatusBadge } from "../../components/ui";
 
-function Notifications() {
-  return (
-    <DashboardLayout>
-      <h1 className="text-3xl font-bold text-blue-800">Notifications</h1>
-
-      <div className="space-y-5 mt-8">
-        <div className="bg-white shadow rounded-2xl p-6 flex items-center gap-3 text-slate-800">
-          <Bell className="w-5 h-5 text-blue-600 shrink-0" />
-          <span>Your medical record has been verified.</span>
-        </div>
-
-        <div className="bg-white shadow rounded-2xl p-6 flex items-center gap-3 text-slate-800">
-          <Calendar className="w-5 h-5 text-emerald-600 shrink-0" />
-          <span>Appointment confirmed with Dr. Sharma.</span>
-        </div>
-
-        <div className="bg-white shadow rounded-2xl p-6 flex items-center gap-3 text-slate-800">
-          <Lock className="w-5 h-5 text-amber-600 shrink-0" />
-          <span>Hospital requested access to your records.</span>
-        </div>
-      </div>
-    </DashboardLayout>
-  );
+export default function Notifications() {
+  const [items, setItems] = useState<Notification[]>([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  useEffect(() => { getNotifications().then(setItems).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Unable to load notifications")).finally(() => setLoading(false)); }, []);
+  return <DashboardLayout><div className="space-y-6"><PageHeader eyebrow="Account activity" title="Notifications" description="Appointment, access and clinical events generated for your account." />{error && <ErrorState message={error} />}{loading ? <LoadingState label="Loading notifications…" /> : <ContentPanel title="Recent notifications">{items.length ? <div className="space-y-3">{items.map((item) => <button key={item._id} onClick={() => markNotificationRead(item._id).then(() => setItems((current) => current.map((entry) => entry._id === item._id ? { ...entry, readAt: new Date().toISOString() } : entry))).catch(() => undefined)} className={`block w-full rounded-xl border p-5 text-left ${item.readAt ? "border-[#E4E8EC]" : "border-cyan-200 bg-cyan-50"}`}><div className="flex items-center justify-between gap-3"><p className="font-semibold text-[#17212F]">{item.title}</p>{!item.readAt && <StatusBadge tone="info">Unread</StatusBadge>}</div><p className="mt-1 text-sm text-[#697586]">{item.message}</p><p className="mt-2 text-xs text-[#9AA4B2]">{new Date(item.createdAt).toLocaleString()}</p></button>)}</div> : <EmptyState title="No notifications" />}</ContentPanel>}</div></DashboardLayout>;
 }
-
-export default Notifications;

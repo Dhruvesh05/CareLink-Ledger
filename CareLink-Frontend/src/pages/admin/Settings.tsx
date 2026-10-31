@@ -1,23 +1,12 @@
 import DashboardLayout from "../../components/DashboardLayout";
+import { ContentPanel, PageHeader } from "../../components/ui";
 
 function Settings() {
   return (
     <DashboardLayout>
-      <h1 className="text-3xl font-bold text-purple-700">
-        Settings
-      </h1>
-
-      <p className="text-gray-500 mt-2">
-        Manage administrator and system settings.
-      </p>
-
-      <div className="bg-white rounded-2xl shadow p-8 mt-8 max-w-3xl">
-
-        <h2 className="text-xl font-bold">
-          Account Settings
-        </h2>
-
-        <div className="mt-6 space-y-6">
+      <PageHeader title="Settings" description="Manage administrator and system settings." />
+      <ContentPanel title="Account Settings" className="max-w-3xl">
+        <div className="space-y-6">
 
           <div className="flex justify-between items-center">
             <div>
@@ -37,7 +26,7 @@ function Settings() {
             />
           </div>
 
-          <div className="border-t pt-6 flex justify-between items-center">
+          <div className="flex items-center justify-between border-t pt-6">
             <div>
               <h3 className="font-semibold">
                 Security Alerts
@@ -65,10 +54,8 @@ function Settings() {
               <option>Light</option>
             </select>
           </div>
-
         </div>
-
-      </div>
+        </ContentPanel>
     </DashboardLayout>
   );
 }

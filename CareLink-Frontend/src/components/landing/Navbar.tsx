@@ -243,3 +243,4 @@ export const Navbar: React.FC<NavbarProps> = ({ darkMode, setDarkMode }) => {
     </header>
   );
 };
+

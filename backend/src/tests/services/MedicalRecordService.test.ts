@@ -18,29 +18,34 @@ const mockMongoCreate = jest.fn() as AnyMock;
 const mockMongoFindOne = jest.fn() as AnyMock;
 const mockMongoUpdateOne = jest.fn() as AnyMock;
 
-jest.mock(
-    "../../models/MedicalRecordModel",
-    () => ({
-        __esModule: true,
+jest.unstable_mockModule("../../models/MedicalRecordModel", () => ({
+    __esModule: true,
+    default: {
+        create: mockMongoCreate,
+        findOne: mockMongoFindOne,
+        updateOne: mockMongoUpdateOne
+    },
+    MedicalRecordModel: {
+        create: mockMongoCreate,
+        findOne: mockMongoFindOne,
+        updateOne: mockMongoUpdateOne
+    }
+}));
 
-        default: {
-            create: mockMongoCreate,
-            findOne: mockMongoFindOne,
-            updateOne: mockMongoUpdateOne
-        },
+// Test-only secret; does not alter production environment configuration.
+process.env.MEDICAL_RECORD_KEY_ENCRYPTION_SECRET =
+    "carelink-unit-test-only-wrapping-secret-32chars";
 
-        MedicalRecordModel: {
-            create: mockMongoCreate,
-            findOne: mockMongoFindOne,
-            updateOne: mockMongoUpdateOne
-        }
-    })
-);
-
-import { MedicalRecordService } from "../../services/MedicalRecordService";
-import { sha256FromBuffer } from "../../utils/hash";
-import { KeyManagementService } from "../../services/encryption/KeyManagementService";
-import { MedicalRecordEncryptionService } from "../../services/encryption/MedicalRecordEncryptionService";
+const { MedicalRecordService } =
+    await import("../../services/MedicalRecordService");
+const { sha256FromBuffer } =
+    await import("../../utils/hash");
+const {
+    InMemoryEncryptedKeyStore,
+    KeyManagementService
+} = await import("../../services/encryption/KeyManagementService");
+const { MedicalRecordEncryptionService } =
+    await import("../../services/encryption/MedicalRecordEncryptionService");
 
 describe("MedicalRecordService IPFS transaction flow", () => {
 
@@ -100,7 +105,7 @@ describe("MedicalRecordService IPFS transaction flow", () => {
         };
 
         keyManagementService =
-            new KeyManagementService();
+            new KeyManagementService(new InMemoryEncryptedKeyStore());
 
         service = new MedicalRecordService(
             mockIpfsService as any,
@@ -571,7 +576,7 @@ describe("MedicalRecordService IPFS transaction flow", () => {
             "rejects content when its encryption key is unavailable",
             async () => {
                 const otherKeyManagementService =
-                    new KeyManagementService();
+                    new KeyManagementService(new InMemoryEncryptedKeyStore());
                 const managedKey =
                     await otherKeyManagementService.createKey();
                 const encrypted =

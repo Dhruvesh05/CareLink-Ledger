@@ -1,4 +1,5 @@
 import DashboardLayout from "../../components/DashboardLayout";
+import { ContentPanel, PageHeader } from "../../components/ui";
 
 function HelpSupport() {
   const faqs = [
@@ -21,51 +22,33 @@ function HelpSupport() {
 
   return (
     <DashboardLayout>
-      <h1 className="text-3xl font-bold text-purple-700">
-        Help & Support
-      </h1>
+      <div className="space-y-6">
+        <PageHeader title="Help & Support" description="Find answers and get technical support for CareLink Ledger." />
+        <ContentPanel title="Frequently Asked Questions">
 
-      <p className="text-gray-500 mt-2">
-        Find answers and get support for CareLink Ledger.
-      </p>
+          <div className="space-y-6">
+            {faqs.map((faq) => (
+              <div
+                key={faq.question}
+                className="border-b border-slate-100 dark:border-white/5 pb-5 last:border-0 last:pb-0"
+              >
+                <h3 className="font-bold text-slate-900 dark:text-white text-base">
+                  {faq.question}
+                </h3>
 
-      <div className="bg-white rounded-2xl shadow mt-8 p-8">
+                <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm leading-relaxed">
+                  {faq.answer}
+                </p>
+              </div>
+            ))}
+          </div>
+        </ContentPanel>
+        <ContentPanel title="Need More Help?" subtitle="Contact the CareLink Ledger technical support team.">
 
-        <h2 className="text-2xl font-bold">
-          Frequently Asked Questions
-        </h2>
-
-        <div className="mt-6 space-y-6">
-          {faqs.map((faq) => (
-            <div
-              key={faq.question}
-              className="border-b pb-5"
-            >
-              <h3 className="font-bold">
-                {faq.question}
-              </h3>
-
-              <p className="text-gray-500 mt-2">
-                {faq.answer}
-              </p>
-            </div>
-          ))}
-        </div>
-
-      </div>
-
-      <div className="bg-white rounded-2xl shadow mt-6 p-8">
-        <h2 className="text-xl font-bold">
-          Need More Help?
-        </h2>
-
-        <p className="text-gray-500 mt-2">
-          Contact the CareLink Ledger technical support team.
-        </p>
-
-        <button className="mt-5 bg-purple-700 text-white px-6 py-3 rounded-xl hover:bg-purple-800">
-          Contact Support
-        </button>
+          <button className="rounded-xl bg-[#0F8B78] px-6 py-3 font-bold text-white">
+            Contact Support
+          </button>
+        </ContentPanel>
       </div>
     </DashboardLayout>
   );

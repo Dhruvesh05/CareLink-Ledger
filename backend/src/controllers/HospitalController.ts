@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import AdminAuditEventModel from "../models/AdminAuditEvent";
 import { ethers } from "ethers";
 
 import { HospitalService } from "../services/HospitalService";
@@ -87,21 +88,17 @@ function errorResponse(error: any) {
 
 export class HospitalController {
 
-    private hospitalService?: HospitalService;
-
     constructor(
         private readonly blockchainService?: IBlockchainProvider
     ) {}
 
-    private getHospitalService(): HospitalService {
-        if (!this.hospitalService) {
-            this.hospitalService = new HospitalService(
-                this.blockchainService ??
-                BlockchainFactory.getProvider()
-            );
-        }
-
-        return this.hospitalService;
+    private getHospitalService(req: Request): HospitalService {
+        const blockchainService = this.blockchainService ?? (
+            req.careLinkNetwork
+                ? BlockchainFactory.getProviderForChainId(req.careLinkNetwork.chainId)
+                : BlockchainFactory.getProvider()
+        );
+        return new HospitalService(blockchainService);
     }
 
     /**
@@ -129,7 +126,7 @@ export class HospitalController {
             }
 
             const transaction =
-                await this.getHospitalService().registerHospital(
+                await this.getHospitalService(req).registerHospital(
                     hospitalNameHash,
                     registrationNumberHash,
                     locationHash
@@ -168,7 +165,7 @@ export class HospitalController {
             }
 
             const hospital =
-                await this.getHospitalService().getHospital(wallet);
+                await this.getHospitalService(req).getHospital(wallet);
 
             return res.json({
                 success: true,
@@ -203,7 +200,7 @@ export class HospitalController {
             }
 
             const active =
-                await this.getHospitalService().isHospitalActive(wallet);
+                await this.getHospitalService(req).isHospitalActive(wallet);
 
             return res.json({
                 success: true,
@@ -238,7 +235,7 @@ export class HospitalController {
             }
 
             const verified =
-                await this.getHospitalService().isHospitalVerified(wallet);
+                await this.getHospitalService(req).isHospitalVerified(wallet);
 
             return res.json({
                 success: true,
@@ -274,10 +271,11 @@ export class HospitalController {
             }
 
             const transaction =
-                await this.getHospitalService().verifyHospital(wallet);
+                await this.getHospitalService(req).verifyHospital(wallet);
 
             const verified =
-                await this.getHospitalService().isHospitalVerified(wallet);
+                await this.getHospitalService(req).isHospitalVerified(wallet);
+            await AdminAuditEventModel.create({ category: "verification", actorUserId: req.auth?.userId, actorRole: req.auth?.role, event: "Hospital verified", resource: "hospital-registry", resourceId: walletStr, transactionReference: transaction?.hash ?? transaction?.transactionHash, result: "success" });
 
             return res.json({
                 success: true,
@@ -315,10 +313,11 @@ export class HospitalController {
             }
 
             const transaction =
-                await this.getHospitalService().revokeVerification(wallet);
+                await this.getHospitalService(req).revokeVerification(wallet);
 
             const verified =
-                await this.getHospitalService().isHospitalVerified(wallet);
+                await this.getHospitalService(req).isHospitalVerified(wallet);
+            await AdminAuditEventModel.create({ category: "verification", actorUserId: req.auth?.userId, actorRole: req.auth?.role, event: "Hospital verification revoked", resource: "hospital-registry", resourceId: walletStr, transactionReference: transaction?.hash ?? transaction?.transactionHash, result: "success" });
 
             return res.json({
                 success: true,
@@ -356,10 +355,10 @@ export class HospitalController {
             }
 
             const transaction =
-                await this.getHospitalService().reactivateHospital(wallet);
+                await this.getHospitalService(req).reactivateHospital(wallet);
 
             const active =
-                await this.getHospitalService().isHospitalActive(wallet);
+                await this.getHospitalService(req).isHospitalActive(wallet);
 
             return res.json({
                 success: true,
@@ -393,7 +392,7 @@ export class HospitalController {
         try {
 
             const transaction =
-                await this.getHospitalService().deactivateHospital();
+                await this.getHospitalService(req).deactivateHospital();
 
             return res.json({
                 success: true,
@@ -430,7 +429,7 @@ export class HospitalController {
             }
 
             const transaction =
-                await this.getHospitalService().updateLocation(locationHash);
+                await this.getHospitalService(req).updateLocation(locationHash);
 
             return res.json({
                 success: true,
@@ -455,7 +454,7 @@ export class HospitalController {
         try {
 
             const count =
-                await this.getHospitalService().totalHospitals();
+                await this.getHospitalService(req).totalHospitals();
 
             return res.json({
                 success: true,

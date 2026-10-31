@@ -146,12 +146,135 @@ describe("EventSynchronizer", () => {
             relaySpy.mock.calls[0][0];
 
         expect(message.messageId).toBe(
-            "ethereum:medicalRecord:0xtx123:7"
+            "ethereum:polygon:medicalRecord:0xtx123:7"
         );
 
         expect(message.nonce).toBe(
             "0xtx123:7"
         );
+    });
+
+
+    it("normalizes positional registry and medical-record tuples", async () => {
+        const patientWallet = "0x1111111111111111111111111111111111111111";
+        const doctorWallet = "0x2222222222222222222222222222222222222222";
+        const hospitalWallet = "0x3333333333333333333333333333333333333333";
+
+        const patientContract = createMockContract();
+        patientContract.getPatient = jest.fn().mockResolvedValue([
+            7n, patientWallet, "patient-name-hash", "patient-dob-hash",
+            "O+", "female", 2n, 100n, 101n, true
+        ]);
+
+        const doctorContract = createMockContract();
+        doctorContract.getDoctor = jest.fn().mockResolvedValue([
+            4n, doctorWallet, "doctor-name-hash", "license-hash",
+            "cardiology", hospitalWallet, false, true, 110n, 111n
+        ]);
+
+        const hospitalContract = createMockContract();
+        hospitalContract.getHospital = jest.fn().mockResolvedValue([
+            3n, hospitalWallet, "hospital-name-hash", "registration-hash",
+            "location-hash", true, true, 120n, 121n
+        ]);
+
+        const medicalRecordContract = createMockContract();
+        medicalRecordContract.getMedicalRecord = jest.fn().mockResolvedValue([
+            42n, patientWallet, doctorWallet, hospitalWallet,
+            "bafy-test-cid", "sha256-test", "prescription",
+            130n, 131n, 2n, true, false
+        ]);
+
+        const bridge = {
+            relay: jest.fn().mockResolvedValue({ status: "confirmed" }),
+            isKnownDestinationTransaction: jest.fn().mockResolvedValue(false)
+        } as unknown as BridgeService;
+
+        const synchronizer = new EventSynchronizer({
+            sourceChain: BlockchainType.ETHEREUM,
+            destinationChain: BlockchainType.FABRIC,
+            contracts: {
+                patientRegistry: patientContract,
+                doctorRegistry: doctorContract,
+                hospitalRegistry: hospitalContract,
+                medicalRecord: medicalRecordContract
+            },
+            bridge
+        });
+
+        synchronizer.start();
+
+        patientContract.emit("PatientRegistered", 7n, patientWallet, 100n);
+        doctorContract.emit("DoctorRegistered", 4n, doctorWallet, hospitalWallet, 110n);
+        hospitalContract.emit("HospitalRegistered", 3n, hospitalWallet, 120n);
+        medicalRecordContract.emit(
+            "RecordCreated",
+            42n, patientWallet, doctorWallet, hospitalWallet,
+            "prescription", 130n
+        );
+
+        await new Promise(resolve => setImmediate(resolve));
+
+        const relaySpy = bridge.relay as jest.Mock;
+        expect(relaySpy).toHaveBeenCalledTimes(4);
+
+        const messages = relaySpy.mock.calls.map(
+            ([message]) => message as CrossChainMessage<{
+                eventName: string;
+                sourceRecord?: Record<string, unknown>;
+            }>
+        );
+
+        const payloadFor = (eventName: string) =>
+            messages.find(message => message.payload.eventName === eventName)
+                ?.payload.sourceRecord;
+
+        expect(payloadFor("PatientRegistered")).toMatchObject({
+            patientId: "7",
+            wallet: patientWallet,
+            fullNameHash: "patient-name-hash",
+            dobHash: "patient-dob-hash",
+            bloodGroup: "O+",
+            gender: "female",
+            recordCount: "2",
+            active: true
+        });
+
+        expect(payloadFor("DoctorRegistered")).toMatchObject({
+            doctorId: "4",
+            wallet: doctorWallet,
+            fullNameHash: "doctor-name-hash",
+            licenseNumberHash: "license-hash",
+            specialization: "cardiology",
+            hospital: hospitalWallet,
+            verified: false,
+            active: true
+        });
+
+        expect(payloadFor("HospitalRegistered")).toMatchObject({
+            hospitalId: "3",
+            wallet: hospitalWallet,
+            hospitalNameHash: "hospital-name-hash",
+            registrationNumberHash: "registration-hash",
+            locationHash: "location-hash",
+            verified: true,
+            active: true
+        });
+
+        expect(payloadFor("RecordCreated")).toMatchObject({
+            recordId: "42",
+            patient: patientWallet,
+            doctor: doctorWallet,
+            hospital: hospitalWallet,
+            ipfsHash: "bafy-test-cid",
+            fileHash: "sha256-test",
+            category: "prescription",
+            version: "2",
+            active: true,
+            emergency: false
+        });
+
+        await synchronizer.stop();
     });
 
     it("serializes bigint event arguments", async () => {

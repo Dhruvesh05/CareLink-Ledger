@@ -482,23 +482,76 @@ export class IPFSClient
         );
     }
 
-    async cat(
+    private async catFromLegacyPinataGateway(
         cid: string
     ): Promise<Uint8Array> {
+        const configuredGateway =
+            process.env.PINATA_GATEWAY_URL?.trim();
 
-        if (
-            this.config.provider ===
-            "pinata"
-        ) {
+        const gateway =
+            (configuredGateway || "https://gateway.pinata.cloud/ipfs")
+                .replace(/\/+$/, "");
 
-            return this.catWithPinata(
-                cid
+        const gatewayBase =
+            /\/ipfs$/i.test(gateway)
+                ? gateway
+                : `${gateway}/ipfs`;
+
+        const response = await fetch(
+            `${gatewayBase}/${encodeURIComponent(cid)}`,
+            {
+                signal: AbortSignal.timeout(this.config.timeout)
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(
+                `Legacy Pinata gateway download failed (${response.status})`
             );
         }
 
-        return this.catWithKubo(
-            cid
+        return new Uint8Array(
+            await response.arrayBuffer()
         );
+    }
+
+    async cat(
+        cid: string
+    ): Promise<Uint8Array> {
+        if (this.config.provider === "pinata") {
+            try {
+                return await this.catWithPinata(cid);
+            } catch (pinataError) {
+                try {
+                    return await this.catWithKubo(cid);
+                } catch {
+                    throw pinataError;
+                }
+            }
+        }
+
+        try {
+            return await this.catWithKubo(cid);
+        } catch (kuboError) {
+            try {
+                return await this.catFromLegacyPinataGateway(cid);
+            } catch (pinataError) {
+                const kuboMessage =
+                    kuboError instanceof Error
+                        ? kuboError.message
+                        : String(kuboError);
+
+                const pinataMessage =
+                    pinataError instanceof Error
+                        ? pinataError.message
+                        : String(pinataError);
+
+                throw new Error(
+                    `IPFS read failed in Kubo and legacy Pinata gateway. ` +
+                    `Kubo: ${kuboMessage}; Pinata: ${pinataMessage}`
+                );
+            }
+        }
     }
 
         async pin(

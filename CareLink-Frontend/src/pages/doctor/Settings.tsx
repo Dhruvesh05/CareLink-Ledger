@@ -1,4 +1,5 @@
 import DashboardLayout from "../../components/DashboardLayout";
+import { ContentPanel, PageHeader } from "../../components/ui";
 
 function Settings() {
 
@@ -6,11 +7,8 @@ function Settings() {
 
     <DashboardLayout>
 
-      <h1 className="text-3xl font-bold text-green-700">
-        Settings
-      </h1>
-
-      <div className="bg-white rounded-2xl shadow p-8 mt-8">
+      <PageHeader eyebrow="Preferences" title="Settings" description="Manage notifications and workspace preferences." />
+      <ContentPanel title="Workspace preferences" className="max-w-2xl">
 
         <label className="flex gap-4 mb-5">
           <input type="checkbox"/>
@@ -26,7 +24,7 @@ function Settings() {
           Save
         </button>
 
-      </div>
+      </ContentPanel>
 
     </DashboardLayout>
 

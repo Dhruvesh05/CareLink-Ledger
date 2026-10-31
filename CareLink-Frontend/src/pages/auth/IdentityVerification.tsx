@@ -1,134 +1,60 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../../auth/AuthContext";
 import logo from "../../assets/images/logo.png";
-import {
-  createSsiAuthorizationPresentation,
-  getAuthenticatedDid,
-  requestSsiAuthorizationChallenge,
-  verifySsiAuthorization,
-} from "../../api/ssi";
 
 function IdentityVerification() {
   const navigate = useNavigate();
   const { role } = useAuth();
-  const [status, setStatus] = useState<
-    | "idle"
-    | "requesting"
-    | "creating"
-    | "submitting"
-    | "authorized"
-    | "failed"
-  >("idle");
-  const [did, setDid] = useState<string | null>(null);
-  const [challengeExpiresAt, setChallengeExpiresAt] = useState<string | null>(
-    null
-  );
-  const [error, setError] = useState<string | null>(null);
-
-  const requestVerification = async () => {
-    setStatus("requesting");
-    setError(null);
-
-    try {
-      const [authenticatedDid, challenge] = await Promise.all([
-        getAuthenticatedDid(),
-        requestSsiAuthorizationChallenge(),
-      ]);
-
-      setDid(authenticatedDid);
-      setChallengeExpiresAt(challenge.expiresAt);
-      setStatus("creating");
-      const presentation = await createSsiAuthorizationPresentation();
-      setStatus("submitting");
-      await verifySsiAuthorization(presentation);
-      setStatus("authorized");
-    } catch (requestError) {
-      setStatus("failed");
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to start SSI verification."
-      );
-    }
-  };
 
   return (
-    <div className="min-h-screen bg-[#edf5ff] px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mx-auto w-full max-w-5xl overflow-hidden rounded-[30px] border border-[#dfeafc] bg-white shadow-[0_35px_90px_rgba(17,73,179,0.14)] ring-1 ring-white/80">
-        <div className="flex items-center justify-between gap-4 border-b border-[#eaf1ff] bg-[#f8fbff] px-4 py-4 sm:px-6 lg:px-8">
+    <div className="relative min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] px-4 py-8 sm:px-6 lg:px-8 flex items-center justify-center transition-colors duration-300">
+      {/* Background Ambient Glow */}
+      <div className="fixed top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-cyan-500/5 dark:bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="relative mx-auto w-full max-w-5xl overflow-hidden rounded-[32px] border border-slate-200/80 dark:border-white/10 bg-white/95 dark:bg-zinc-950/80 shadow-2xl shadow-slate-200/50 dark:shadow-none backdrop-blur-xl ring-1 ring-slate-100/80 dark:ring-white/5">
+        <div className="flex items-center justify-between gap-4 border-b border-slate-200/80 dark:border-white/10 bg-slate-50/60 dark:bg-white/[0.02] px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-sky-100 bg-white p-1.5 shadow-sm sm:h-14 sm:w-14">
+            <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-black p-1.5 shadow-sm">
               <img src={logo} alt="CareLink Ledger Logo" className="h-full w-full object-contain" />
             </div>
             <div>
-              <h1 className="text-lg font-extrabold tracking-tight text-[#0f2b6d] sm:text-xl">CareLink Ledger</h1>
-              <p className="text-[10px] font-medium text-slate-500 sm:text-[11px]">Identity verification</p>
+              <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">CareLink Ledger</h1>
+              <p className="text-[10px] sm:text-[11px] font-medium text-slate-500 dark:text-slate-400">Identity verification</p>
             </div>
           </div>
 
-          <div className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.18em] text-blue-700 sm:text-[10px]">
-            Backend connected
+          <div className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+            Not configured
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-0 lg:grid-cols-[0.92fr_1.08fr]">
-          <div className="flex flex-col justify-center bg-gradient-to-br from-[#0f172a] via-[#123a8a] to-[#1c6ae6] p-6 text-white sm:p-8 lg:p-10">
-            <div className="inline-flex w-fit items-center rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-100">
+          <div className="flex flex-col justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 dark:from-black dark:via-zinc-950 dark:to-black p-6 text-white sm:p-8 lg:p-10 border-b lg:border-b-0 lg:border-r border-slate-200/80 dark:border-white/10">
+            <div className="inline-flex w-fit items-center rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-cyan-400">
               Identity proof
             </div>
 
-            <h2 className="mt-6 text-3xl font-extrabold leading-tight sm:text-4xl">Verify your CareLink identity.</h2>
-            <p className="mt-4 max-w-md text-sm leading-relaxed text-blue-100 sm:text-base">
-              The backend will provide the authenticated user&apos;s DID and a short-lived authorization challenge. It remains the authority for SSI and CareLink role verification.
+            <h2 className="mt-6 text-3xl sm:text-4xl font-black leading-tight tracking-tight">This backend does not expose a real identity-verification endpoint.</h2>
+            <p className="mt-4 max-w-md text-sm sm:text-base leading-relaxed text-slate-300">
+              The wallet-authenticated session is the real authorization source. Identity verification remains pending or not configured by the backend contract/service.
             </p>
           </div>
 
           <div className="flex flex-col justify-center px-5 py-7 sm:px-8 lg:px-10 lg:py-10">
             <div className="mb-6">
-              <h3 className="text-2xl font-extrabold tracking-tight text-[#0f2b6d] sm:text-3xl">Status</h3>
-              <p className="mt-2 text-sm text-slate-500">Start a backend authorization challenge before using protected CareLink operations.</p>
+              <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">Status</h3>
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">No real identity verification API was found in the existing backend; this page is intentionally informational.</p>
             </div>
 
-            {status === "authorized" && (
-              <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                SSI authorization verified by the backend for DID {did}. The signed proof was kept in memory and was not persisted.
-                {challengeExpiresAt && (
-                  <span className="mt-1 block text-xs">
-                    Challenge expires at {new Date(challengeExpiresAt).toLocaleString()}.
-                  </span>
-                )}
-              </div>
-            )}
-
-            {status === "failed" && error && (
-              <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={requestVerification}
-              disabled={status === "requesting"}
-              className="w-full rounded-xl bg-blue-700 px-4 py-3.5 text-base font-semibold text-white shadow-[0_12px_25px_rgba(37,99,235,0.25)] transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {status === "requesting"
-                ? "Requesting challenge…"
-                : status === "creating"
-                  ? "Creating authorization proof…"
-                  : status === "submitting"
-                    ? "Verifying authorization…"
-                    : status === "authorized"
-                      ? "Authorization verified"
-                : "Request verification challenge"}
-            </button>
+            <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+              The app will continue with wallet-based login and backend role validation instead of a fabricated identity flow.
+            </div>
 
             <button
               type="button"
               onClick={() => navigate(role ? "/login" : "/welcome")}
-              className="mt-4 w-full rounded-xl border border-blue-200 bg-blue-50 px-4 py-3.5 text-base font-semibold text-blue-700 transition hover:bg-blue-100"
+              className="mt-8 w-full rounded-xl bg-cyan-600 hover:bg-cyan-500 px-4 py-3.5 text-base font-bold text-white shadow-lg shadow-cyan-600/20 transition-all"
             >
               Back to login
             </button>

@@ -43,6 +43,8 @@ module.exports = {
         "^\\.\\./\\.\\./middleware/upload\\.middleware\\.ts$": "<rootDir>/src/middleware/upload.middleware.ts",
         "^\\.\\.\\/\\.\\.\\/ssi\\/middleware\\/carelinkAuthorization\\.ts$": "<rootDir>/src/ssi/middleware/carelinkAuthorization.ts",
         "^\\.\\.\\/\\.\\.\\/controllers\\/MedicalRecordController\\.ts$": "<rootDir>/src/controllers/MedicalRecordController.ts",
+        "^\\.\\./\\.\\./models/MedicalRecordModel$": "<rootDir>/src/models/MedicalRecordModel.ts",
+        "^\\.\\./\\.\\./models/PreparedMedicalRecordModel$": "<rootDir>/src/models/PreparedMedicalRecordModel.ts",
         "^(\\.{1,2}/.*)\\.js$": "$1"
     },
 };

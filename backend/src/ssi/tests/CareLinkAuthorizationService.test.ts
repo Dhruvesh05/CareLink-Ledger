@@ -4,8 +4,7 @@ import type {
     VerifiablePresentation,
 } from "@veramo/core-types";
 import type { UserRole } from "../../models/User";
-import { CareLinkIssuerPolicy } from "../services/CareLinkIssuerPolicy";
-import { CareLinkAuthorizationService } from "../services/CareLinkAuthorizationService";
+import type { CareLinkIssuerPolicy } from "../services/CareLinkIssuerPolicy";
 
 type TestUser = {
     _id: { toString: () => string };
@@ -17,12 +16,14 @@ const mockFindOne = jest.fn() as jest.MockedFunction<
     (filter: { did: string }) => Promise<TestUser | null>
 >;
 
-jest.mock("../../models/User", () => ({
-    __esModule: true,
+jest.unstable_mockModule("../../models/User", () => ({
     default: {
         findOne: (...args: [{ did: string }]) => mockFindOne(...args),
     },
 }));
+
+const { CareLinkAuthorizationService } =
+    await import("../services/CareLinkAuthorizationService");
 
 const holderDid = "did:key:holder";
 const issuerDid = "did:key:trusted-issuer";

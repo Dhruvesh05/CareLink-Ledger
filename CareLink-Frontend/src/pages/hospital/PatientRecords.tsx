@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { getHospitalRecords, type MedicalRecordSummary } from "../../api/medicalRecords";
 import { useAuth } from "../../auth/AuthContext";
 import DashboardLayout from "../../components/DashboardLayout";
+import RecordFileActions from "../../components/RecordFileActions";
+import { ContentPanel, EmptyState, ErrorState, LoadingState, PageHeader, StatusBadge } from "../../components/ui";
 
 function PatientRecords() {
   const { user } = useAuth();
@@ -35,23 +37,20 @@ function PatientRecords() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-red-700">Patient Records</h1>
-          <p className="mt-2 text-gray-500">Records returned for the authenticated hospital wallet.</p>
-        </div>
-        {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-        <div className="rounded-2xl bg-white p-6 shadow">
-          {isLoading ? <p className="text-slate-500">Loading records…</p> : records.length === 0 ? (
-            <p className="text-slate-500">No medical records were returned for this hospital.</p>
+        <PageHeader eyebrow="Hospital operations" title="Patient Records" description="Records returned for the authenticated hospital wallet." />
+        {error && <ErrorState message={error} />}
+        <ContentPanel title="Medical record directory">
+          {isLoading ? <LoadingState label="Loading records…" /> : records.length === 0 ? (
+            <EmptyState title="No medical records returned" />
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[700px] text-left">
-                <thead><tr className="border-b border-slate-200 text-slate-600"><th className="py-3 pr-4">Record ID</th><th className="py-3 pr-4">Patient</th><th className="py-3 pr-4">Doctor</th><th className="py-3 pr-4">Category</th><th className="py-3 pr-4">Status</th></tr></thead>
-                <tbody>{records.map((record) => <tr key={record.recordId ?? record.id ?? record.cid ?? record.fileName} className="border-b border-slate-100"><td className="py-3 pr-4">{record.recordId ?? record.id ?? "—"}</td><td className="py-3 pr-4">{record.patientWallet ?? record.patient ?? "—"}</td><td className="py-3 pr-4">{record.doctorWallet ?? record.doctor ?? "—"}</td><td className="py-3 pr-4">{record.category ?? "—"}</td><td className="py-3 pr-4">{record.status ?? "Returned"}</td></tr>)}</tbody>
+              <table className="enterprise-table min-w-[700px]">
+                <thead><tr><th>Record ID</th><th>Patient</th><th>Doctor</th><th>Category</th><th>File</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody>{records.map((record) => <tr key={record.recordId ?? record.id ?? record.cid ?? record.fileName}><td>{record.recordId ?? record.id ?? "—"}</td><td>{record.patientWallet ?? record.patient ?? "—"}</td><td>{record.doctorWallet ?? record.doctor ?? "—"}</td><td>{record.category ?? "—"}</td><td>{record.fileName ?? "—"}</td><td><StatusBadge tone="info">{record.status ?? "Returned"}</StatusBadge></td><td><RecordFileActions record={record} /></td></tr>)}</tbody>
               </table>
             </div>
           )}
-        </div>
+        </ContentPanel>
       </div>
     </DashboardLayout>
   );

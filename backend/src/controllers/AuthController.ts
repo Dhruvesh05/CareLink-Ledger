@@ -103,7 +103,8 @@ export class AuthController {
                 await this.authService.verifyWalletSignature({
                     walletAddress,
                     message,
-                    signature
+                    signature,
+                    chainId: req.careLinkNetwork?.chainId
                 });
 
             return sendSuccess(

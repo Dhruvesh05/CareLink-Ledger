@@ -1,5 +1,6 @@
 import { IBlockchainProvider } from "./IBlockchainProvider";
 import { createRequire } from "node:module";
+import { getSupportedEvmNetwork } from "../config/supportedNetworks";
 
 const runtimeRequire =
     typeof require === "function"
@@ -20,6 +21,8 @@ const runtimeRequire =
 */
 
 export class BlockchainFactory {
+
+    private static readonly evmProviders = new Map<number, IBlockchainProvider>();
 
     public static getProvider(): IBlockchainProvider {
 
@@ -59,5 +62,30 @@ export class BlockchainFactory {
                     `Unsupported blockchain provider: ${provider}`
                 );
         }
+    }
+
+    /**
+     * Returns the provider for a supported EVM testnet. The chain ID is
+     * validated server-side and is never used to mutate process.env.
+     */
+    public static getProviderForChainId(chainId: number): IBlockchainProvider {
+        const network = getSupportedEvmNetwork(chainId);
+        const cached = this.evmProviders.get(network.chainId);
+        if (cached) {
+            return cached;
+        }
+
+        const provider = network.provider === "ethereum"
+            ? (() => {
+                const { EthereumProvider } = runtimeRequire("../ethereum/provider/EthereumProvider");
+                return new EthereumProvider() as IBlockchainProvider;
+            })()
+            : (() => {
+                const { PolygonProvider } = runtimeRequire("../polygon/provider/PolygonProvider");
+                return new PolygonProvider() as IBlockchainProvider;
+            })();
+
+        this.evmProviders.set(network.chainId, provider);
+        return provider;
     }
 }

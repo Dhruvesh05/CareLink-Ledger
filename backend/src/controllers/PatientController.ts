@@ -6,21 +6,17 @@ import { BlockchainFactory } from "../blockchain/provider/BlockchainFactory";
 
 export class PatientController {
 
-    private patientService?: PatientService;
-
     constructor(
         private readonly blockchainService?: IBlockchainProvider
     ) {}
 
-    private getPatientService(): PatientService {
-        if (!this.patientService) {
-            this.patientService = new PatientService(
-                this.blockchainService ??
-                BlockchainFactory.getProvider()
-            );
-        }
-
-        return this.patientService;
+    private getPatientService(req: Request): PatientService {
+        const blockchainService = this.blockchainService ?? (
+            req.careLinkNetwork
+                ? BlockchainFactory.getProviderForChainId(req.careLinkNetwork.chainId)
+                : BlockchainFactory.getProvider()
+        );
+        return new PatientService(blockchainService);
     }
 
     async registerPatient(
@@ -58,7 +54,7 @@ export class PatientController {
                 });
             }
 
-            const receipt = await this.getPatientService().registerPatient(
+            const receipt = await this.getPatientService(req).registerPatient(
                 fullNameHashStr,
                 dobHashStr,
                 bloodGroupStr,
@@ -113,7 +109,7 @@ export class PatientController {
                 return res.status(400).json({ success: false, message: "wallet param is required" });
             }
 
-            const patient = await this.getPatientService().getPatient(wallet);
+            const patient = await this.getPatientService(req).getPatient(wallet);
 
             return res.json({
                 success: true,
@@ -160,7 +156,7 @@ export class PatientController {
                 return res.status(400).json({ success: false, message: "wallet param is required" });
             }
 
-            const active = await this.getPatientService().isPatientActive(wallet2);
+            const active = await this.getPatientService(req).isPatientActive(wallet2);
 
             return res.json({
 
@@ -222,7 +218,7 @@ export class PatientController {
                 });
             }
 
-            const receipt = await this.getPatientService().updateBloodGroup(bloodGroupStr);
+            const receipt = await this.getPatientService(req).updateBloodGroup(bloodGroupStr);
 
             return res.json({
 
@@ -278,7 +274,7 @@ export class PatientController {
         try {
 
             const receipt =
-                await this.getPatientService().deactivatePatient();
+                await this.getPatientService(req).deactivatePatient();
 
             return res.json({
 
@@ -338,7 +334,7 @@ export class PatientController {
                 });
             }
 
-            const receipt = await this.getPatientService().reactivatePatient(walletStr);
+            const receipt = await this.getPatientService(req).reactivatePatient(walletStr);
 
             return res.json({
 

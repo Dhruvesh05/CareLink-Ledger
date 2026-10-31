@@ -1,61 +1,29 @@
+import { useEffect, useState } from "react";
 import DashboardLayout from "../../components/DashboardLayout";
+import { approveAccessRequest, getAccessRequests, rejectAccessRequest, revokeAccessRequest, type AccessRequest } from "../../api/clinical";
+import { ContentPanel, EmptyState, ErrorState, LoadingState, PageHeader, StatusBadge } from "../../components/ui";
 
-function AccessManagement() {
-  return (
-    <DashboardLayout>
-
-      <h1 className="text-3xl font-bold text-blue-800">
-        Access Management
-      </h1>
-
-      <p className="text-gray-500 mt-2">
-        Grant or revoke access to your medical records.
-      </p>
-
-      <div className="bg-white rounded-2xl shadow p-8 mt-8">
-
-        <table className="w-full">
-
-          <thead>
-
-            <tr className="border-b">
-              <th className="text-left py-4">Doctor</th>
-              <th className="text-left">Hospital</th>
-              <th className="text-left">Permission</th>
-              <th className="text-left">Action</th>
-            </tr>
-
-          </thead>
-
-          <tbody>
-
-            <tr>
-
-              <td className="py-4">Dr. Sharma</td>
-              <td>City Hospital</td>
-
-              <td>
-                <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full">
-                  Granted
-                </span>
-              </td>
-
-              <td>
-                <button className="bg-red-500 text-white px-4 py-2 rounded-lg">
-                  Revoke
-                </button>
-              </td>
-
-            </tr>
-
-          </tbody>
-
-        </table>
-
-      </div>
-
-    </DashboardLayout>
-  );
+function doctorLabel(request: AccessRequest) {
+  return typeof request.doctorUserId === "string" ? request.doctorUserId : request.doctorUserId.walletAddress;
 }
 
-export default AccessManagement;
+export default function AccessManagement() {
+  const [requests, setRequests] = useState<AccessRequest[]>([]);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState("");
+  const [loading, setLoading] = useState(true);
+  const load = () => getAccessRequests().then(setRequests).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Unable to load access requests")).finally(() => setLoading(false));
+  useEffect(() => { void load(); }, []);
+  async function act(id: string, operation: () => Promise<unknown>) {
+    setBusy(id); setError("");
+    try { await operation(); await load(); } catch (reason) { setError(reason instanceof Error ? reason.message : "The authorization operation failed"); } finally { setBusy(""); }
+  }
+  const pending = requests.filter((request) => request.status === "pending");
+  const active = requests.filter((request) => request.status === "active");
+  const history = requests.filter((request) => !["pending", "active"].includes(request.status));
+  return <DashboardLayout><div className="space-y-8"><PageHeader eyebrow="Privacy controls" title="Access management" description="Approvals and revocations require the connected patient wallet and are confirmed against authorization." />{error && <ErrorState message={error} />}{loading ? <LoadingState label="Loading access requests…" /> : <><RequestSection title="Pending requests" requests={pending} action={(request) => <><button disabled={busy === request._id} onClick={() => void act(request._id, () => approveAccessRequest(request._id))} className="enterprise-button-primary">{busy === request._id ? "Waiting…" : "Approve with wallet"}</button><button disabled={busy === request._id} onClick={() => void act(request._id, () => rejectAccessRequest(request._id))} className="enterprise-button-secondary">Reject</button></>} /><RequestSection title="Active permissions" requests={active} action={(request) => <button disabled={busy === request._id} onClick={() => void act(request._id, () => revokeAccessRequest(request._id))} className="enterprise-button-danger">{busy === request._id ? "Waiting…" : "Revoke with wallet"}</button>} /><RequestSection title="Access history" requests={history} /></>}</div></DashboardLayout>;
+}
+
+function RequestSection({ title, requests, action }: { title: string; requests: AccessRequest[]; action?: (request: AccessRequest) => React.ReactNode }) {
+  return <ContentPanel title={title} className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead><tr className="border-b text-slate-500"><th className="p-3">Doctor</th><th className="p-3">Scope</th><th className="p-3">Reason</th><th className="p-3">Requested</th><th className="p-3">Status</th><th className="p-3">Action</th></tr></thead><tbody>{requests.map((request) => <tr key={request._id} className="border-b last:border-0"><td className="p-3 font-mono">{doctorLabel(request)}</td><td className="p-3">{request.scope}</td><td className="max-w-xs p-3">{request.reason}</td><td className="p-3">{new Date(request.createdAt).toLocaleString()}</td><td className="p-3"><StatusBadge tone={request.status === "active" ? "success" : request.status === "pending" ? "warning" : "neutral"}>{request.status}</StatusBadge></td><td className="space-x-2 p-3">{action?.(request)}</td></tr>)}</tbody></table>{requests.length === 0 && <EmptyState title="No requests in this section" />}</ContentPanel>;
+}

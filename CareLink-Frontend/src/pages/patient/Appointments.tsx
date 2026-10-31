@@ -1,83 +1,47 @@
 import DashboardLayout from "../../components/DashboardLayout";
+import { ContentPanel, PageHeader, StatusBadge } from "../../components/ui";
 
 function Appointments() {
   return (
     <DashboardLayout>
+      <div className="space-y-6">
+        <PageHeader eyebrow="Care coordination" title="Appointments" description="View your upcoming and previous appointments." />
+        <ContentPanel title="Appointment history" subtitle="Appointments shared with your care team." className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200/80 dark:border-white/10 text-slate-500 dark:text-slate-400 text-xs uppercase font-semibold">
+                <th className="py-3 px-4">Doctor</th>
+                <th className="py-3 px-4">Hospital</th>
+                <th className="py-3 px-4">Date</th>
+                <th className="py-3 px-4">Time</th>
+                <th className="py-3 px-4">Status</th>
+              </tr>
+            </thead>
 
-      <h1 className="text-3xl font-bold text-blue-800">
-        Appointments
-      </h1>
+            <tbody className="divide-y divide-slate-100 dark:divide-white/5 text-slate-800 dark:text-slate-200 text-sm">
+              <tr className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors">
+                <td className="py-4 px-4 font-semibold text-slate-900 dark:text-white">Dr. Sharma</td>
+                <td className="py-4 px-4">City Hospital</td>
+                <td className="py-4 px-4">10 Aug 2026</td>
+                <td className="py-4 px-4">10:30 AM</td>
+                <td className="py-4 px-4">
+                  <StatusBadge tone="success">Confirmed</StatusBadge>
+                </td>
+              </tr>
 
-      <p className="text-gray-500 mt-2">
-        View your upcoming and previous appointments.
-      </p>
-
-      <div className="bg-white rounded-2xl shadow p-6 mt-8">
-
-        <table className="w-full">
-
-          <thead>
-
-            <tr className="border-b">
-
-              <th className="text-left py-4">Doctor</th>
-
-              <th className="text-left">Hospital</th>
-
-              <th className="text-left">Date</th>
-
-              <th className="text-left">Time</th>
-
-              <th className="text-left">Status</th>
-
-            </tr>
-
-          </thead>
-
-          <tbody>
-
-            <tr className="border-b">
-
-              <td className="py-4">Dr. Sharma</td>
-
-              <td>City Hospital</td>
-
-              <td>10 Aug 2026</td>
-
-              <td>10:30 AM</td>
-
-              <td>
-                <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full">
-                  Confirmed
-                </span>
-              </td>
-
-            </tr>
-
-            <tr>
-
-              <td className="py-4">Dr. Mehta</td>
-
-              <td>Apollo Hospital</td>
-
-              <td>15 Aug 2026</td>
-
-              <td>02:00 PM</td>
-
-              <td>
-                <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full">
-                  Pending
-                </span>
-              </td>
-
-            </tr>
-
-          </tbody>
-
-        </table>
-
+              <tr className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors">
+                <td className="py-4 px-4 font-semibold text-slate-900 dark:text-white">Dr. Mehta</td>
+                <td className="py-4 px-4">Apollo Hospital</td>
+                <td className="py-4 px-4">15 Aug 2026</td>
+                <td className="py-4 px-4">02:00 PM</td>
+                <td className="py-4 px-4">
+                  <StatusBadge tone="warning">Pending</StatusBadge>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </ContentPanel>
       </div>
-
     </DashboardLayout>
   );
 }

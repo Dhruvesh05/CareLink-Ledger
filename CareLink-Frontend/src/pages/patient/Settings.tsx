@@ -1,14 +1,12 @@
 import DashboardLayout from "../../components/DashboardLayout";
+import { ContentPanel, PageHeader } from "../../components/ui";
 
 function Settings() {
   return (
     <DashboardLayout>
 
-      <h1 className="text-3xl font-bold text-blue-800">
-        Settings
-      </h1>
-
-      <div className="bg-white rounded-2xl shadow p-8 mt-8">
+      <PageHeader eyebrow="Preferences" title="Settings" description="Manage notifications and workspace preferences." />
+      <ContentPanel title="Workspace preferences" className="max-w-2xl">
 
         <div className="space-y-6">
 
@@ -32,8 +30,7 @@ function Settings() {
           </button>
 
         </div>
-
-      </div>
+      </ContentPanel>
 
     </DashboardLayout>
   );

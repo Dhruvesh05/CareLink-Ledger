@@ -391,7 +391,8 @@ function bridgeIpfsHash(
                 "IPFS",
                 "cid",
                 "CID"
-            ]
+            ],
+            [4]
         ),
         "ipfsHash"
     );
@@ -422,7 +423,8 @@ function bridgeFileHash(
             [
                 "fileHash",
                 "FileHash"
-            ]
+            ],
+            [5]
         ),
         "fileHash"
     );
@@ -441,7 +443,7 @@ function bridgeCategory(
                 "category",
                 "Category"
             ],
-            [4]
+            [6]
         ) ??
             args[4],
         "category"
@@ -459,7 +461,8 @@ function bridgeEmergency(
                 "Emergency",
                 "isEmergency",
                 "IsEmergency"
-            ]
+            ],
+            [11]
         );
 
     if (typeof raw === "boolean") {

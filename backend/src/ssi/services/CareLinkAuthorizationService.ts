@@ -156,11 +156,11 @@ import {
     CareLinkAuthorizedIdentity,
     ICareLinkAuthorizationService,
     VerifiedPresentationContext,
-} from "../interfaces/ICareLinkAuthorizationService.js";
+} from "../interfaces/ICareLinkAuthorizationService";
 import {
     CARELINK_ROLE_CREDENTIAL_TYPE,
-} from "./CareLinkCredentialService.js";
-import issuerPolicy, { CareLinkIssuerPolicy } from "./CareLinkIssuerPolicy.js";
+} from "./CareLinkCredentialService";
+import issuerPolicy, { CareLinkIssuerPolicy } from "./CareLinkIssuerPolicy";
 
 const SUPPORTED_ROLES: readonly UserRole[] = [
     "Admin",

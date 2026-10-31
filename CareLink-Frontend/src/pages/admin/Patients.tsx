@@ -1,5 +1,6 @@
 import DashboardLayout from "../../components/DashboardLayout";
 import { User } from "lucide-react";
+import { ContentPanel, PageHeader } from "../../components/ui";
 
 function Patients() {
   const patients = [
@@ -31,47 +32,37 @@ function Patients() {
 
   return (
     <DashboardLayout>
-      <h1 className="text-3xl font-bold text-purple-700">
-        Patients
-      </h1>
-
-      <p className="text-slate-500 mt-2">
-        View registered patients and their medical record activity.
-      </p>
-
-      <div className="bg-white rounded-2xl shadow mt-8 overflow-hidden border border-slate-100">
-        <table className="w-full">
-          <thead className="bg-purple-50">
+      <PageHeader title="Patients" description="View registered patients and their medical record activity." />
+      <ContentPanel><div className="overflow-x-auto">
+        <table className="min-w-full text-left text-sm">
+          <thead className="border-b text-[#697586]">
             <tr>
-              <th className="text-left p-5 font-semibold text-purple-900">Patient</th>
-              <th className="text-left p-5 font-semibold text-purple-900">Age</th>
-              <th className="text-left p-5 font-semibold text-purple-900">Blood Group</th>
-              <th className="text-left p-5 font-semibold text-purple-900">Medical Records</th>
+              <th className="p-3">Patient</th><th className="p-3">Age</th><th className="p-3">Blood Group</th><th className="p-3">Medical Records</th>
             </tr>
           </thead>
 
           <tbody>
             {patients.map((patient) => (
-              <tr key={patient.name} className="border-t border-slate-100">
-                <td className="p-5 font-medium text-slate-800">
+              <tr key={patient.name} className="border-b">
+                <td className="p-3 font-medium text-slate-800">
                   <div className="flex items-center gap-2">
                     <User className="w-4 h-4 text-purple-600" />
                     <span>{patient.name}</span>
                   </div>
                 </td>
 
-                <td className="p-5 text-slate-600">{patient.age}</td>
+                <td className="p-3 text-slate-600">{patient.age}</td>
 
-                <td className="p-5 text-slate-600">{patient.bloodGroup}</td>
+                <td className="p-3 text-slate-600">{patient.bloodGroup}</td>
 
-                <td className="p-5 text-slate-600">
+                <td className="p-3 text-slate-600">
                   {patient.records} Records
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+      </div></ContentPanel>
     </DashboardLayout>
   );
 }

@@ -2,7 +2,6 @@ import { useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   FileText,
-  Upload,
   Calendar,
   Lock,
   Bell,
@@ -17,7 +16,6 @@ function Sidebar() {
   const menu = [
     { title: "Dashboard", icon: LayoutDashboard, path: "/patient-dashboard" },
     { title: "Medical Records", icon: FileText, path: "/medical-records" },
-    { title: "Upload Record", icon: Upload, path: "/upload-record" },
     { title: "Appointments", icon: Calendar, path: "/appointments" },
     { title: "Access Management", icon: Lock, path: "/access-management" },
     { title: "Notifications", icon: Bell, path: "/notifications" },
@@ -27,35 +25,42 @@ function Sidebar() {
   ];
 
   return (
-    <div className="w-72 h-screen bg-blue-900 text-white flex flex-col">
-      {/* Logo */}
-      <div className="p-6 border-b border-blue-700">
-        <h1 className="text-2xl font-bold">CareLink Ledger</h1>
-        <p className="text-sm text-blue-200 mt-1">Patient Portal</p>
+    <div className="flex h-screen w-full flex-col bg-slate-950 dark:bg-black text-slate-300 md:w-72 border-r border-slate-800/80 dark:border-white/10">
+      <div className="border-b border-slate-800/80 dark:border-white/10 p-6">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-black text-sm">
+            CL
+          </div>
+          <h1 className="text-xl font-bold tracking-tight text-white">CareLink Ledger</h1>
+        </div>
+        <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-cyan-400">Portal Navigation</p>
       </div>
 
-      {/* Menu */}
-      <div className="flex-1 p-4 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto p-4 space-y-1">
         {menu.map((item) => {
           const Icon = item.icon;
+          const isActive = window.location.pathname === item.path;
           return (
             <button
               key={item.title}
               onClick={() => navigate(item.path)}
-              className="w-full flex items-center gap-4 text-left px-4 py-3 rounded-xl hover:bg-blue-700 transition mb-2"
+              className={`w-full flex items-center gap-3.5 text-left px-3.5 py-3 rounded-xl transition-all duration-200 text-sm font-medium ${
+                isActive
+                  ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-semibold"
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
+              }`}
             >
-              <Icon className="w-5 h-5 text-blue-200" />
+              <Icon className={`w-5 h-5 ${isActive ? "text-cyan-400" : "text-slate-400"}`} />
               <span>{item.title}</span>
             </button>
           );
         })}
       </div>
 
-      {/* Logout */}
-      <div className="p-4 border-t border-blue-700">
+      <div className="mt-auto border-t border-slate-800/80 dark:border-white/10 p-4">
         <button
           onClick={() => navigate("/login")}
-          className="w-full bg-red-500 hover:bg-red-600 py-3 rounded-xl font-medium transition"
+          className="w-full rounded-xl bg-rose-500/10 border border-rose-500/20 py-3 font-semibold text-sm text-rose-400 transition hover:bg-rose-600 hover:text-white"
         >
           Logout
         </button>

@@ -1,62 +1,22 @@
+import { useEffect, useState } from "react";
 import DashboardLayout from "../../components/DashboardLayout";
+import { getAdminMonitoring, getCrossChainAudits, type AdminNetworkMonitoring } from "../../api/admin";
+import { ContentPanel, EmptyState, ErrorState, LoadingState, PageHeader, StatusBadge } from "../../components/ui";
 
-function Blockchain() {
-  return (
-    <DashboardLayout>
-      <h1 className="text-3xl font-bold text-purple-700">
-        Blockchain
-      </h1>
+type Transfer = Record<string, unknown>;
+function displayStatus(status: string) { return status === "accepted" ? "submitted" : status === "relaying" ? "processing" : status === "confirmed" ? "confirmed" : status === "failed" || status === "duplicate" ? "failed" : "unknown"; }
 
-      <p className="text-gray-500 mt-2">
-        Monitor blockchain transactions and network status.
-      </p>
-
-      <div className="grid md:grid-cols-3 gap-6 mt-8">
-
-        <div className="bg-white rounded-2xl shadow p-6">
-          <p className="text-gray-500">
-            Network Status
-          </p>
-
-          <h2 className="text-2xl font-bold text-green-600 mt-3">
-            ● Connected
-          </h2>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow p-6">
-          <p className="text-gray-500">
-            Total Transactions
-          </p>
-
-          <h2 className="text-3xl font-bold mt-3">
-            4,721
-          </h2>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow p-6">
-          <p className="text-gray-500">
-            Latest Block
-          </p>
-
-          <h2 className="text-3xl font-bold mt-3">
-            #982341
-          </h2>
-        </div>
-
-      </div>
-
-      <div className="bg-white rounded-2xl shadow p-8 mt-8">
-        <h2 className="text-2xl font-bold">
-          Blockchain Security
-        </h2>
-
-        <p className="text-gray-500 mt-3">
-          Medical record hashes are securely stored on
-          the blockchain to maintain data integrity.
-        </p>
-      </div>
-    </DashboardLayout>
-  );
+export default function Blockchain() {
+  const [monitoring, setMonitoring] = useState<AdminNetworkMonitoring | null>(null);
+  const [transfers, setTransfers] = useState<Transfer[]>([]);
+  const [error, setError] = useState("");
+  const [filter, setFilter] = useState({ source: "", destination: "", status: "", q: "" });
+  useEffect(() => { Promise.all([getAdminMonitoring(), getCrossChainAudits()]).then(([nextMonitoring, audit]) => { setMonitoring(nextMonitoring); setTransfers(audit.items); }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Unable to load infrastructure monitoring")); }, []);
+  async function search() { try { setTransfers((await getCrossChainAudits(filter)).items); } catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to load transfer history"); } }
+  const networks = monitoring ? [
+    { name: monitoring.networks.ethereum.name, chainId: monitoring.networks.ethereum.chainId, status: monitoring.networks.ethereum.status, blockHeight: monitoring.networks.ethereum.blockHeight, rpcReady: monitoring.networks.ethereum.rpcReady },
+    { name: monitoring.networks.polygon.name, chainId: monitoring.networks.polygon.chainId, status: monitoring.networks.polygon.status, blockHeight: monitoring.networks.polygon.blockHeight, rpcReady: monitoring.networks.polygon.rpcReady },
+    { name: "Hyperledger Fabric", chainId: null, status: monitoring.networks.fabric.status, blockHeight: null, rpcReady: monitoring.networks.fabric.configured },
+  ] : [];
+  return <DashboardLayout><div className="space-y-6"><PageHeader title="Blockchain Monitor" description="Read-only health and persisted cross-chain audit data. Monitoring does not submit transactions." />{error && <ErrorState message={error} />} {!monitoring && !error ? <LoadingState label="Loading infrastructure monitoring…" /> : <><div className="grid gap-4 md:grid-cols-3">{networks.map((network) => <ContentPanel key={network.name} title={network.name} action={<StatusBadge tone={network.status === "connected" ? "success" : "neutral"}>{network.status}</StatusBadge>}><dl className="space-y-2 text-sm text-[#697586]"><div className="flex justify-between"><dt>Chain ID</dt><dd>{network.chainId ?? "Unavailable"}</dd></div><div className="flex justify-between"><dt>Block height</dt><dd>{network.blockHeight ?? "Unavailable"}</dd></div><div className="flex justify-between"><dt>RPC</dt><dd>{network.rpcReady ? "Ready" : "Unavailable"}</dd></div></dl></ContentPanel>)}</div><ContentPanel title="Cross-chain activity" subtitle="Filter persisted transfer events without submitting transactions."><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5"><input placeholder="Transaction hash or message ID" value={filter.q} onChange={(event) => setFilter({ ...filter, q: event.target.value })} className="rounded-xl border p-3 text-sm lg:col-span-2" /><input placeholder="Source" value={filter.source} onChange={(event) => setFilter({ ...filter, source: event.target.value })} className="rounded-xl border p-3 text-sm" /><input placeholder="Destination" value={filter.destination} onChange={(event) => setFilter({ ...filter, destination: event.target.value })} className="rounded-xl border p-3 text-sm" /><select value={filter.status} onChange={(event) => setFilter({ ...filter, status: event.target.value })} className="rounded-xl border p-3 text-sm"><option value="">All statuses</option><option value="accepted">Submitted</option><option value="relaying">Processing</option><option value="confirmed">Confirmed</option><option value="failed">Failed</option></select><button onClick={() => void search()} className="rounded-xl bg-[#0F8B78] px-5 py-3 text-sm font-bold text-white">Search</button></div><div className="mt-5 overflow-x-auto"><table className="min-w-full text-left text-sm"><thead><tr className="border-b text-[#697586]"><th className="p-3">Direction</th><th className="p-3">Source tx</th><th className="p-3">Destination tx</th><th className="p-3">Status</th><th className="p-3">Started</th></tr></thead><tbody>{transfers.map((item) => { const status = displayStatus(String(item.status ?? "")); return <tr key={String(item._id ?? item.messageId)} className="border-b"><td className="p-3">{String(item.sourceChain ?? "—")} → {String(item.destinationChain ?? "—")}</td><td className="p-3 font-mono text-xs">{String(item.transactionHash ?? "—")}</td><td className="p-3 font-mono text-xs">{String(item.destinationTransactionHash ?? "—")}</td><td className="p-3"><StatusBadge tone={status === "confirmed" ? "success" : status === "failed" ? "danger" : "warning"}>{status}</StatusBadge></td><td className="p-3">{item.createdAt ? new Date(String(item.createdAt)).toLocaleString() : "—"}</td></tr>; })}</tbody></table>{!transfers.length && <EmptyState title="No transfer events found" description="No persisted cross-chain events match the selected filters." />}</div></ContentPanel></>}</div></DashboardLayout>;
 }
-
-export default Blockchain;

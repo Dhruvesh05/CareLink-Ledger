@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticate } from "../middleware/auth";
+import { authenticate, requireRole } from "../middleware/auth";
 import { HospitalController } from "../controllers/HospitalController";
 
 const router = Router();
@@ -68,6 +68,7 @@ router.get(
  */
 router.post(
     "/verify",
+    requireRole("Admin"),
     controller.verifyHospital.bind(controller)
 );
 
@@ -82,6 +83,7 @@ router.post(
  */
 router.post(
     "/revoke",
+    requireRole("Admin"),
     controller.revokeVerification.bind(controller)
 );
 
@@ -96,6 +98,7 @@ router.post(
  */
 router.post(
     "/reactivate",
+    requireRole("Admin"),
     controller.reactivateHospital.bind(controller)
 );
 
@@ -107,6 +110,7 @@ router.post(
  */
 router.post(
     "/deactivate",
+    requireRole("Hospital"),
     controller.deactivateHospital.bind(controller)
 );
 
@@ -121,6 +125,7 @@ router.post(
  */
 router.put(
     "/location",
+    requireRole("Hospital"),
     controller.updateLocation.bind(controller)
 );
 

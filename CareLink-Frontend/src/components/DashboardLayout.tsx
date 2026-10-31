@@ -25,8 +25,8 @@ function DashboardLayout({ children }: DashboardLayoutProps) {
   }, [role]);
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-[radial-gradient(circle_at_top,_rgba(191,219,254,0.45),_transparent_30%),linear-gradient(180deg,_#f5fafe_0%,_#eef6ff_100%)] text-slate-800">
-      <div className="hidden md:block fixed left-0 top-0 z-40 h-screen w-72 overflow-y-auto overflow-x-hidden border-r border-sky-100 bg-white/80 backdrop-blur-xl shadow-[12px_0_30px_rgba(30,64,175,0.08)]">
+    <div className="min-h-screen w-full overflow-x-hidden bg-[#F5F7F8] text-[#17212F] transition-colors duration-300 dark:bg-slate-950 dark:text-white">
+      <div className="fixed left-0 top-0 z-40 hidden h-screen w-72 overflow-y-auto overflow-x-hidden bg-white shadow-[8px_0_24px_rgba(23,33,47,0.04)] md:block">
         {renderSidebar}
       </div>
 
@@ -35,7 +35,7 @@ function DashboardLayout({ children }: DashboardLayoutProps) {
           <button
             type="button"
             aria-label="Close menu"
-            className="absolute inset-0 bg-slate-950/45"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setMobileMenuOpen(false)}
           />
           <div className="relative h-screen w-[82vw] max-w-sm overflow-hidden bg-white shadow-2xl">
@@ -53,8 +53,8 @@ function DashboardLayout({ children }: DashboardLayoutProps) {
           <Header />
         </div>
 
-        <main className="w-full min-h-[calc(100vh-5rem)] p-3 sm:p-4 lg:p-8">
-          <div className="mx-auto w-full max-w-[1600px] rounded-[32px] border border-sky-100 bg-white/80 p-3 shadow-[0_25px_70px_rgba(14,116,144,0.08)] ring-1 ring-white/70 backdrop-blur-sm sm:p-6 lg:p-8">
+        <main className="min-h-[calc(100vh-5rem)] w-full p-4 sm:p-6 lg:p-8">
+          <div className="mx-auto w-full max-w-[1600px]">
             {children}
           </div>
         </main>
