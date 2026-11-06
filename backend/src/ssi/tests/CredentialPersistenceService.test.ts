@@ -1,18 +1,43 @@
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
-import CredentialPersistenceService from "../services/CredentialPersistenceService";
-jest.mock("../agent/createAgent", () => ({
+
+process.env.MEDICAL_RECORD_KEY_ENCRYPTION_SECRET =
+    "credential-persistence-test-secret-32-characters";
+
+jest.unstable_mockModule("../agent/createAgent.ts", () => ({
     createAgent: jest.fn(),
 }));
 
-import { createAgent } from "../agent/createAgent";
+const mockReferenceFindOne = jest.fn();
+const mockReferenceCreate = jest.fn();
+
+jest.unstable_mockModule("../../models/EncryptedCredentialReferenceModel", () => ({
+    __esModule: true,
+    default: {
+        findOne: mockReferenceFindOne,
+        create: mockReferenceCreate
+    }
+}));
+
+const {
+    CredentialPersistenceService: CredentialPersistenceServiceClass,
+    default: CredentialPersistenceService
+} =
+    await import("../services/CredentialPersistenceService");
+const { createAgent } =
+    await import("../agent/createAgent.ts");
 
 const mockCreateAgent = createAgent as jest.MockedFunction<typeof createAgent>;
+const { InMemoryEncryptedKeyStore, KeyManagementService } =
+    await import("../../services/encryption/KeyManagementService");
+const { MedicalRecordEncryptionService } =
+    await import("../../services/encryption/MedicalRecordEncryptionService");
 
 describe("CredentialPersistenceService", () => {
     const mockAgent: any = {
         dataStoreSaveVerifiableCredential: jest.fn() as any,
         dataStoreGetVerifiableCredential: jest.fn() as any,
         dataStoreORMGetVerifiableCredentialsByClaims: jest.fn() as any,
+        verifyCredential: jest.fn() as any,
     };
 
     const validCredential = {
@@ -26,6 +51,8 @@ describe("CredentialPersistenceService", () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockCreateAgent.mockResolvedValue(mockAgent);
+        mockReferenceFindOne.mockReset();
+        mockReferenceCreate.mockReset();
     });
 
     it("saveCredential delegates to the Veramo data store and returns the stored id", async () => {
@@ -84,5 +111,155 @@ describe("CredentialPersistenceService", () => {
         await expect(CredentialPersistenceService.saveCredential(validCredential)).rejects.toThrow(
             "Failed to save credential: database write failed",
         );
+    });
+
+    it("encrypts and persists a credential reference without storing plaintext", async () => {
+        mockAgent.dataStoreSaveVerifiableCredential.mockResolvedValue("credential-hash");
+        mockReferenceFindOne.mockResolvedValue(null);
+        mockReferenceCreate.mockResolvedValue({ _id: "reference-id" });
+
+        const uploaded: Buffer[] = [];
+        const service = new CredentialPersistenceServiceClass(
+            mockCreateAgent,
+            {
+                uploadFile: jest.fn(async (content: Buffer) => {
+                    uploaded.push(content);
+                    return { cid: "bafy-credential-cid" };
+                }),
+                downloadFile: jest.fn(),
+                unpinFile: jest.fn()
+            } as any,
+            new KeyManagementService(new InMemoryEncryptedKeyStore()),
+            new MedicalRecordEncryptionService()
+        );
+
+        const result = await service.saveCredentialToIpfs(
+            validCredential,
+            "user-123",
+            "did:key:test-subject"
+        );
+
+        expect(result).toEqual({
+            credentialId: "credential-hash",
+            referenceId: "reference-id",
+            cid: "bafy-credential-cid"
+        });
+        expect(uploaded[0]).toBeDefined();
+        expect(uploaded[0].toString("utf8")).not.toContain("did:key:test-subject");
+        expect(mockReferenceCreate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                userId: "user-123",
+                subjectDid: "did:key:test-subject",
+                credentialId: "credential-hash",
+                cid: "bafy-credential-cid",
+                encryptedHash: expect.any(String),
+                encryptionKeyReference: expect.any(String)
+            })
+        );
+    });
+
+    it("retrieves, decrypts, and verifies an authorized credential reference", async () => {
+        const keyStore = new InMemoryEncryptedKeyStore();
+        const keyManagement = new KeyManagementService(keyStore);
+        const encryption = new MedicalRecordEncryptionService();
+        const managedKey = await keyManagement.createKey();
+        const encrypted = encryption.encrypt(
+            Buffer.from(JSON.stringify(validCredential)),
+            managedKey.key,
+            managedKey.reference
+        );
+        mockReferenceFindOne.mockResolvedValue({
+            cid: "bafy-credential-cid",
+            encryptedHash: (await import("../../utils/hash")).sha256FromBuffer(encrypted.ciphertext),
+            encryptionVersion: encrypted.metadata.version,
+            encryptionAlgorithm: encrypted.metadata.algorithm,
+            encryptionIv: encrypted.metadata.iv,
+            encryptionAuthTag: encrypted.metadata.authTag,
+            encryptionKeyReference: encrypted.metadata.keyReference
+        });
+        const service = new CredentialPersistenceServiceClass(
+            mockCreateAgent,
+            {
+                uploadFile: jest.fn(),
+                downloadFile: jest.fn().mockResolvedValue(encrypted.ciphertext),
+                unpinFile: jest.fn()
+            } as any,
+            keyManagement,
+            encryption
+        );
+
+        await expect(
+            service.getCredentialFromIpfs(
+                "reference-id",
+                "user-123",
+                "did:key:test-subject"
+            )
+        ).resolves.toEqual(validCredential);
+        expect(mockAgent.verifyCredential).toHaveBeenCalledWith({
+            credential: validCredential
+        });
+    });
+
+    it("reuses an existing reference on a safe retry", async () => {
+        mockAgent.dataStoreSaveVerifiableCredential.mockResolvedValue("credential-hash");
+        mockReferenceFindOne.mockResolvedValue({
+            _id: "existing-reference",
+            cid: "bafy-existing-cid"
+        });
+        const uploadFile = jest.fn();
+        const service = new CredentialPersistenceServiceClass(
+            mockCreateAgent,
+            {
+                uploadFile,
+                downloadFile: jest.fn(),
+                unpinFile: jest.fn()
+            } as any,
+            new KeyManagementService(new InMemoryEncryptedKeyStore()),
+            new MedicalRecordEncryptionService()
+        );
+
+        await expect(
+            service.saveCredentialToIpfs(
+                validCredential,
+                "user-123",
+                "did:key:test-subject"
+            )
+        ).resolves.toEqual({
+            credentialId: "credential-hash",
+            referenceId: "existing-reference",
+            cid: "bafy-existing-cid"
+        });
+        expect(uploadFile).not.toHaveBeenCalled();
+        expect(mockReferenceCreate).not.toHaveBeenCalled();
+    });
+
+    it("recovers an existing reference after a concurrent duplicate insert", async () => {
+        mockAgent.dataStoreSaveVerifiableCredential.mockResolvedValue("credential-hash");
+        mockReferenceFindOne
+            .mockResolvedValueOnce(null)
+            .mockResolvedValueOnce({
+                _id: "raced-reference",
+                cid: "bafy-raced-cid"
+            });
+        mockReferenceCreate.mockRejectedValue({ code: 11000 });
+        const uploadFile = jest.fn().mockResolvedValue({ cid: "bafy-unneeded-cid" });
+        const service = new CredentialPersistenceServiceClass(
+            mockCreateAgent,
+            { uploadFile, downloadFile: jest.fn(), unpinFile: jest.fn() } as any,
+            new KeyManagementService(new InMemoryEncryptedKeyStore()),
+            new MedicalRecordEncryptionService()
+        );
+
+        await expect(service.saveCredentialToIpfs(
+            validCredential,
+            "user-123",
+            "did:key:test-subject"
+        )).resolves.toEqual({
+            credentialId: "credential-hash",
+            referenceId: "raced-reference",
+            cid: "bafy-raced-cid"
+        });
+        expect(uploadFile).toHaveBeenCalledTimes(1);
+        expect(mockReferenceFindOne).toHaveBeenCalledTimes(2);
     });
 });

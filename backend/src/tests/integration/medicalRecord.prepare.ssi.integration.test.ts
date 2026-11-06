@@ -28,6 +28,8 @@ type TestUser = {
     _id: { toString: () => string };
     did: string;
     role: "Doctor" | "Patient";
+    walletAddress: string;
+    active: boolean;
 };
 
 type ChallengeRecord = {
@@ -61,8 +63,16 @@ const mockPrepare = jest.fn<
     (input: PrepareMedicalRecordInput) => Promise<PreparedMedicalRecordTransaction>
 >();
 
+type UserLookup = Promise<TestUser | null> & {
+    select: () => {
+        lean: () => {
+            exec: () => Promise<TestUser | null>;
+        };
+    };
+};
+
 const mockUserFindOne = jest.fn<
-    (filter: { did: string }) => Promise<TestUser | null>
+    (filter: Record<string, unknown>) => UserLookup
 >();
 
 const mockUserFindById = jest.fn<
@@ -100,7 +110,7 @@ jest.unstable_mockModule("../../models/User", () => ({
     },
 }));
 
-jest.unstable_mockModule("../models/SsiAuthorizationChallenge", () => ({
+jest.unstable_mockModule("../../models/SsiAuthorizationChallenge.js", () => ({
     __esModule: true,
     default: {
         create: (...args: Parameters<typeof mockChallengeCreate>) =>
@@ -114,7 +124,7 @@ jest.unstable_mockModule("../models/SsiAuthorizationChallenge", () => ({
 }));
 
 jest.unstable_mockModule(
-    "../services/blockchain/MedicalRecordTransactionPreparationService",
+    "../../services/blockchain/MedicalRecordTransactionPreparationService.js",
     () => ({
         MedicalRecordTransactionPreparationService: jest
             .fn()
@@ -125,7 +135,7 @@ jest.unstable_mockModule(
 );
 
 jest.unstable_mockModule(
-    "../services/blockchain/MedicalRecordTransactionConfirmationService",
+    "../../services/blockchain/MedicalRecordTransactionConfirmationService.js",
     () => ({
         MedicalRecordTransactionConfirmationService: jest
             .fn()
@@ -136,7 +146,7 @@ jest.unstable_mockModule(
 );
 
 jest.unstable_mockModule(
-    "../blockchain/provider/BlockchainFactory",
+    "../../blockchain/provider/BlockchainFactory.js",
     () => ({
         BlockchainFactory: {
             getProvider: jest.fn(() => ({})),
@@ -150,7 +160,10 @@ const { default: IdentityService } =
 const { default: CareLinkCredentialService } =
     await import("../../ssi/services/CareLinkCredentialService");
 
-const { PresentationService } =
+const {
+    PresentationService,
+    default: presentationServiceSingleton
+} =
     await import("../../ssi/services/PresentationService");
 
 const { default: SsiAuthorizationChallengeService } =
@@ -288,6 +301,11 @@ function createUser(
         },
         did,
         role,
+        walletAddress:
+            role === "Patient"
+                ? PATIENT_WALLET
+                : DOCTOR_WALLET,
+        active: true,
     };
 
     users.set(userId, user);
@@ -457,12 +475,25 @@ describe("medical record prepare SSI multipart integration", () => {
 
             beforeAllStep = "installing model mocks";
 
-            mockUserFindOne.mockImplementation(async ({ did }) => {
-                return (
+            mockUserFindOne.mockImplementation((filter) => {
+                const user =
                     [...users.values()].find(
-                        (user) => user.did === did,
-                    ) ?? null
-                );
+                        (user) =>
+                            (typeof filter.did === "string" &&
+                                user.did === filter.did) ||
+                            (typeof filter.walletAddress === "string" &&
+                                user.walletAddress.toLowerCase() ===
+                                    filter.walletAddress.toLowerCase() &&
+                                filter.role === user.role &&
+                                filter.active === user.active)
+                    ) ?? null;
+                const lookup = Promise.resolve(user) as UserLookup;
+                lookup.select = () => ({
+                    lean: () => ({
+                        exec: async () => user,
+                    }),
+                });
+                return lookup;
             });
 
             mockUserFindById.mockImplementation(async (userId) => {
@@ -551,7 +582,7 @@ describe("medical record prepare SSI multipart integration", () => {
 
         if (!presentationVerificationSpy) {
             presentationVerificationSpy = jest.spyOn(
-                presentationService,
+                presentationServiceSingleton,
                 "verifyPresentation",
             );
         } else {
@@ -572,6 +603,11 @@ describe("medical record prepare SSI multipart integration", () => {
     });
 
     it("accepts a real SSI-authorized multipart Doctor request", async () => {
+        createUser(
+            "patient-integration-user",
+            "did:key:patient-integration",
+            "Patient",
+        );
         const scenario = await createScenario("Doctor");
 
         const presentation = await createPresentation(

@@ -1,6 +1,25 @@
 import { describe, expect, it, jest } from "@jest/globals";
 
-import { MedicalRecordController } from "../../controllers/MedicalRecordController";
+const mockPatientUser = {
+    _id: "patient-user-id",
+    did: "did:key:patient"
+};
+
+jest.unstable_mockModule("../../models/User", () => ({
+    __esModule: true,
+    default: {
+        findOne: jest.fn(() => ({
+            select: jest.fn(() => ({
+                lean: jest.fn(() => ({
+                    exec: jest.fn().mockResolvedValue(mockPatientUser)
+                }))
+            }))
+        }))
+    }
+}));
+
+const { MedicalRecordController } =
+    await import("../../controllers/MedicalRecordController");
 
 function createResponseMock() {
     const res: any = {};

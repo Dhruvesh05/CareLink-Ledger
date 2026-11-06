@@ -77,15 +77,15 @@ export async function getFabricMedicalRecordFile(
   }
 
   await createOrLoadAuthenticatedDid();
-  await requestSsiAuthorizationChallenge();
-  const presentation = await createSsiAuthorizationPresentation();
+  const challenge = await requestSsiAuthorizationChallenge();
+  const presentation = await createSsiAuthorizationPresentation(challenge.challengeId);
 
   const response = await apiGetBlob(
     `/fabric/medical-records/${encodeURIComponent(id)}/content?disposition=${disposition}`,
     token,
     {
       method: "POST",
-      body: JSON.stringify({ presentation }),
+      body: JSON.stringify({ presentation, challengeId: challenge.challengeId }),
     },
   );
 

@@ -37,7 +37,8 @@ export function requireCareLinkRole(...requiredRoles: UserRole[]) {
 
         const rawPresentation =
             req.body?.presentation ??
-            req.body?.verifiablePresentation;
+            req.body?.verifiablePresentation ??
+            req.headers?.["x-carelink-presentation"];
 
         let presentation: unknown = rawPresentation;
 
@@ -65,13 +66,25 @@ export function requireCareLinkRole(...requiredRoles: UserRole[]) {
             );
         }
 
-        let pendingChallenge;
+        const challengeId =
+            req.method === "GET"
+                ? req.headers["x-carelink-challenge-id"]
+                : req.body?.challengeId;
 
+        let pendingChallenge;
         try {
-            pendingChallenge =
-                await SsiAuthorizationChallengeService.getPendingChallenge(
+            if (typeof challengeId !== "string" || !challengeId.trim()) {
+                return sendError(res, "SSI authorization challenge is required", 403);
+            }
+            const exactChallenge =
+                await SsiAuthorizationChallengeService.getChallenge(
                     req.auth.userId,
+                    challengeId
                 );
+            if (!exactChallenge) {
+                return sendError(res, "SSI authorization failed", 403);
+            }
+            pendingChallenge = exactChallenge;
         } catch {
             return sendError(
                 res,
@@ -205,7 +218,7 @@ export function requireCareLinkRole(...requiredRoles: UserRole[]) {
             consumed =
                 await SsiAuthorizationChallengeService.consumeChallenge(
                     req.auth.userId,
-                    pendingChallenge.challenge,
+                pendingChallenge.challengeId,
                 );
         } catch {
             return sendError(

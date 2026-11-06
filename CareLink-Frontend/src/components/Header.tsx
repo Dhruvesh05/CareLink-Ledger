@@ -136,22 +136,22 @@ function Header({ onMenuToggle }: HeaderProps) {
   const displayName = profile?.displayName || `${getRoleName()} account`;
 
   return (
-    <header className="sticky top-0 z-30 flex min-h-20 w-full items-center justify-between gap-3 border-b border-[#E4E8EC] bg-white px-4 shadow-[0_2px_12px_rgba(23,33,47,0.03)] sm:px-6 lg:px-8 dark:border-white/10 dark:bg-slate-950">
+    <header className="sticky top-0 z-30 flex min-h-20 w-full items-center justify-between gap-3 border-b border-[var(--cl-border)] bg-[var(--cl-surface)] px-4 shadow-[var(--cl-shadow)] sm:px-6 lg:px-8">
       <div className="flex min-w-0 items-center gap-3">
         {onMenuToggle && (
           <button
             type="button"
             onClick={onMenuToggle}
-            className="md:hidden flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 dark:border-white/10 bg-slate-100/80 dark:bg-white/5 text-slate-700 dark:text-slate-300 shadow-sm transition hover:bg-slate-200/80 dark:hover:bg-white/10"
+            className="md:hidden flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--cl-border)] bg-[var(--cl-surface-muted)] text-[var(--cl-text-secondary)] shadow-sm transition hover:bg-[var(--cl-primary-soft)]"
             aria-label="Open menu"
           >
-            <Menu className="w-5 h-5 text-slate-700 dark:text-slate-300" />
+            <Menu className="w-5 h-5" />
           </button>
         )}
 
         <button onClick={() => navigate(getDashboardPathByRole(role))} className="min-w-0 text-left focus:outline-none">
-          <h2 className="truncate text-xl font-bold capitalize tracking-tight text-[#17212F] dark:text-white sm:text-2xl">{pageTitle}</h2>
-          <p className="mt-0.5 text-xs font-medium text-[#697586] sm:text-sm">{getRoleName()} workspace</p>
+          <h2 className="truncate text-xl font-bold capitalize tracking-tight text-[var(--cl-text)] sm:text-2xl">{pageTitle}</h2>
+          <p className="mt-0.5 text-xs font-medium text-[var(--cl-text-secondary)] sm:text-sm">{getRoleName()} workspace</p>
         </button>
       </div>
 
@@ -187,7 +187,7 @@ function Header({ onMenuToggle }: HeaderProps) {
         <button
           type="button"
           onClick={toggleTheme}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#E4E8EC] bg-white text-[#697586] transition hover:bg-[#F5F7F8] dark:border-white/10 dark:bg-white/5"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--cl-border)] bg-[var(--cl-surface)] text-[var(--cl-text-secondary)] transition hover:bg-[var(--cl-surface-muted)]"
           title={isDark ? "Switch to light mode" : "Switch to dark mode"}
           aria-label="Toggle theme"
         >
@@ -196,7 +196,7 @@ function Header({ onMenuToggle }: HeaderProps) {
 
         <button
           onClick={() => navigate(getNotificationPath())}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#E4E8EC] bg-white text-[#697586] transition hover:bg-[#F5F7F8] dark:border-white/10 dark:bg-white/5"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--cl-border)] bg-[var(--cl-surface)] text-[var(--cl-text-secondary)] transition hover:bg-[var(--cl-surface-muted)]"
           title="Notifications"
           aria-label="Notifications"
         >
@@ -205,13 +205,13 @@ function Header({ onMenuToggle }: HeaderProps) {
 
         <button
           onClick={() => navigate(getProfilePath())}
-          className="group flex h-10 items-center gap-2 rounded-xl border border-[#E4E8EC] bg-white px-2 text-left transition hover:bg-[#F5F7F8] dark:border-white/10 dark:bg-white/5"
+          className="group flex h-10 items-center gap-2 rounded-lg border border-[var(--cl-border)] bg-[var(--cl-surface)] px-2 text-left transition hover:bg-[var(--cl-surface-muted)]"
           title="Profile"
           aria-label="User profile"
         >
           {profile?.avatarDataUrl ? <img src={profile.avatarDataUrl} alt="" className="h-8 w-8 rounded-lg object-cover" /> : <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#DCEFEB] text-xs font-bold text-[#0F6F61]">{initials}</span>}
-          <span className="hidden max-w-28 sm:block"><span className="block truncate text-xs font-bold text-[#17212F] dark:text-white">{displayName}</span><span className="block text-[11px] text-[#697586]">{getRoleName()}</span></span>
-          <ChevronDown className="hidden h-4 w-4 text-[#9AA4B2] sm:block" />
+          <span className="hidden max-w-28 sm:block"><span className="block truncate text-xs font-bold text-[var(--cl-text)]">{displayName}</span><span className="block text-[11px] text-[var(--cl-text-secondary)]">{getRoleName()}</span></span>
+          <ChevronDown className="hidden h-4 w-4 text-[var(--cl-text-muted)] sm:block" />
         </button>
       </div>
 

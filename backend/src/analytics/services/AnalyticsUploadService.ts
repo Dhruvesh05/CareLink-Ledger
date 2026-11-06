@@ -2,6 +2,7 @@ import {
     AnalyticsClient,
     AnalyticsClientError,
     type AnalyticsAnalysisResponse,
+    type AnalyticsAnalysisContext,
 } from "./AnalyticsClient";
 
 const SUPPORTED_ANALYTICS_EXTENSIONS = new Set([
@@ -15,6 +16,7 @@ export interface AnalyticsUpload {
     readonly buffer: Buffer;
     readonly originalname: string;
     readonly mimetype?: string;
+    readonly context?: AnalyticsAnalysisContext;
 }
 
 export interface AnalyticsUploadClient {
@@ -22,6 +24,7 @@ export interface AnalyticsUploadClient {
         file: Buffer,
         fileName: string,
         mimeType?: string,
+        context?: AnalyticsAnalysisContext,
     ): Promise<AnalyticsAnalysisResponse>;
 }
 
@@ -45,11 +48,21 @@ export class AnalyticsUploadService {
             );
         }
 
-        return this.client.analyze(
-            upload.buffer,
-            fileName,
-            upload.mimetype || "application/octet-stream",
-        );
+        const mimeType =
+            upload.mimetype || "application/octet-stream";
+
+        return upload.context
+            ? this.client.analyze(
+                upload.buffer,
+                fileName,
+                mimeType,
+                upload.context
+            )
+            : this.client.analyze(
+                upload.buffer,
+                fileName,
+                mimeType
+            );
     }
 }
 

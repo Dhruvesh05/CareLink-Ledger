@@ -6,7 +6,7 @@ export interface DidResponse {
 }
 
 export interface SsiAuthorizationChallenge {
-  challenge: string;
+  challengeId: string;
   expiresAt: string;
 }
 
@@ -54,14 +54,16 @@ export async function requestSsiAuthorizationChallenge(): Promise<SsiAuthorizati
     token
   );
 
-  if (!response?.challenge || !response.expiresAt) {
+  if (!response?.challengeId || !response.expiresAt) {
     throw new Error("The backend returned an incomplete SSI challenge.");
   }
 
   return response;
 }
 
-export async function createSsiAuthorizationPresentation(): Promise<Record<string, unknown>> {
+export async function createSsiAuthorizationPresentation(
+  challengeId: string,
+): Promise<Record<string, unknown>> {
   const token = getToken();
   if (!token) {
     throw new Error("Authentication is required for identity verification.");
@@ -69,7 +71,7 @@ export async function createSsiAuthorizationPresentation(): Promise<Record<strin
 
   const response = await apiPost<SsiAuthorizationPresentation>(
     "/identity/authorization-presentation",
-    {},
+    { challengeId },
     token
   );
 

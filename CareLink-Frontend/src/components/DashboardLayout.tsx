@@ -25,8 +25,8 @@ function DashboardLayout({ children }: DashboardLayoutProps) {
   }, [role]);
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-[#F5F7F8] text-[#17212F] transition-colors duration-300 dark:bg-slate-950 dark:text-white">
-      <div className="fixed left-0 top-0 z-40 hidden h-screen w-72 overflow-y-auto overflow-x-hidden bg-white shadow-[8px_0_24px_rgba(23,33,47,0.04)] md:block">
+    <div className="app-shell min-h-screen w-full overflow-x-hidden">
+      <div className="fixed left-0 top-0 z-40 hidden h-screen w-72 overflow-y-auto overflow-x-hidden border-r border-[var(--cl-border)] bg-[var(--cl-surface)] md:block">
         {renderSidebar}
       </div>
 
@@ -38,7 +38,7 @@ function DashboardLayout({ children }: DashboardLayoutProps) {
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setMobileMenuOpen(false)}
           />
-          <div className="relative h-screen w-[82vw] max-w-sm overflow-hidden bg-white shadow-2xl">
+          <div className="relative h-screen w-[82vw] max-w-sm overflow-hidden border-r border-[var(--cl-border)] bg-[var(--cl-surface)] shadow-2xl">
             {renderSidebar}
           </div>
         </div>

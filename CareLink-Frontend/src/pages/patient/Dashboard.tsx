@@ -7,6 +7,7 @@ import DashboardLayout from "../../components/DashboardLayout";
 import RecordFileActions from "../../components/RecordFileActions";
 import { getAppointments, getInvoices } from "../../api/operations";
 import { ContentPanel, EmptyState, MetricCard, PageHeader, StatusBadge } from "../../components/ui";
+import { BarChart, DonutChart, LineChart } from "../../components/charts";
 
 function Dashboard() {
   const { user } = useAuth();
@@ -14,6 +15,7 @@ function Dashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [appointmentCount, setAppointmentCount] = useState<number | null>(null);
   const [outstandingInvoices, setOutstandingInvoices] = useState<number | null>(null);
+  const [appointments, setAppointments] = useState<Awaited<ReturnType<typeof getAppointments>>>([]);
 
   useEffect(() => {
     if (!user?.walletAddress) {
@@ -35,7 +37,10 @@ function Dashboard() {
     };
 
     void loadRecords();
-    void getAppointments().then((items) => setAppointmentCount(items.filter((item) => item.status === "requested" || item.status === "confirmed").length)).catch(() => setAppointmentCount(null));
+    void getAppointments().then((items) => {
+      setAppointments(items);
+      setAppointmentCount(items.filter((item) => item.status === "requested" || item.status === "confirmed").length);
+    }).catch(() => { setAppointmentCount(null); setAppointments([]); });
     void getInvoices().then((items) => setOutstandingInvoices(items.filter((item) => item.status === "issued").length)).catch(() => setOutstandingInvoices(null));
 
     return () => {
@@ -48,7 +53,7 @@ function Dashboard() {
     { title: "Upcoming Appointments", value: appointmentCount === null ? "—" : String(appointmentCount), icon: Calendar, tone: "bg-emerald-50 text-emerald-700" },
     { title: "Outstanding Invoices", value: outstandingInvoices === null ? "—" : String(outstandingInvoices), icon: Users, tone: "bg-violet-50 text-violet-700" },
     { title: "Health Summary", value: records.some((record) => record.emergency) ? "High priority" : "Stable", icon: HeartPulse, tone: "bg-rose-50 text-rose-700" },
-  ], [records]);
+  ], [appointmentCount, outstandingInvoices, records]);
 
   const categorySummary = useMemo(() => {
     const map = new Map<string, number>();
@@ -57,6 +62,17 @@ function Dashboard() {
       map.set(category, (map.get(category) ?? 0) + 1);
     });
     return [...map.entries()].map(([label, count]) => ({ label, count: String(count) }));
+  }, [records]);
+
+  const recordTrend = useMemo(() => {
+    const byDate = new Map<string, number>();
+    records.forEach((record) => {
+      const rawDate = record.createdAt ?? record.timestamp;
+      if (!rawDate) return;
+      const label = rawDate.slice(0, 10);
+      byDate.set(label, (byDate.get(label) ?? 0) + 1);
+    });
+    return [...byDate.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([label, value]) => ({ label, value }));
   }, [records]);
 
   const recentRecords = records.slice(0, 3);
@@ -109,6 +125,18 @@ function Dashboard() {
                 ))
               )}
             </div>
+          </ContentPanel>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <ContentPanel title="Record activity" subtitle="Available records grouped by category.">
+            <BarChart items={categorySummary.map((item) => ({ label: item.label, value: Number(item.count) }))} />
+          </ContentPanel>
+          <ContentPanel title="Appointment distribution" subtitle="Current appointment statuses returned by your care team.">
+            <DonutChart items={["requested", "confirmed", "completed", "cancelled"].map((status) => ({ label: status, value: appointments.filter((item) => item.status === status).length })).filter((item) => item.value > 0)} />
+          </ContentPanel>
+          <ContentPanel title="Recent record trend" subtitle="Records with a valid date are plotted chronologically.">
+            <LineChart items={recordTrend} />
           </ContentPanel>
         </div>
       </div>

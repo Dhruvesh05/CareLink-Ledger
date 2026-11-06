@@ -58,7 +58,51 @@ export interface MedicalRecordSummary {
   status?: string;
   transactionHash?: string;
   cid?: string;
+  plaintextHash?: string;
+  fileHash?: string;
   emergency?: boolean;
+  blockchainStatus?: "anchored" | "not_anchored";
+  fhirProcessingId?: string;
+  fhirStatus?: "processing" | "completed" | "failed";
+}
+
+export interface PatientMedicalRecordUploadResult {
+  record: MedicalRecordSummary & { recordId: number; cid: string };
+  processingId: string;
+  fhirStatus: "completed" | "failed";
+  fhirError?: string;
+}
+
+export async function uploadPatientMedicalRecord(
+  file: File,
+  category: string,
+  emergency: boolean,
+  presentation: Record<string, unknown>,
+  challengeId: string,
+): Promise<PatientMedicalRecordUploadResult> {
+  const token = getToken() ?? undefined;
+  const payload = new FormData();
+  payload.append("file", file);
+  payload.append("category", category);
+  payload.append("emergency", String(emergency));
+  payload.append("presentation", JSON.stringify(presentation));
+  payload.append("challengeId", challengeId);
+  const response = await apiPost<{ data: PatientMedicalRecordUploadResult }>(
+    "/medical-records/patient-upload",
+    payload,
+    token,
+  );
+  return response.data ?? response;
+}
+
+export interface FhirProcessingResult {
+  processingId: string;
+  recordId: number;
+  patientUserId: string;
+  originalCid: string;
+  status: "processing" | "completed" | "failed";
+  result?: Record<string, unknown>;
+  errorMessage?: string;
 }
 
 export async function prepareMedicalRecord(payload: FormData): Promise<PreparedMedicalRecordTransaction> {
@@ -71,6 +115,7 @@ export async function confirmMedicalRecord(
   preparationId: string,
   transactionHash: string,
   presentation: Record<string, unknown>,
+  challengeId: string,
 ): Promise<ConfirmedMedicalRecord> {
   const token = getToken() ?? undefined;
   const response = await apiPost<{ data: ConfirmedMedicalRecord }>(
@@ -79,6 +124,7 @@ export async function confirmMedicalRecord(
       preparationId,
       transactionHash,
       presentation,
+      challengeId,
     },
     token,
   );
@@ -109,20 +155,61 @@ export async function uploadFabricMedicalRecord(
 }
 
 export async function getPatientRecords(walletAddress: string): Promise<MedicalRecordSummary[]> {
-  const token = getToken() ?? undefined;
-  const response = await apiGet<{ records: MedicalRecordSummary[] }>(`/medical-records/patient/${walletAddress}`, token);
+  const token = getToken();
+  if (!token) {
+    throw new Error("Authentication is required to retrieve patient records.");
+  }
+
+  // Generate a fresh, single-use SSI presentation for this protected GET.
+  await createOrLoadAuthenticatedDid();
+  const challenge = await requestSsiAuthorizationChallenge();
+  const presentation = await createSsiAuthorizationPresentation(challenge.challengeId);
+
+  const response = await apiGet<{ records: MedicalRecordSummary[] }>(
+    `/medical-records/patient/${encodeURIComponent(walletAddress)}`,
+    token,
+    {
+      headers: {
+        "X-CareLink-Presentation": JSON.stringify(presentation),
+        "X-CareLink-Challenge-Id": challenge.challengeId,
+      },
+    },
+  );
+
   return response.records ?? [];
 }
 
 export async function getDoctorRecords(walletAddress: string): Promise<MedicalRecordSummary[]> {
   const token = getToken() ?? undefined;
-  const response = await apiGet<{ records: MedicalRecordSummary[] }>(`/medical-records/doctor/${walletAddress}`, token);
+  const challenge = await requestSsiAuthorizationChallenge();
+  const presentation = await createSsiAuthorizationPresentation(challenge.challengeId);
+  const response = await apiGet<{ records: MedicalRecordSummary[] }>(
+    `/medical-records/doctor/${encodeURIComponent(walletAddress)}`,
+    token,
+    {
+      headers: {
+        "X-CareLink-Presentation": JSON.stringify(presentation),
+        "X-CareLink-Challenge-Id": challenge.challengeId,
+      },
+    },
+  );
   return response.records ?? [];
 }
 
 export async function getHospitalRecords(walletAddress: string): Promise<MedicalRecordSummary[]> {
   const token = getToken() ?? undefined;
-  const response = await apiGet<{ records: MedicalRecordSummary[] }>(`/medical-records/hospital/${walletAddress}`, token);
+  const challenge = await requestSsiAuthorizationChallenge();
+  const presentation = await createSsiAuthorizationPresentation(challenge.challengeId);
+  const response = await apiGet<{ records: MedicalRecordSummary[] }>(
+    `/medical-records/hospital/${encodeURIComponent(walletAddress)}`,
+    token,
+    {
+      headers: {
+        "X-CareLink-Presentation": JSON.stringify(presentation),
+        "X-CareLink-Challenge-Id": challenge.challengeId,
+      },
+    },
+  );
   return response.records ?? [];
 }
 
@@ -186,8 +273,8 @@ export async function getMedicalRecordFile(
   // Persist/load the authenticated user's DID, obtain a fresh one-time
   // challenge, then create the presentation required by CareLink middleware.
   await createOrLoadAuthenticatedDid();
-  await requestSsiAuthorizationChallenge();
-  const presentation = await createSsiAuthorizationPresentation();
+  const challenge = await requestSsiAuthorizationChallenge();
+  const presentation = await createSsiAuthorizationPresentation(challenge.challengeId);
 
   // POST is required because requireCareLinkRole reads the presentation
   // from req.body before the controller can retrieve and decrypt the file.
@@ -196,7 +283,7 @@ export async function getMedicalRecordFile(
     token,
     {
       method: "POST",
-      body: JSON.stringify({ presentation }),
+      body: JSON.stringify({ presentation, challengeId: challenge.challengeId }),
     },
   );
 
@@ -208,4 +295,63 @@ export async function getMedicalRecordFile(
     ),
     mimeType: response.contentType || "application/octet-stream",
   };
+}
+
+export async function analyzeMedicalRecord(
+  recordId: number,
+  fileName?: string,
+): Promise<{ processingId: string; recordId: number; result: Record<string, unknown> }> {
+  const file = await getMedicalRecordFile(recordId, "attachment", fileName);
+  const token = getToken() ?? undefined;
+  if (!token) {
+    throw new Error("Authentication is required to analyze this medical record.");
+  }
+
+  await createOrLoadAuthenticatedDid();
+  const challenge = await requestSsiAuthorizationChallenge();
+  const presentation = await createSsiAuthorizationPresentation(challenge.challengeId);
+  const payload = new FormData();
+  payload.append(
+    "file",
+    new File([file.blob], file.fileName, { type: file.mimeType }),
+  );
+  payload.append("presentation", JSON.stringify(presentation));
+  payload.append("challengeId", challenge.challengeId);
+
+  return apiPost<{
+    processingId: string;
+    recordId: number;
+    result: Record<string, unknown>;
+  }>(
+    `/analytics/medical-record/${encodeURIComponent(String(recordId))}`,
+    payload,
+    token,
+  );
+}
+
+export async function getFhirProcessingResult(
+  recordId: number,
+  processingId: string,
+): Promise<FhirProcessingResult> {
+  const token = getToken() ?? undefined;
+  if (!token) {
+    throw new Error("Authentication is required to retrieve FHIR results.");
+  }
+
+  await createOrLoadAuthenticatedDid();
+  const challenge = await requestSsiAuthorizationChallenge();
+  const presentation = await createSsiAuthorizationPresentation(challenge.challengeId);
+  const response = await apiGet<{
+    data: FhirProcessingResult;
+  }>(
+    `/analytics/medical-record/${encodeURIComponent(String(recordId))}/results/${encodeURIComponent(processingId)}`,
+    token,
+    {
+      headers: {
+        "X-CareLink-Presentation": JSON.stringify(presentation),
+        "X-CareLink-Challenge-Id": challenge.challengeId,
+      },
+    },
+  );
+  return response.data ?? response;
 }

@@ -8,8 +8,8 @@ const mockVerifyPresentation = jest.fn() as jest.MockedFunction<
 const mockAuthorizeVerifiedPresentation = jest.fn() as jest.MockedFunction<
     (...args: any[]) => Promise<CareLinkAuthorizedIdentity>
 >;
-const mockGetPendingChallenge = jest.fn() as jest.MockedFunction<
-    (userId: string) => Promise<{ challenge: string; expiresAt: Date } | null>
+const mockGetChallenge = jest.fn() as jest.MockedFunction<
+    (userId: string, challengeId: string) => Promise<{ challengeId: string; challenge: string; expiresAt: Date } | null>
 >;
 const mockConsumeChallenge = jest.fn() as jest.MockedFunction<
     (userId: string, challenge: string) => Promise<boolean>
@@ -31,7 +31,7 @@ jest.unstable_mockModule("../services/CareLinkAuthorizationService", () => ({
 
 jest.unstable_mockModule("../../services/SsiAuthorizationChallengeService", () => ({
     default: {
-        getPendingChallenge: mockGetPendingChallenge,
+        getChallenge: mockGetChallenge,
         consumeChallenge: mockConsumeChallenge,
     },
 }));
@@ -55,7 +55,8 @@ describe("requireCareLinkRole", () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        mockGetPendingChallenge.mockResolvedValue({
+        mockGetChallenge.mockResolvedValue({
+            challengeId: "challenge-id",
             challenge: "server-challenge",
             expiresAt: new Date(Date.now() + 60_000),
         });
@@ -79,6 +80,7 @@ describe("requireCareLinkRole", () => {
                 auth: authenticatedUser,
                 body: {
                     presentation: { holder: identity.did },
+                    challengeId: "challenge-id",
                 },
             } as any,
             response,
@@ -92,7 +94,7 @@ describe("requireCareLinkRole", () => {
         );
         expect(mockConsumeChallenge).toHaveBeenCalledWith(
             authenticatedUser.userId,
-            "server-challenge"
+            "challenge-id"
         );
     });
 
@@ -112,6 +114,7 @@ describe("requireCareLinkRole", () => {
                 auth: authenticatedUser,
                 body: {
                     presentation: { holder: "did:key:patient" },
+                    challengeId: "challenge-id",
                 },
             } as any,
             response,
@@ -133,6 +136,7 @@ describe("requireCareLinkRole", () => {
                 auth: authenticatedUser,
                 body: {
                     presentation: { holder: "did:key:doctor" },
+                    challengeId: "challenge-id",
                 },
             } as any,
             response,
@@ -158,6 +162,7 @@ describe("requireCareLinkRole", () => {
                 body: {
                     presentation: { holder: "did:key:doctor" },
                     challenge: "client-controlled-challenge",
+                    challengeId: "challenge-id",
                 },
             } as any,
             createResponseMock(),
@@ -168,12 +173,43 @@ describe("requireCareLinkRole", () => {
             { holder: "did:key:doctor" },
             "server-challenge"
         );
+        expect(mockGetChallenge).toHaveBeenCalledWith(
+            authenticatedUser.userId,
+            "challenge-id"
+        );
     });
 
-    it("rejects a presentation supplied only through query parameters", async () => {
+    it("binds GET authorization to the challenge ID header", async () => {
+        mockVerifyPresentation.mockResolvedValue({ verified: true });
+        mockAuthorizeVerifiedPresentation.mockResolvedValue({
+            userId: authenticatedUser.userId,
+            did: "did:key:doctor",
+            role: "Doctor",
+        });
+
+        await requireCareLinkRole("Doctor")(
+            {
+                method: "GET",
+                auth: authenticatedUser,
+                headers: {
+                    "x-carelink-presentation": JSON.stringify({ holder: "did:key:doctor" }),
+                    "x-carelink-challenge-id": "challenge-id",
+                },
+                body: {},
+            } as any,
+            createResponseMock(),
+            jest.fn()
+        );
+
+        expect(mockGetChallenge).toHaveBeenCalledWith(
+            authenticatedUser.userId,
+            "challenge-id"
+        );
+    });
+
+    it("rejects a presentation supplied through query parameters", async () => {
         const next = jest.fn();
         const response = createResponseMock();
-
         await requireCareLinkRole("Doctor")(
             {
                 auth: authenticatedUser,
@@ -205,12 +241,12 @@ describe("requireCareLinkRole", () => {
         expect(next).not.toHaveBeenCalled();
 
         jest.clearAllMocks();
-        mockGetPendingChallenge.mockResolvedValue(null);
+        mockGetChallenge.mockResolvedValue(null);
 
         await requireCareLinkRole("Doctor")(
             {
                 auth: authenticatedUser,
-                body: { presentation: {} },
+                body: { presentation: {}, challengeId: "challenge-id" },
             } as any,
             response,
             next
@@ -238,7 +274,8 @@ describe("requireCareLinkRole", () => {
         expect(mockAuthorizeVerifiedPresentation).not.toHaveBeenCalled();
 
         jest.clearAllMocks();
-        mockGetPendingChallenge.mockResolvedValue({
+        mockGetChallenge.mockResolvedValue({
+            challengeId: "challenge-id",
             challenge: "server-challenge",
             expiresAt: new Date(Date.now() + 60_000),
         });
@@ -252,7 +289,7 @@ describe("requireCareLinkRole", () => {
         await requireCareLinkRole("Doctor")(
             {
                 auth: authenticatedUser,
-                body: { presentation: {} },
+                body: { presentation: {}, challengeId: "challenge-id" },
             } as any,
             response,
             next

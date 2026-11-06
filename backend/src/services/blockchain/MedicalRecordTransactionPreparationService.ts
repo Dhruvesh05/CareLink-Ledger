@@ -39,6 +39,7 @@ import {
 export interface PrepareMedicalRecordInput {
     doctorWallet: string;
     patientWallet: string;
+    patientUserId?: string;
     file: Express.Multer.File;
     category: string;
     emergency: boolean;
@@ -286,11 +287,17 @@ export class MedicalRecordTransactionPreparationService {
 
                 patientWallet,
 
+                patientUserId:
+                    input.patientUserId,
+
                 cid:
                     uploadResult.cid,
 
                 fileHash:
                     encryptedFileHash,
+
+                plaintextHash:
+                    sha256FromBuffer(input.file.buffer),
 
                 fileName:
                     uploadResult.fileName,

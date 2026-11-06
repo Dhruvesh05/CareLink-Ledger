@@ -164,6 +164,12 @@ describe("MedicalRecordTransactionPreparationService", () => {
         expect(preparationDocument.fileHash)
             .toBe(sha256FromBuffer(uploadedBuffer));
 
+        expect(preparationDocument.plaintextHash)
+            .toBe(sha256FromBuffer(fileBuffer));
+
+        expect(preparationDocument.plaintextHash)
+            .not.toBe(preparationDocument.fileHash);
+
         expect(preparationDocument.encryptionVersion)
             .toBe(1);
 

@@ -237,6 +237,11 @@ describe("MedicalRecordService IPFS transaction flow", () => {
                         fileName: "report.pdf",
                         mimeType: "application/pdf",
                         fileSize: file.buffer.length,
+                        fileHash: expect.not.stringMatching(
+                            sha256FromBuffer(file.buffer)
+                        ),
+                        plaintextHash:
+                            sha256FromBuffer(file.buffer),
                         cid: "bafy-test-cid",
                         category: "diagnostic",
                         emergency: false,
@@ -400,7 +405,9 @@ describe("MedicalRecordService IPFS transaction flow", () => {
                     encryptionAuthTag:
                         encrypted.metadata.authTag,
                     encryptionKeyReference:
-                        encrypted.metadata.keyReference
+                        encrypted.metadata.keyReference,
+                    plaintextHash:
+                        sha256FromBuffer(content)
                 });
 
                 const result =
@@ -429,6 +436,105 @@ describe("MedicalRecordService IPFS transaction flow", () => {
                     mimeType: "application/pdf",
                     fileSize: content.length
                 });
+            }
+        );
+
+        it(
+            "rejects decrypted content that does not match plaintextHash",
+            async () => {
+                const content =
+                    Buffer.from("medical-record-content");
+                const managedKey =
+                    await keyManagementService.createKey();
+                const encrypted =
+                    encryptionService.encrypt(
+                        content,
+                        managedKey.key,
+                        managedKey.reference
+                    );
+
+                mockGetMedicalRecord.mockResolvedValue({
+                    ipfsHash: "bafy-record-cid",
+                    fileHash:
+                        sha256FromBuffer(encrypted.ciphertext)
+                });
+                mockMongoFindOne.mockResolvedValue({
+                    encryptionVersion:
+                        encrypted.metadata.version,
+                    encryptionAlgorithm:
+                        encrypted.metadata.algorithm,
+                    encryptionIv:
+                        encrypted.metadata.iv,
+                    encryptionAuthTag:
+                        encrypted.metadata.authTag,
+                    encryptionKeyReference:
+                        encrypted.metadata.keyReference,
+                    plaintextHash:
+                        sha256FromBuffer(content)
+                });
+                mockIpfsService.downloadFile.mockResolvedValue(
+                    encrypted.ciphertext
+                );
+
+                const decryptSpy =
+                    jest.spyOn(
+                        encryptionService,
+                        "decrypt"
+                    ).mockReturnValue(
+                        Buffer.from("modified-content")
+                    );
+
+                await expect(
+                    service.getMedicalRecordContent(42)
+                ).rejects.toThrow(
+                    "Medical record plaintext integrity verification failed"
+                );
+                expect(
+                    mockIpfsService.downloadFile
+                ).toHaveBeenCalled();
+                decryptSpy.mockRestore();
+            }
+        );
+
+        it(
+            "retrieves legacy records without plaintextHash",
+            async () => {
+                const content =
+                    Buffer.from("legacy-medical-record");
+                const managedKey =
+                    await keyManagementService.createKey();
+                const encrypted =
+                    encryptionService.encrypt(
+                        content,
+                        managedKey.key,
+                        managedKey.reference
+                    );
+
+                mockGetMedicalRecord.mockResolvedValue({
+                    ipfsHash: "bafy-legacy-cid",
+                    fileHash:
+                        sha256FromBuffer(encrypted.ciphertext)
+                });
+                mockMongoFindOne.mockResolvedValue({
+                    encryptionVersion:
+                        encrypted.metadata.version,
+                    encryptionAlgorithm:
+                        encrypted.metadata.algorithm,
+                    encryptionIv:
+                        encrypted.metadata.iv,
+                    encryptionAuthTag:
+                        encrypted.metadata.authTag,
+                    encryptionKeyReference:
+                        encrypted.metadata.keyReference
+                });
+                mockIpfsService.downloadFile.mockResolvedValue(
+                    encrypted.ciphertext
+                );
+
+                const result =
+                    await service.getMedicalRecordContent(42);
+
+                expect(result.content).toEqual(content);
             }
         );
 
@@ -789,7 +895,8 @@ describe("MedicalRecordService IPFS transaction flow", () => {
                             cid: "bafy-update-cid",
                             fileName: "report.pdf",
                             mimeType: "application/pdf",
-                            category: "updated-diagnostic"
+                            category: "updated-diagnostic",
+                            plaintextHash: sha256FromBuffer(file.buffer)
                         })
                     })
                 );
@@ -898,5 +1005,35 @@ describe("MedicalRecordService IPFS transaction flow", () => {
                 ).not.toHaveBeenCalled();
             }
         );
+
+        it("stores a Patient upload without invoking blockchain creation", async () => {
+            mockIpfsService.uploadFile.mockResolvedValue({
+                cid: "bafy-patient-upload",
+                size: file.buffer.length,
+                fileName: file.originalname,
+                mimeType: file.mimetype
+            });
+            mockMongoCreate.mockResolvedValue({ recordId: 123 });
+
+            const result = await service.createPatientStorageRecord(
+                patient,
+                "patient-user-1",
+                file,
+                "diagnostic",
+                false
+            );
+
+            expect(result.blockchainStatus).toBe("not_anchored");
+            expect(result.cid).toBe("bafy-patient-upload");
+            expect(mockCreateMedicalRecord).not.toHaveBeenCalled();
+            expect(mockMongoCreate).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    recordType: "storage",
+                    blockchainStatus: "not_anchored",
+                    patientUserId: "patient-user-1",
+                    cid: "bafy-patient-upload"
+                })
+            );
+        });
     });
 });

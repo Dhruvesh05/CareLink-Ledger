@@ -26,6 +26,12 @@ import { MedicalRecordPreflightService } from "../services/blockchain/MedicalRec
 import { MedicalRecordTransactionBuilder } from "../blockchain/common/MedicalRecordTransactionBuilder";
 import { BlockchainRoleService } from "../services/blockchain/BlockchainRoleService";
 import type { SupportedEvmNetwork } from "../blockchain/config/supportedNetworks";
+import { getDefaultSupportedEvmNetwork } from "../blockchain/config/supportedNetworks";
+import AccessRequestModel from "../models/AccessRequest";
+import UserModel from "../models/User";
+import MedicalRecordModel from "../models/MedicalRecordModel";
+import FhirProcessingResultModel from "../models/FhirProcessingResultModel";
+import { AnalyticsUploadService } from "../analytics/services/AnalyticsUploadService";
 
 import AuthorizationService
     from "../ssi/services/AuthorizationService";
@@ -359,6 +365,43 @@ export class MedicalRecordController {
             authorizationService;
     }
 
+    private async assertDoctorReadPermission(
+        req: Request,
+        recordId: number
+    ): Promise<void> {
+        if (req.auth?.role !== "Doctor") {
+            return;
+        }
+        const network = req.careLinkNetwork ?? getDefaultSupportedEvmNetwork();
+        const grant = await AccessRequestModel.findOne({
+            doctorUserId: req.auth.userId,
+            status: "active",
+            permissionType: "READ_ONLY",
+            recordIds: recordId,
+            "recordRefs": {
+                $elemMatch: {
+                    chainId: network.chainId,
+                    contractAddress: network.medicalRecordAddress.toLowerCase(),
+                    recordId,
+                },
+            },
+            $or: [
+                { expiresAt: { $exists: false } },
+                { expiresAt: { $gt: new Date() } },
+            ],
+        }).select("_id").lean().exec();
+
+        if (grant) {
+            return;
+        }
+
+        const provider = BlockchainFactory.getProviderForChainId(network.chainId);
+        if (await provider.isAuthorizedDoctor(recordId, req.auth.walletAddress)) {
+            return;
+        }
+        throw new Error("Unauthorized");
+    }
+
     private getBlockchainService(req: Request): IBlockchainProvider {
         return this.blockchainService ?? (
             req.careLinkNetwork
@@ -469,6 +512,25 @@ export class MedicalRecordController {
                     "patient"
                 );
 
+            const patientUser =
+                await UserModel.findOne({
+                    walletAddress: patientWallet.toLowerCase(),
+                    role: "Patient",
+                    active: true
+                }).select("_id did").lean().exec();
+
+            if (!patientUser) {
+                throw new Error(
+                    "An active CareLink Patient account is required for this record"
+                );
+            }
+
+            if (!patientUser.did) {
+                throw new Error(
+                    "The patient must have an established SSI identity before record creation"
+                );
+            }
+
             const category =
                 requireString(
                     req.body.category,
@@ -496,6 +558,8 @@ export class MedicalRecordController {
                     doctorWallet:
                         req.auth.walletAddress,
                     patientWallet,
+                    patientUserId:
+                        String(patientUser._id),
                     file,
                     category,
                     emergency
@@ -571,6 +635,91 @@ export class MedicalRecordController {
                 res,
                 error
             );
+        }
+    }
+
+    async uploadPatientMedicalRecord(req: Request, res: Response) {
+        try {
+            if (!req.auth?.userId || req.auth.role !== "Patient" || !req.careLinkAuth) {
+                return res.status(403).json({ success: false, message: "Patient authorization is required" });
+            }
+            const user = await UserModel.findOne({
+                _id: req.auth.userId,
+                role: "Patient",
+                active: { $ne: false }
+            }).select("walletAddress").lean().exec();
+            if (!user) {
+                return res.status(403).json({ success: false, message: "User account is inactive or unavailable" });
+            }
+            const file = req.file;
+            if (!file) {
+                return res.status(400).json({ success: false, message: "Missing file upload" });
+            }
+            const category = requireString(req.body.category, "category");
+            const emergency = parseEmergency(req.body.emergency);
+            const record = await this.getMedicalRecordService(req).createPatientStorageRecord(
+                user.walletAddress,
+                req.auth.userId,
+                file,
+                category,
+                emergency
+            );
+            const processing = await FhirProcessingResultModel.create({
+                patientUserId: req.auth.userId,
+                recordId: record.recordId,
+                originalCid: record.cid,
+                status: "processing"
+            });
+            await MedicalRecordModel.updateOne(
+                { recordId: record.recordId },
+                { $set: { fhirProcessingId: String(processing._id), fhirStatus: "processing" } }
+            ).exec();
+            try {
+                const result = await new AnalyticsUploadService().analyzeUpload({
+                    buffer: file.buffer,
+                    originalname: file.originalname,
+                    mimetype: file.mimetype,
+                    context: {
+                        patientId: req.auth.userId,
+                        medicalRecordId: record.recordId,
+                        originalRecordReference: record.cid
+                    }
+                });
+                await FhirProcessingResultModel.updateOne(
+                    { _id: processing._id },
+                    { $set: { status: "completed", result } }
+                ).exec();
+                await MedicalRecordModel.updateOne(
+                    { recordId: record.recordId },
+                    { $set: { fhirStatus: "completed" } }
+                ).exec();
+                return res.status(201).json({
+                    success: true,
+                    record,
+                    processingId: String(processing._id),
+                    fhirStatus: "completed"
+                });
+            } catch (error) {
+                const message = error instanceof Error ? error.message : "FHIR processing failed";
+                await FhirProcessingResultModel.updateOne(
+                    { _id: processing._id },
+                    { $set: { status: "failed", errorMessage: message } }
+                ).exec();
+                await MedicalRecordModel.updateOne(
+                    { recordId: record.recordId },
+                    { $set: { fhirStatus: "failed" } }
+                ).exec();
+                return res.status(201).json({
+                    success: true,
+                    record,
+                    processingId: String(processing._id),
+                    fhirStatus: "failed",
+                    fhirError: message
+                });
+            }
+        } catch (error) {
+            console.error("Patient Medical Record Upload Error:", error);
+            return sendError(res, error);
         }
     }
 
@@ -665,6 +814,8 @@ export class MedicalRecordController {
                         req.auth.walletAddress
                     );
 
+            await this.assertDoctorReadPermission(req, recordId);
+
             return res.json({
                 success: true,
                 record:
@@ -718,6 +869,8 @@ export class MedicalRecordController {
                     "Unauthorized"
                 );
             }
+
+            await this.assertDoctorReadPermission(req, recordId);
 
             const result =
                 await this.getMedicalRecordService(req)
@@ -804,6 +957,8 @@ export class MedicalRecordController {
             const record =
                 await this.getMedicalRecordService(req)
                     .viewRecord(recordId);
+
+            await this.assertDoctorReadPermission(req, recordId);
 
             return res.json({
                 success: true,

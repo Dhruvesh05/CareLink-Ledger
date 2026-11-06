@@ -26,9 +26,13 @@ export class IdentityController {
         try {
             const subjectDid =
                 await this.userDidService.getDid(req.auth.userId);
+            const challengeId =
+                typeof req.body?.challengeId === "string"
+                    ? req.body.challengeId.trim()
+                    : "";
             const challenge =
                 await this.ssiAuthorizationChallengeService
-                    .getPendingChallenge(req.auth.userId);
+                    .getChallenge(req.auth.userId, challengeId);
 
             if (!challenge) {
                 return sendError(
@@ -113,7 +117,10 @@ export class IdentityController {
             return sendSuccess(
                 res,
                 "SSI authorization challenge created",
-                challenge
+                {
+                    challengeId: challenge.challengeId,
+                    expiresAt: challenge.expiresAt
+                }
             );
         } catch {
             return sendError(
@@ -183,11 +190,27 @@ export class IdentityController {
             throw new Error("CareLink issuer is not configured");
         }
 
-        return CareLinkCredentialService.issueRoleCredential({
+        const credential =
+            await CareLinkCredentialService.issueRoleCredential({
             userId,
             subjectDid,
             issuerDid: env.CARELINK_ISSUER_DID
         });
+
+        try {
+            await CredentialPersistenceService.saveCredentialToIpfs(
+                credential,
+                userId,
+                subjectDid
+            );
+        } catch (error) {
+            console.error(
+                "Role credential was issued but decentralized persistence failed",
+                error
+            );
+        }
+
+        return credential;
     }
 }
 

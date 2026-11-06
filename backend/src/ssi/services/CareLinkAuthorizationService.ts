@@ -45,7 +45,10 @@ export class CareLinkAuthorizationService implements ICareLinkAuthorizationServi
             throw new Error("Credential issuer is not trusted.");
         }
 
-        const user = await UserModel.findOne({ did: holderDid });
+        const user = await UserModel.findOne({
+            did: holderDid,
+            active: { $ne: false }
+        });
         if (!user) {
             throw new Error("Holder DID is not mapped to an application user.");
         }

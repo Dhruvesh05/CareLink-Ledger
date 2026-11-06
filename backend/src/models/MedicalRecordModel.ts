@@ -7,10 +7,15 @@ export interface IMedicalRecord
     extends Document {
 
     recordId: number;
+    recordType?: "blockchain" | "storage";
+    blockchainStatus?: "anchored" | "not_anchored";
+    fhirProcessingId?: string;
+    fhirStatus?: "processing" | "completed" | "failed";
     chainId?: number;
     contractAddress?: string;
 
     patientWallet: string;
+    patientUserId?: string;
 
     fileName: string;
 
@@ -19,6 +24,7 @@ export interface IMedicalRecord
     fileSize: number;
 
     fileHash: string;
+    plaintextHash?: string;
     cid: string;
     encryptionVersion: number;
     encryptionAlgorithm: string;
@@ -45,6 +51,30 @@ const MedicalRecordSchema =
                 required: true
             },
 
+            recordType: {
+                type: String,
+                enum: ["blockchain", "storage"],
+                default: "blockchain",
+                index: true
+            },
+
+            blockchainStatus: {
+                type: String,
+                enum: ["anchored", "not_anchored"],
+                default: "anchored",
+                index: true
+            },
+
+            fhirProcessingId: {
+                type: String,
+                index: true
+            },
+
+            fhirStatus: {
+                type: String,
+                enum: ["processing", "completed", "failed"]
+            },
+
             chainId: {
                 type: Number
             },
@@ -60,6 +90,12 @@ const MedicalRecordSchema =
                 required: true,
                 index: true,
                 lowercase: true
+            },
+
+            patientUserId: {
+                type: String,
+                index: true,
+                trim: true
             },
 
             fileName: {
@@ -83,6 +119,11 @@ const MedicalRecordSchema =
             fileHash: {
                 type: String,
                 required: true,
+                index: true
+            },
+
+            plaintextHash: {
+                type: String,
                 index: true
             },
 

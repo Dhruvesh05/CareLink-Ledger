@@ -23,6 +23,7 @@ export interface ConfirmedMedicalRecord {
     doctorWallet: string;
     hospitalWallet: string;
     patientWallet: string;
+    patientUserId?: string;
 
     cid: string;
     fileHash: string;
@@ -616,6 +617,9 @@ export class MedicalRecordTransactionConfirmationService {
                 patientWallet:
                     preparation.patientWallet,
 
+                patientUserId:
+                    preparation.patientUserId,
+
                 fileName:
                     preparation.fileName,
 
@@ -627,6 +631,9 @@ export class MedicalRecordTransactionConfirmationService {
 
                 fileHash:
                     preparation.fileHash,
+
+                plaintextHash:
+                    preparation.plaintextHash,
 
                 cid:
                     preparation.cid,

@@ -24,9 +24,9 @@ const corsOrigins = (process.env.CORS_ORIGINS || "")
   .filter(Boolean);
 
 app.use(
-  cors(
-    corsOrigins.length
-      ? {
+  cors({
+      ...(corsOrigins.length
+        ? {
           origin: (origin, callback) => {
             if (!origin || corsOrigins.includes(origin)) {
               callback(null, true);
@@ -36,8 +36,15 @@ app.use(
             callback(new Error("CORS origin not allowed"));
           },
         }
-      : undefined,
-  ),
+        : {}),
+      allowedHeaders: [
+        "Authorization",
+        "Content-Type",
+        "X-CareLink-Chain-Id",
+        "X-CareLink-Presentation",
+      ],
+      exposedHeaders: ["Content-Disposition", "X-Request-Id"],
+    }),
 );
 
 app.use(helmet());

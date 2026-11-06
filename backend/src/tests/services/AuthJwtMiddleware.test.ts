@@ -1,25 +1,20 @@
-import { describe, expect, it, beforeEach } from "@jest/globals";
+import { describe, expect, it, beforeEach, jest } from "@jest/globals";
 import jwt from "jsonwebtoken";
-import { jest } from "@jest/globals";
-jest.mock("../../config/env", () => ({
+import { Request, Response, NextFunction } from "express";
+
+jest.unstable_mockModule("../../config/env", () => ({
     env: {
         JWT_SECRET: "test-jwt-secret-for-auth-tests",
     },
 }));
-import { Request, Response, NextFunction } from "express";
 
-import {
-    generateToken,
-    verifyToken,
-} from "../../utils/jwt";
-
-import {
-    authenticate,
-} from "../../middleware/auth";
+const { generateToken, verifyToken } =
+    await import("../../utils/jwt");
+const { authenticate } =
+    await import("../../middleware/auth");
+import UserModel from "../../models/User";
 
 const JWT_SECRET = "test-jwt-secret-for-auth-tests";
-
-process.env.JWT_SECRET = JWT_SECRET;
 
 const payload = {
     userId: "user-123",
@@ -34,44 +29,39 @@ function createResponseMock() {
     return res;
 }
 
+function activeUserQuery(result: unknown) {
+    return {
+        select: () => ({
+            lean: () => ({
+                exec: jest.fn().mockResolvedValue(result)
+            })
+        })
+    };
+}
+
 describe("JWT authentication", () => {
     it("generates and verifies a valid JWT", () => {
         const token = generateToken(payload);
-        const decoded = verifyToken(token);
-
-        expect(decoded).toEqual(payload);
+        expect(verifyToken(token)).toEqual(payload);
     });
 
     it("rejects a tampered JWT", () => {
         const token = generateToken(payload);
-        const tampered = `${token}tampered`;
-
-        expect(() => verifyToken(tampered)).toThrow();
+        expect(() => verifyToken(`${token}tampered`)).toThrow();
     });
 
     it("rejects a JWT signed with the wrong secret", () => {
-        const token = jwt.sign(
-            payload,
-            "wrong-secret",
-            { expiresIn: "1d" }
-        );
-
+        const token = jwt.sign(payload, "wrong-secret", { expiresIn: "1d" });
         expect(() => verifyToken(token)).toThrow();
     });
 
     it("rejects a JWT with an invalid role", () => {
         const token = jwt.sign(
-            {
-                ...payload,
-                role: "UnknownRole",
-            },
+            { ...payload, role: "UnknownRole" },
             JWT_SECRET,
             { expiresIn: "1d" }
         );
-
-        expect(() => verifyToken(token)).toThrow(
-            "Invalid JWT role"
-        );
+        expect(() => verifyToken(token)).toThrow("Invalid JWT role");
     });
 });
 
@@ -80,21 +70,18 @@ describe("authenticate middleware", () => {
 
     beforeEach(() => {
         next = jest.fn();
+        jest.spyOn(UserModel, "findOne").mockReturnValue(
+            activeUserQuery({
+                _id: payload.userId,
+                walletAddress: payload.walletAddress,
+                role: payload.role
+            }) as never
+        );
     });
 
-    it("rejects a request without authorization", () => {
-        const req = {
-            headers: {},
-        } as Request;
-
+    it("rejects a request without authorization", async () => {
         const res = createResponseMock();
-
-        authenticate(
-            req,
-            res,
-            next as unknown as NextFunction
-        );
-
+        await authenticate({ headers: {} } as Request, res, next as unknown as NextFunction);
         expect(res.status).toHaveBeenCalledWith(401);
         expect(res.json).toHaveBeenCalledWith({
             success: false,
@@ -103,21 +90,11 @@ describe("authenticate middleware", () => {
         expect(next).not.toHaveBeenCalled();
     });
 
-    it("rejects a malformed authorization header", () => {
-        const req = {
-            headers: {
-                authorization: "Basic abc123",
-            },
-        } as Request;
-
+    it("rejects a malformed authorization header", async () => {
         const res = createResponseMock();
-
-        authenticate(
-            req,
-            res,
-            next as unknown as NextFunction
-        );
-
+        await authenticate({
+            headers: { authorization: "Basic abc123" }
+        } as Request, res, next as unknown as NextFunction);
         expect(res.status).toHaveBeenCalledWith(401);
         expect(res.json).toHaveBeenCalledWith({
             success: false,
@@ -126,21 +103,11 @@ describe("authenticate middleware", () => {
         expect(next).not.toHaveBeenCalled();
     });
 
-    it("rejects an invalid JWT", () => {
-        const req = {
-            headers: {
-                authorization: "Bearer invalid-token",
-            },
-        } as Request;
-
+    it("rejects an invalid JWT", async () => {
         const res = createResponseMock();
-
-        authenticate(
-            req,
-            res,
-            next as unknown as NextFunction
-        );
-
+        await authenticate({
+            headers: { authorization: "Bearer invalid" }
+        } as Request, res, next as unknown as NextFunction);
         expect(res.status).toHaveBeenCalledWith(401);
         expect(res.json).toHaveBeenCalledWith({
             success: false,
@@ -149,26 +116,53 @@ describe("authenticate middleware", () => {
         expect(next).not.toHaveBeenCalled();
     });
 
-    it("accepts a valid JWT and attaches authentication data", () => {
+    it("accepts a valid JWT and attaches authentication data", async () => {
         const token = generateToken(payload);
-
         const req = {
-            headers: {
-                authorization: "Bearer " + token,
-            },
+            headers: { authorization: "Bearer " + token }
         } as Request;
-
         const res = createResponseMock();
 
-        authenticate(
-            req,
-            res,
-            next as unknown as NextFunction
-        );
+        await authenticate(req, res, next as unknown as NextFunction);
 
         expect(next).toHaveBeenCalledTimes(1);
         expect(req.auth).toEqual(payload);
         expect(res.status).not.toHaveBeenCalled();
-        expect(res.json).not.toHaveBeenCalled();
+    });
+
+    it("rejects a token for an inactive or changed account", async () => {
+        jest.spyOn(UserModel, "findOne").mockReturnValue(
+            activeUserQuery(null) as never
+        );
+        const token = generateToken(payload);
+        const res = createResponseMock();
+
+        await authenticate({
+            headers: { authorization: "Bearer " + token }
+        } as Request, res, next as unknown as NextFunction);
+
+        expect(res.status).toHaveBeenCalledWith(401);
+        expect(res.json).toHaveBeenCalledWith({
+            success: false,
+            message: "Invalid or inactive account"
+        });
+        expect(next).not.toHaveBeenCalled();
+    });
+
+    it("accepts a legacy user without active because the schema default is true", async () => {
+        const legacyUser = new UserModel({
+            walletAddress: payload.walletAddress,
+            role: payload.role
+        });
+        expect(legacyUser.active).toBe(true);
+
+        const token = generateToken(payload);
+        const res = createResponseMock();
+        await authenticate({
+            headers: { authorization: "Bearer " + token }
+        } as Request, res, next as unknown as NextFunction);
+
+        expect(next).toHaveBeenCalledTimes(1);
+        expect(res.status).not.toHaveBeenCalled();
     });
 });

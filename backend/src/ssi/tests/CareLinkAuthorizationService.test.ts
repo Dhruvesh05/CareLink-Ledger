@@ -10,10 +10,11 @@ type TestUser = {
     _id: { toString: () => string };
     did: string;
     role: UserRole;
+    active: boolean;
 };
 
 const mockFindOne = jest.fn() as jest.MockedFunction<
-    (filter: { did: string }) => Promise<TestUser | null>
+    (filter: { did: string; active: boolean }) => Promise<TestUser | null>
 >;
 
 jest.unstable_mockModule("../../models/User", () => ({
@@ -64,6 +65,7 @@ describe("CareLinkAuthorizationService", () => {
             _id: { toString: () => "user-1" },
             did: holderDid,
             role: "Doctor",
+            active: true,
         });
     });
 
@@ -83,6 +85,7 @@ describe("CareLinkAuthorizationService", () => {
             _id: { toString: () => "patient-1" },
             did: holderDid,
             role: "Patient",
+            active: true,
         });
 
         await expect(service.authorizeVerifiedPresentation({
@@ -100,11 +103,26 @@ describe("CareLinkAuthorizationService", () => {
         })).rejects.toThrow("not mapped");
     });
 
+    it("rejects an inactive application user", async () => {
+        mockFindOne.mockResolvedValue(null);
+
+        await expect(service.authorizeVerifiedPresentation({
+            presentation: createPresentation(),
+            verification: verified(),
+        })).rejects.toThrow("not mapped");
+
+        expect(mockFindOne).toHaveBeenCalledWith({
+            did: holderDid,
+            active: { $ne: false },
+        });
+    });
+
     it("rejects a holder DID that differs from the persisted DID", async () => {
         mockFindOne.mockResolvedValue({
             _id: { toString: () => "user-1" },
             did: "did:key:other",
             role: "Doctor",
+            active: true,
         });
 
         await expect(service.authorizeVerifiedPresentation({
@@ -118,6 +136,7 @@ describe("CareLinkAuthorizationService", () => {
             _id: { toString: () => "user-1" },
             did: holderDid,
             role: "Patient",
+            active: true,
         });
 
         await expect(service.authorizeVerifiedPresentation({

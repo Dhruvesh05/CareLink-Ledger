@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 
 type ChallengeRecord = {
+    _id?: string;
     challenge: string;
     expiresAt: Date;
 };
@@ -22,7 +23,7 @@ const mockFindOneAndUpdate = jest.fn() as jest.MockedFunction<
     ) => Promise<ChallengeRecord | null>
 >;
 
-jest.mock("../../models/SsiAuthorizationChallenge", () => ({
+jest.unstable_mockModule("../../models/SsiAuthorizationChallenge", () => ({
     __esModule: true,
     default: {
         create: (...args: [Record<string, unknown>]) => mockCreate(...args),
@@ -37,10 +38,10 @@ jest.mock("../../models/SsiAuthorizationChallenge", () => ({
     },
 }));
 
-import {
+const {
     SsiAuthorizationChallengeService,
     SSI_AUTHORIZATION_CHALLENGE_TTL_MS,
-} from "../../services/SsiAuthorizationChallengeService";
+} = await import("../../services/SsiAuthorizationChallengeService");
 
 describe("SsiAuthorizationChallengeService", () => {
     const service = new SsiAuthorizationChallengeService();
@@ -54,6 +55,7 @@ describe("SsiAuthorizationChallengeService", () => {
     it("generates and persists a cryptographically random challenge", async () => {
         const expiresAt = new Date(Date.now() + SSI_AUTHORIZATION_CHALLENGE_TTL_MS);
         mockCreate.mockResolvedValue({
+            _id: "challenge-created",
             challenge: "stored-challenge",
             expiresAt,
         });
@@ -61,6 +63,7 @@ describe("SsiAuthorizationChallengeService", () => {
         const result = await service.createChallenge("user-1");
 
         expect(result.challenge).toMatch(/^[a-f0-9]{64}$/);
+        expect(result.challengeId).toBe("challenge-created");
         expect(result.expiresAt.getTime()).toBeGreaterThan(Date.now());
         expect(result.expiresAt.getTime() - Date.now()).toBeLessThanOrEqual(
             SSI_AUTHORIZATION_CHALLENGE_TTL_MS
@@ -75,12 +78,17 @@ describe("SsiAuthorizationChallengeService", () => {
 
     it("loads only the latest unexpired challenge for the user", async () => {
         const record = {
-            challenge: "pending-challenge",
+                _id: "challenge-id",
+                challenge: "pending-challenge",
             expiresAt: new Date(Date.now() + 60_000),
         };
         mockSort.mockResolvedValue(record);
 
-        await expect(service.getPendingChallenge("user-1")).resolves.toEqual(record);
+        await expect(service.getPendingChallenge("user-1")).resolves.toEqual({
+            challengeId: "challenge-id",
+            challenge: record.challenge,
+            expiresAt: record.expiresAt
+        });
 
         expect(mockFindOne).toHaveBeenCalledWith({
             userId: "user-1",
@@ -88,6 +96,47 @@ describe("SsiAuthorizationChallengeService", () => {
             expiresAt: { $gt: expect.any(Date) },
         });
         expect(mockSort).toHaveBeenCalledWith({ createdAt: -1 });
+    });
+
+    it("retrieves and consumes the exact challenge ID for the user", async () => {
+        mockFindOne.mockReturnValue({
+            sort: mockSort
+        });
+        mockFindOne.mockResolvedValue({
+            _id: "challenge-a",
+            challenge: "nonce-a",
+            expiresAt: new Date(Date.now() + 60_000)
+        } as never);
+
+        await expect(service.getChallenge("user-1", "challenge-a")).resolves.toEqual(
+            expect.objectContaining({
+                challengeId: "challenge-a",
+                challenge: "nonce-a"
+            })
+        );
+        expect(mockFindOne).toHaveBeenCalledWith({
+            _id: "challenge-a",
+            userId: "user-1",
+            used: false,
+            expiresAt: { $gt: expect.any(Date) }
+        });
+
+        mockFindOneAndUpdate.mockResolvedValue({
+            _id: "challenge-a",
+            challenge: "nonce-a",
+            expiresAt: new Date(Date.now() + 60_000)
+        });
+        await expect(service.consumeChallenge("user-1", "challenge-a")).resolves.toBe(true);
+        expect(mockFindOneAndUpdate).toHaveBeenCalledWith(
+            {
+                userId: "user-1",
+                _id: "challenge-a",
+                used: false,
+                expiresAt: { $gt: expect.any(Date) }
+            },
+            { $set: { used: true } },
+            { new: true }
+        );
     });
 
     it("rejects missing or expired pending challenges", async () => {
@@ -100,7 +149,7 @@ describe("SsiAuthorizationChallengeService", () => {
 
     it("consumes a matching challenge atomically", async () => {
         mockFindOneAndUpdate.mockResolvedValue({
-            challenge: "challenge-a",
+            _id: "challenge-a",
             expiresAt: new Date(Date.now() + 60_000),
         });
 
@@ -111,7 +160,7 @@ describe("SsiAuthorizationChallengeService", () => {
         expect(mockFindOneAndUpdate).toHaveBeenCalledWith(
             {
                 userId: "user-1",
-                challenge: "challenge-a",
+                _id: "challenge-a",
                 used: false,
                 expiresAt: { $gt: expect.any(Date) },
             },

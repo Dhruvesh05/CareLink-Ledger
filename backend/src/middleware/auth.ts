@@ -8,6 +8,7 @@ import {
     AuthTokenPayload,
     verifyToken
 } from "../utils/jwt";
+import UserModel from "../models/User";
 
 declare global {
     namespace Express {
@@ -17,7 +18,7 @@ declare global {
     }
 }
 
-export function authenticate(
+export async function authenticate(
     req: Request,
     res: Response,
     next: NextFunction
@@ -47,6 +48,20 @@ export function authenticate(
 
     try {
         const payload = verifyToken(token);
+
+        const user = await UserModel.findOne({
+            _id: payload.userId,
+            active: { $ne: false },
+            walletAddress: payload.walletAddress.toLowerCase(),
+            role: payload.role
+        }).select("_id walletAddress role").lean().exec();
+
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: "Invalid or inactive account"
+            });
+        }
 
         req.auth = payload;
 

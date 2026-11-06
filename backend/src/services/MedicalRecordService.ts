@@ -31,6 +31,10 @@ export type MedicalRecordChainScope = {
     contractAddress: string;
 };
 
+function createStorageRecordId(): number {
+    return Date.now() * 1000 + randomInt(0, 1000);
+}
+
 export class MedicalRecordService {
 
     private readonly blockchainService:
@@ -161,6 +165,8 @@ export class MedicalRecordService {
             );
         }
 
+
+
         const fileName =
             file.originalname?.trim() ||
             "medical-record";
@@ -190,6 +196,8 @@ export class MedicalRecordService {
             sha256FromBuffer(
                 encrypted.ciphertext
             );
+        const plaintextHash =
+            sha256FromBuffer(file.buffer);
 
         /*
          * ------------------------------------------------------
@@ -269,6 +277,8 @@ export class MedicalRecordService {
                     fileSize,
 
                     fileHash,
+
+                    plaintextHash,
 
                     cid,
 
@@ -367,6 +377,69 @@ export class MedicalRecordService {
         }
     }
 
+    async createPatientStorageRecord(
+        patientWallet: string,
+        patientUserId: string,
+        file: Express.Multer.File,
+        category: string,
+        emergency: boolean
+    ) {
+        if (!file?.buffer?.length) {
+            throw new Error("Medical record file is required");
+        }
+        const fileName = file.originalname?.trim() || "medical-record";
+        const mimeType = file.mimetype?.trim() || "application/octet-stream";
+        const managedKey = await this.keyManagementService.createKey();
+        const encrypted = this.encryptionService.encrypt(file.buffer, managedKey.key, managedKey.reference);
+        const fileHash = sha256FromBuffer(encrypted.ciphertext);
+        const plaintextHash = sha256FromBuffer(file.buffer);
+        const cid = (await this.ipfsService.uploadFile(encrypted.ciphertext, fileName, mimeType)).cid;
+        const recordId = createStorageRecordId();
+        try {
+            await MedicalRecordModel.create({
+                recordId,
+                recordType: "storage",
+                blockchainStatus: "not_anchored",
+                patientWallet: patientWallet.toLowerCase(),
+                patientUserId,
+                fileName,
+                mimeType,
+                fileSize: file.buffer.length,
+                fileHash,
+                plaintextHash,
+                cid,
+                encryptionVersion: encrypted.metadata.version,
+                encryptionAlgorithm: encrypted.metadata.algorithm,
+                encryptionIv: encrypted.metadata.iv,
+                encryptionAuthTag: encrypted.metadata.authTag,
+                encryptionKeyReference: encrypted.metadata.keyReference,
+                category,
+                emergency
+            });
+        } catch (error) {
+            try {
+                await this.ipfsService.unpinFile(cid);
+            } catch (cleanupError) {
+                console.error("Failed to clean up Patient upload after metadata failure", cleanupError);
+            }
+            throw error;
+        }
+        return {
+            recordId,
+            patientWallet: patientWallet.toLowerCase(),
+            patientUserId,
+            cid,
+            fileHash,
+            plaintextHash,
+            fileName,
+            mimeType,
+            fileSize: file.buffer.length,
+            category,
+            emergency,
+            blockchainStatus: "not_anchored" as const
+        };
+    }
+
     /*
     ==========================================================
     GET
@@ -395,10 +468,15 @@ export class MedicalRecordService {
         accessContext?: MedicalRecordAccessContext
     ) {
 
-        const record =
-            await this.getMedicalRecord(
-                recordId
-            );
+        let metadata = await MedicalRecordModel.findOne(this.getScopedRecordFilter(recordId));
+        const record = metadata?.recordType === "storage"
+            ? {
+                ...metadata.toObject(),
+                patient: metadata.patientWallet,
+                cid: metadata.cid,
+                active: true
+            }
+            : await this.getMedicalRecord(recordId);
 
         if (accessContext) {
             await this.assertRecordAccess(
@@ -420,8 +498,6 @@ export class MedicalRecordService {
                 "Medical record CID is missing"
             );
         }
-
-        let metadata = await MedicalRecordModel.findOne(this.getScopedRecordFilter(recordId));
 
         const fileHash =
             String(
@@ -514,6 +590,18 @@ export class MedicalRecordService {
                 encryptionMetadata
             );
 
+        if (
+            metadata?.plaintextHash &&
+            !verifySha256(
+                decryptedContent,
+                metadata.plaintextHash
+            )
+        ) {
+            throw new Error(
+                "Medical record plaintext integrity verification failed"
+            );
+        }
+
         return {
             content: decryptedContent,
             cid,
@@ -540,6 +628,7 @@ export class MedicalRecordService {
     async createFabricMedicalRecord(input: {
         patientId: string;
         patientWallet: string;
+        patientUserId?: string;
         doctorId: string;
         hospitalId: string;
         file: Express.Multer.File;
@@ -583,6 +672,7 @@ export class MedicalRecordService {
         );
 
         const fileHash = sha256FromBuffer(encrypted.ciphertext);
+        const plaintextHash = sha256FromBuffer(file.buffer);
         const uploadResult = await this.ipfsService.uploadFile(
             encrypted.ciphertext,
             fileName,
@@ -629,10 +719,12 @@ export class MedicalRecordService {
             await MedicalRecordModel.create({
                 recordId,
                 patientWallet: patientWallet.toLowerCase(),
+                patientUserId: input.patientUserId,
                 fileName,
                 mimeType,
                 fileSize,
                 fileHash,
+                plaintextHash,
                 cid,
                 encryptionVersion: encrypted.metadata.version,
                 encryptionAlgorithm: encrypted.metadata.algorithm,
@@ -729,6 +821,18 @@ export class MedicalRecordService {
             key,
             encryptionMetadata
         );
+
+        if (
+            metadata.plaintextHash &&
+            !verifySha256(
+                decryptedContent,
+                metadata.plaintextHash
+            )
+        ) {
+            throw new Error(
+                "Medical record plaintext integrity verification failed"
+            );
+        }
 
         return {
             content: decryptedContent,
@@ -843,6 +947,8 @@ export class MedicalRecordService {
             sha256FromBuffer(
                 encrypted.ciphertext
             );
+        const plaintextHash =
+            sha256FromBuffer(file.buffer);
 
         /*
          * Upload the replacement file first.
@@ -908,6 +1014,8 @@ export class MedicalRecordService {
                                 fileSize,
 
                                 fileHash,
+
+                                plaintextHash,
 
                                 cid,
 
@@ -1279,17 +1387,40 @@ export class MedicalRecordService {
         caller?: string
     ) {
 
-        const recordIds =
-            await this.blockchainService
-                .getPatientRecords(
-                    patient,
-                    caller
-                );
-
-        return this.hydrateMedicalRecordIds(
-            recordIds,
-            caller
-        );
+        let blockchainRecords: any[] = [];
+        try {
+            const recordIds = await this.blockchainService.getPatientRecords(patient, caller);
+            blockchainRecords = await this.hydrateMedicalRecordIds(recordIds, caller);
+        } catch (error) {
+            console.warn("Unable to load blockchain patient records; returning storage records", error instanceof Error ? error.message : "unknown error");
+        }
+        const storageRecords = await MedicalRecordModel.find({
+            patientWallet: patient.toLowerCase(),
+            recordType: "storage",
+            ...(this.getCurrentRecordScope() ?? {})
+        }).sort({ createdAt: -1 }).lean();
+        return [
+            ...storageRecords.map((record) => ({
+                recordId: record.recordId,
+                patientWallet: record.patientWallet,
+                patientUserId: record.patientUserId,
+                cid: record.cid,
+                fileHash: record.fileHash,
+                plaintextHash: record.plaintextHash,
+                fileName: record.fileName,
+                mimeType: record.mimeType,
+                fileSize: record.fileSize,
+                category: record.category,
+                emergency: record.emergency,
+                createdAt: record.createdAt,
+                timestamp: record.createdAt,
+                status: "Not anchored on blockchain",
+                blockchainStatus: record.blockchainStatus,
+                fhirProcessingId: record.fhirProcessingId,
+                fhirStatus: record.fhirStatus
+            })),
+            ...blockchainRecords
+        ];
     }
 
     async getDoctorRecords(

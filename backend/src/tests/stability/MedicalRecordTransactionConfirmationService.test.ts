@@ -102,6 +102,9 @@ const CID =
 const FILE_HASH =
     "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
+const PLAINTEXT_HASH =
+    "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+
 const TX_HASH =
     "0x" + "a".repeat(64);
 
@@ -126,6 +129,9 @@ function createPreparation(overrides: any = {}) {
 
         fileHash:
             FILE_HASH,
+
+        plaintextHash:
+            PLAINTEXT_HASH,
 
         fileName:
             "report.pdf",
@@ -624,6 +630,9 @@ describe(
 
                         fileHash:
                             FILE_HASH,
+
+                        plaintextHash:
+                            PLAINTEXT_HASH,
 
                         cid:
                             CID,

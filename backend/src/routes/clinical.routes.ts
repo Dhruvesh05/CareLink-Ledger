@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authenticate, requireRole } from "../middleware/auth";
 import { ClinicalController } from "../controllers/ClinicalController";
+import { requireCareLinkRole } from "../ssi/middleware/carelinkAuthorization";
 
 const router = Router();
 router.use(authenticate);
@@ -17,6 +18,18 @@ router.post("/access-requests/:requestId/revoke/prepare", requireRole("Patient")
 router.post("/access-requests/:requestId/revoke/confirm", requireRole("Patient"), controller.confirmAccessRevocation.bind(controller));
 router.get("/notes", requireRole("Doctor", "Patient"), controller.listNotes.bind(controller));
 router.post("/notes", requireRole("Doctor"), controller.createNote.bind(controller));
+router.get(
+    "/comments",
+    requireCareLinkRole("Doctor", "Patient"),
+    requireRole("Doctor", "Patient"),
+    controller.listRecordComments.bind(controller)
+);
+router.post(
+    "/comments",
+    requireCareLinkRole("Doctor"),
+    requireRole("Doctor"),
+    controller.createRecordComment.bind(controller)
+);
 router.get("/notifications", controller.notifications.bind(controller));
 router.patch("/notifications/:notificationId/read", controller.markNotificationRead.bind(controller));
 

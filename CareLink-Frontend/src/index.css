@@ -1,248 +1,243 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: 'Space Grotesk', 'DM Sans', sans-serif;
 }
 
 @layer base {
   :root {
-    --bg-primary: #F5F7F8;
-    --bg-secondary: #F5F7F8;
-    --bg-card: #FFFFFF;
-    --bg-glass: rgba(255, 255, 255, 0.85);
-    --text-primary: #17212F;
-    --text-secondary: #697586;
-    --border-color: #E4E8EC;
-    --border-hover: rgba(0, 113, 227, 0.3);
-    --accent-blue: #0F8B78;
-    --accent-teal: #0F8B78;
-    --card-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05);
-    --glow-color: rgba(0, 113, 227, 0.15);
+    --cl-bg: #ffffff;
+    --cl-surface: #ffffff;
+    --cl-surface-muted: #f0f5fb;
+    --cl-surface-elevated: #ffffff;
+    --cl-text: #172033;
+    --cl-text-secondary: #64748b;
+    --cl-text-muted: #94a3b8;
+    --cl-border: #e2e8f0;
+    --cl-border-subtle: #edf2f7;
+    --cl-primary: #2563eb;
+    --cl-primary-hover: #1d4ed8;
+    --cl-primary-soft: #dbeafe;
+    --cl-success: #16a34a;
+    --cl-warning: #d97706;
+    --cl-danger: #dc2626;
+    --cl-shadow: 0 8px 24px rgba(30, 64, 175, 0.06);
   }
 
   .dark {
-    --bg-primary: #000000;
-    --bg-secondary: #0A0A0C;
-    --bg-card: rgba(18, 18, 22, 0.7);
-    --bg-glass: rgba(10, 10, 15, 0.75);
-    --text-primary: #F5F5F7;
-    --text-secondary: #86868B;
-    --border-color: rgba(255, 255, 255, 0.1);
-    --border-hover: rgba(0, 242, 254, 0.4);
-    --accent-blue: #00F2FE;
-    --accent-teal: #00F2FE;
-    --card-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
-    --glow-color: rgba(0, 242, 254, 0.15);
+    --cl-bg: #000000;
+    --cl-surface: #101827;
+    --cl-surface-muted: #162235;
+    --cl-surface-elevated: #1b2940;
+    --cl-text: #f1f5f9;
+    --cl-text-secondary: #cbd5e1;
+    --cl-text-muted: #94a3b8;
+    --cl-border: #263449;
+    --cl-border-subtle: #1c2a3e;
+    --cl-primary: #3b82f6;
+    --cl-primary-hover: #60a5fa;
+    --cl-primary-soft: #1e3a5f;
+    --cl-success: #22c55e;
+    --cl-warning: #fbbf24;
+    --cl-danger: #f87171;
+    --cl-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
   }
 }
 
-@layer components {
-  .enterprise-panel {
-    border: 1px solid #E4E8EC;
-    border-radius: 16px;
-    background: #FFFFFF;
-    box-shadow: 0 2px 10px rgba(23, 33, 47, 0.04);
-  }
-  .enterprise-table {
-    width: 100%;
-    min-width: 720px;
-    border-collapse: collapse;
-    font-size: 0.875rem;
-  }
-  .enterprise-table th {
-    border-bottom: 1px solid #E4E8EC;
-    color: #697586;
-    font-size: 0.6875rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    padding: 0.75rem;
-    text-align: left;
-    text-transform: uppercase;
-  }
-  .enterprise-table td {
-    border-bottom: 1px solid #EEF1F3;
-    color: #17212F;
-    padding: 0.875rem 0.75rem;
-    vertical-align: top;
-  }
-  .enterprise-table tbody tr:hover { background: #F8FAFA; }
-  .enterprise-input {
-    border: 1px solid #E4E8EC;
-    border-radius: 10px;
-    background: #FFFFFF;
-    color: #17212F;
-    outline: none;
-    padding: 0.625rem 0.75rem;
-  }
-  .enterprise-input:focus { border-color: #0F8B78; box-shadow: 0 0 0 3px rgba(15, 139, 120, 0.12); }
+html,
+body,
+button,
+input,
+select,
+textarea {
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-html, body, *, button, input, select, textarea {
-  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+.app-shell .font-display,
+.app-shell h1,
+.app-shell h2,
+.app-shell h3 {
+  font-family: 'Space Grotesk', 'DM Sans', sans-serif;
 }
 
-html, body {
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
+.app-shell .font-display {
+  letter-spacing: -0.035em;
+}
+
+html,
+body {
+  background: var(--cl-bg);
+  color: var(--cl-text);
   overflow-x: hidden;
   scroll-behavior: smooth;
-  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Shared enterprise surface primitives */
-.enterprise-panel {
-  border: 1px solid #E4E8EC;
-  border-radius: 16px;
-  background: #FFFFFF;
-  box-shadow: 0 2px 10px rgba(23, 33, 47, 0.04);
+/* Authenticated application primitives. Landing pages intentionally keep their own visual language. */
+.app-shell {
+  background: var(--cl-bg);
+  color: var(--cl-text);
+  transition: background-color 180ms ease, color 180ms ease;
 }
 
-.enterprise-muted {
-  color: #697586;
+.app-shell .enterprise-panel {
+  border: 1px solid var(--cl-border);
+  border-radius: 12px;
+  background: var(--cl-surface);
+  box-shadow: var(--cl-shadow);
 }
 
-/* Typography */
-.apple-heading {
-  letter-spacing: -0.03em;
+.app-shell .enterprise-muted {
+  color: var(--cl-text-secondary);
+}
+
+.app-shell .enterprise-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.app-shell .enterprise-table th {
+  border-bottom: 1px solid var(--cl-border);
+  color: var(--cl-text-muted);
+  font-size: 0.6875rem;
   font-weight: 700;
-  line-height: 1.05;
+  letter-spacing: 0.06em;
+  padding: 0.75rem;
+  text-align: left;
+  text-transform: uppercase;
 }
 
-.apple-gradient-text {
-  color: #0284c7;
+.app-shell .enterprise-table td {
+  border-bottom: 1px solid var(--cl-border-subtle);
+  color: var(--cl-text);
+  padding: 0.875rem 0.75rem;
+  vertical-align: top;
 }
 
-.dark .apple-gradient-text {
-  color: #38bdf8;
+.app-shell .enterprise-table tbody tr:hover {
+  background: var(--cl-surface-muted);
 }
 
-/* Legacy utility retained for landing pages */
-.glass-panel {
-  background: var(--bg-card);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border-color);
-  box-shadow: var(--card-shadow);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.glass-panel:hover {
-  border-color: var(--border-hover);
-}
-
-.glass-nav {
-  background: var(--bg-glass);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border-bottom: 1px solid var(--border-color);
-}
-
-/* Animations */
-@keyframes marquee {
-  0% { transform: translateX(0%); }
-  100% { transform: translateX(-100%); }
-}
-
-.animate-marquee {
-  display: flex;
-  width: max-content;
-  animation: marquee 35s linear infinite;
-}
-
-.animate-marquee:hover {
-  animation-play-state: paused;
-}
-
-@keyframes pulseGlow {
-  0%, 100% { opacity: 0.4; transform: scale(1); }
-  50% { opacity: 0.8; transform: scale(1.05); }
-}
-
-.animate-pulse-glow {
-  animation: pulseGlow 4s ease-in-out infinite;
-}
-
-@keyframes flowDash {
-  to {
-    stroke-dashoffset: -40;
-  }
-}
-
-.animate-flow {
-  stroke-dasharray: 8 8;
-  animation: flowDash 1.5s linear infinite;
-}
-
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: var(--bg-primary);
-}
-::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
-}
-
-/* Normalize legacy authenticated page bodies while individual screens migrate. */
-main .bg-white {
-  border: 1px solid #E4E8EC;
-  border-radius: 16px;
-  box-shadow: 0 2px 10px rgba(23, 33, 47, 0.04);
-}
-
-main h1 {
-  letter-spacing: -0.02em;
-}
-
-main input:not([type="checkbox"]):not([type="radio"]),
-main select,
-main textarea {
-  border-color: #E4E8EC;
-  border-radius: 10px;
-  background-color: #FFFFFF;
-  color: #17212F;
-}
-
-main input:not([type="checkbox"]):not([type="radio"]):focus,
-main select:focus,
-main textarea:focus {
-  border-color: #0F8B78;
+.app-shell .enterprise-input {
+  border: 1px solid var(--cl-border);
+  border-radius: 8px;
+  background: var(--cl-surface);
+  color: var(--cl-text);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(15, 139, 120, 0.12);
+  padding: 0.625rem 0.75rem;
 }
 
-main table {
-  border-color: #E4E8EC;
+.app-shell .enterprise-input:focus,
+.app-shell input:focus,
+.app-shell select:focus,
+.app-shell textarea:focus {
+  border-color: var(--cl-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cl-primary) 16%, transparent);
+  outline: none;
 }
 
-main table thead th {
-  color: #697586;
+.app-shell main .bg-white,
+.app-shell main .bg-slate-50,
+.app-shell main .bg-slate-100 {
+  background-color: var(--cl-surface);
+}
+
+.app-shell main input:not([type="checkbox"]):not([type="radio"]),
+.app-shell main select,
+.app-shell main textarea {
+  border-color: var(--cl-border);
+  border-radius: 8px;
+  background-color: var(--cl-surface);
+  color: var(--cl-text);
+}
+
+.app-shell main table {
+  border-color: var(--cl-border);
+}
+
+.app-shell main table thead th {
+  color: var(--cl-text-muted);
   font-size: 0.6875rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
-main table tbody tr {
-  border-color: #EEF1F3;
+.app-shell main table tbody tr {
+  border-color: var(--cl-border-subtle);
 }
 
-main table tbody tr:hover {
-  background-color: #F8FAFA;
+.app-shell main table tbody tr:hover {
+  background-color: var(--cl-surface-muted);
+}
+
+.app-shell .text-\[\#17212F\],
+.app-shell .text-slate-900 {
+  color: var(--cl-text);
+}
+
+.app-shell .text-\[\#697586\],
+.app-shell .text-slate-500,
+.app-shell .text-slate-600 {
+  color: var(--cl-text-secondary);
+}
+
+.app-shell .border-\[\#E4E8EC\],
+.app-shell .border-slate-100,
+.app-shell .border-slate-200 {
+  border-color: var(--cl-border);
+}
+
+.app-shell .bg-\[\#F5F7F8\],
+.app-shell .bg-slate-50 {
+  background-color: var(--cl-surface-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
 
 @media (max-width: 640px) {
-  main {
+  .app-shell main {
     overflow-x: hidden;
   }
-  main table {
+
+  .app-shell main table {
     min-width: 680px;
   }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--cl-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--cl-border);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--cl-text-muted);
+}
+
+/* Legacy landing-page utility classes. */
+.glass-panel {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  box-shadow: var(--card-shadow, 0 8px 24px rgba(30, 64, 175, 0.06));
 }

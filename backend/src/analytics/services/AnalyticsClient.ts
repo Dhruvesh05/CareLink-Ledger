@@ -18,6 +18,12 @@ export interface AnalyticsAnalysisResponse {
     handoffs: Record<string, AnalyticsHandoffV1> | null;
 }
 
+export interface AnalyticsAnalysisContext {
+    patientId: string;
+    medicalRecordId: number;
+    originalRecordReference: string;
+}
+
 export interface AnalyticsClientConfig {
     readonly baseUrl: string;
     readonly timeoutMs: number;
@@ -68,6 +74,7 @@ export class AnalyticsClient {
         file: Buffer,
         fileName: string,
         mimeType = "application/octet-stream",
+        context?: AnalyticsAnalysisContext,
     ): Promise<AnalyticsAnalysisResponse> {
         if (!this.config.baseUrl.trim()) {
             throw new AnalyticsClientError(
@@ -89,6 +96,14 @@ export class AnalyticsClient {
             new Blob([new Uint8Array(file)], { type: mimeType }),
             fileName,
         );
+        if (context) {
+            form.append("patient_id", context.patientId);
+            form.append("medical_record_id", String(context.medicalRecordId));
+            form.append(
+                "original_record_reference",
+                context.originalRecordReference
+            );
+        }
 
         let response;
         try {

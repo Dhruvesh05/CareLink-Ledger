@@ -53,8 +53,8 @@ function UploadRecord() {
       if (destination === "fabric") {
         // Fabric uses the authenticated backend Gateway, not a MetaMask chain switch.
         await createOrLoadAuthenticatedDid();
-        await requestSsiAuthorizationChallenge();
-        const presentation = await createSsiAuthorizationPresentation();
+        const challenge = await requestSsiAuthorizationChallenge();
+        const presentation = await createSsiAuthorizationPresentation(challenge.challengeId);
 
         const fabricForm = new FormData();
         fabricForm.append("file", file);
@@ -62,6 +62,7 @@ function UploadRecord() {
         fabricForm.append("category", category);
         fabricForm.append("emergency", String(emergency));
         fabricForm.append("presentation", JSON.stringify(presentation));
+        fabricForm.append("challengeId", challenge.challengeId);
 
         const uploaded = await uploadFabricMedicalRecord(fabricForm);
         setResult({
@@ -86,8 +87,8 @@ function UploadRecord() {
       await createOrLoadAuthenticatedDid();
 
       // /prepare consumes its own one-time authorization challenge.
-      await requestSsiAuthorizationChallenge();
-      const preparePresentation = await createSsiAuthorizationPresentation();
+      const prepareChallenge = await requestSsiAuthorizationChallenge();
+      const preparePresentation = await createSsiAuthorizationPresentation(prepareChallenge.challengeId);
 
       const preparedForm = new FormData();
       preparedForm.append("file", file);
@@ -95,6 +96,7 @@ function UploadRecord() {
       preparedForm.append("category", category);
       preparedForm.append("emergency", String(emergency));
       preparedForm.append("presentation", JSON.stringify(preparePresentation));
+      preparedForm.append("challengeId", prepareChallenge.challengeId);
 
       const prepared = await prepareMedicalRecord(preparedForm);
 
@@ -109,13 +111,14 @@ function UploadRecord() {
       });
 
       // Generate the one-time /confirm proof after MetaMask returns the hash.
-      await requestSsiAuthorizationChallenge();
-      const confirmPresentation = await createSsiAuthorizationPresentation();
+      const confirmChallenge = await requestSsiAuthorizationChallenge();
+      const confirmPresentation = await createSsiAuthorizationPresentation(confirmChallenge.challengeId);
 
       const confirmed = await confirmMedicalRecord(
         prepared.preparationId,
         hash,
         confirmPresentation,
+        confirmChallenge.challengeId,
       );
       setResult({
         recordId: confirmed.recordId,

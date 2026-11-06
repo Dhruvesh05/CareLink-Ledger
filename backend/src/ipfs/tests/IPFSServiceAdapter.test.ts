@@ -228,6 +228,35 @@ describe("IPFSServiceAdapter", () => {
     );
 
     it(
+        "preserves the storage error cause from an IPFS upload failure",
+        async () => {
+            const cause = new Error("fetch failed");
+            const storageError = Object.assign(
+                new Error("Failed to store file in IPFS"),
+                { cause }
+            );
+
+            mockStorage.store.mockRejectedValue(storageError);
+
+            const adapter = new IPFSServiceAdapter(
+                mockStorage as any,
+                mockPinService as any
+            );
+
+            await expect(
+                adapter.uploadFile(
+                    Buffer.from("encrypted"),
+                    "record.bin",
+                    "application/octet-stream"
+                )
+            ).rejects.toMatchObject({
+                message: "Failed to store file in IPFS",
+                cause
+            });
+        }
+    );
+
+    it(
         "unpins a CID through PinService",
         async () => {
 

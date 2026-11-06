@@ -36,6 +36,15 @@ router.post(
 );
 
 router.post(
+    "/patient-upload",
+    upload.single("file"),
+    requireCareLinkRole("Patient"),
+    requireRole("Patient"),
+    requireFile,
+    controller.uploadPatientMedicalRecord.bind(controller)
+);
+
+router.post(
     "/confirm",
     requireCareLinkRole("Doctor"),
     requireRole("Doctor"),
@@ -79,6 +88,7 @@ READ
 
 router.get(
     "/view/:recordId",
+    requireCareLinkRole("Doctor", "Patient", "Hospital", "Admin"),
     controller.viewRecord.bind(controller)
 );
 
@@ -96,16 +106,19 @@ router.post(
 
 router.get(
     "/patient/:wallet",
+    requireCareLinkRole("Patient", "Admin"),
     controller.getPatientRecords.bind(controller)
 );
 
 router.get(
     "/doctor/:wallet",
+    requireCareLinkRole("Doctor", "Admin"),
     controller.getDoctorRecords.bind(controller)
 );
 
 router.get(
     "/hospital/:wallet",
+    requireCareLinkRole("Hospital", "Admin"),
     controller.getHospitalRecords.bind(controller)
 );
 
@@ -133,6 +146,8 @@ UPDATE
 router.put(
     "/update",
     upload.single("file"),
+    requireCareLinkRole("Doctor"),
+    requireRole("Doctor"),
     requireFile,
     controller.updateMedicalRecord.bind(controller)
 );
@@ -161,6 +176,7 @@ AUDIT
 
 router.post(
     "/download/:recordId",
+    requireCareLinkRole("Doctor", "Patient", "Hospital", "Admin"),
     controller.logDownload.bind(controller)
 );
 

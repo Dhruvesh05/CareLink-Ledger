@@ -7,6 +7,7 @@ import {
     handleAnalyticsUploadError,
     requireAnalyticsFile
 } from "../analytics/middleware/analyticsUpload.middleware";
+import { requireCareLinkRole } from "../ssi/middleware/carelinkAuthorization";
 
 const router = Router();
 const controller = new AnalyticsController();
@@ -21,5 +22,23 @@ router.post(
     controller.analyze.bind(controller)
 );
 
-export default router;
+router.post(
+    "/medical-record/:recordId",
+    authenticate,
+    requireCareLinkRole("Admin", "Patient", "Doctor"),
+    requireRole("Admin", "Patient", "Doctor"),
+    analyticsUpload.single("file"),
+    handleAnalyticsUploadError,
+    requireAnalyticsFile,
+    controller.analyzeMedicalRecord.bind(controller)
+);
 
+router.get(
+    "/medical-record/:recordId/results/:processingId",
+    authenticate,
+    requireCareLinkRole("Admin", "Patient", "Doctor"),
+    requireRole("Admin", "Patient", "Doctor"),
+    controller.getMedicalRecordProcessingResult.bind(controller)
+);
+
+export default router;

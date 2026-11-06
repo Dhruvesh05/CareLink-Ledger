@@ -7,6 +7,9 @@ import { BlockchainFactory } from "../blockchain/provider/BlockchainFactory";
 import { IPFSServiceAdapter } from "../ipfs/adapters/IPFSServiceAdapter";
 import { MedicalRecordService } from "../services/MedicalRecordService";
 import { requireCareLinkRole } from "../ssi/middleware/carelinkAuthorization";
+import AccessRequestModel from "../models/AccessRequest";
+import { getSupportedEvmNetwork } from "../blockchain/config/supportedNetworks";
+import UserModel from "../models/User";
 
 const router = Router();
 
@@ -72,7 +75,6 @@ router.post(
             let authorized =
                 role === "Admin" ||
                 (role === "Patient" && identityMatches(patientId)) ||
-                (role === "Doctor" && identityMatches(doctorId)) ||
                 (role === "Hospital" && identityMatches(hospitalId));
 
             // Preserve the existing EVM doctor-grant model for bridged records.
@@ -84,13 +86,29 @@ router.post(
                         source[1].toLowerCase() === "ethereum" ? 11155111 : 80002;
 
                     try {
+                        const network = getSupportedEvmNetwork(chainId);
+                        const requestGrant = await AccessRequestModel.findOne({
+                            doctorUserId: req.auth?.userId,
+                            status: "active",
+                            permissionType: "READ_ONLY",
+                            recordIds: Number(source[2]),
+                            "recordRefs": {
+                                $elemMatch: {
+                                    chainId,
+                                    contractAddress: network.medicalRecordAddress.toLowerCase(),
+                                    recordId: Number(source[2]),
+                                },
+                            },
+                            $or: [
+                                { expiresAt: { $exists: false } },
+                                { expiresAt: { $gt: new Date() } },
+                            ],
+                        }).select("_id").lean().exec();
                         const sourceProvider =
                             BlockchainFactory.getProviderForChainId(chainId);
 
-                        authorized = await sourceProvider.isAuthorizedDoctor(
-                            Number(source[2]),
-                            wallet
-                        );
+                        authorized = Boolean(requestGrant) &&
+                            await sourceProvider.isAuthorizedDoctor(Number(source[2]), wallet);
                     } catch {
                         authorized = false;
                     }
@@ -287,6 +305,18 @@ router.post(
                 id => fabricProvider.getPatient(id)
             );
 
+            const patientUser = await UserModel.findOne({
+                walletAddress: patientWallet.toLowerCase(),
+                role: "Patient",
+                active: true
+            }).select("_id did").lean().exec();
+
+            if (!patientUser?.did) {
+                throw new Error(
+                    "The patient must have an active CareLink account and SSI identity."
+                );
+            }
+
             const doctor = await resolveIdentity(
                 "Doctor",
                 doctorWallet,
@@ -331,6 +361,7 @@ router.post(
             const created = await fabricContentService.createFabricMedicalRecord({
                 patientId: patient.id,
                 patientWallet,
+                patientUserId: String(patientUser._id),
                 doctorId: doctor.id,
                 hospitalId: hospital.id,
                 file: req.file,

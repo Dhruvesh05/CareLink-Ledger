@@ -3,6 +3,7 @@ import DashboardLayout from "../../components/DashboardLayout";
 import { getHospitalStats, type HospitalStats } from "../../api/organization";
 import { ContentPanel, EmptyState, ErrorState, LoadingState, MetricCard, PageHeader } from "../../components/ui";
 import { Building2, Calendar, Users, UserRound } from "lucide-react";
+import { BarChart, DonutChart, LineChart } from "../../components/charts";
 
 function Dashboard() {
   const [stats, setStats] = useState<HospitalStats | null>(null);
@@ -43,6 +44,17 @@ function Dashboard() {
                 )) : <EmptyState title="No recent organization activity" />}
               </div>
             </ContentPanel>
+            <div className="grid gap-6 lg:grid-cols-2">
+              <ContentPanel title="Appointment trend" subtitle="Monthly appointment totals from the hospital analytics service.">
+                <LineChart items={(stats?.monthlyAppointments ?? []).map((item) => ({ label: item.month, value: item.count }))} />
+              </ContentPanel>
+              <ContentPanel title="Appointment status" subtitle="Distribution of appointments by current status.">
+                <DonutChart items={(stats?.appointmentStatus ?? []).map((item) => ({ label: item.status, value: item.count }))} />
+              </ContentPanel>
+              <ContentPanel title="Doctors by department" subtitle="Active associations grouped by department.">
+                <BarChart items={(stats?.doctorsByDepartment ?? []).map((item) => ({ label: item.name, value: item.count }))} />
+              </ContentPanel>
+            </div>
           </>
         )}
       </div>

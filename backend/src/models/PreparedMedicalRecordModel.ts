@@ -11,9 +11,11 @@ export interface IPreparedMedicalRecord
     doctorWallet: string;
     hospitalWallet: string;
     patientWallet: string;
+    patientUserId?: string;
 
     cid: string;
     fileHash: string;
+    plaintextHash?: string;
     encryptionVersion: number;
     encryptionAlgorithm: string;
     encryptionIv: string;
@@ -71,6 +73,12 @@ const PreparedMedicalRecordSchema =
                 index: true
             },
 
+            patientUserId: {
+                type: String,
+                index: true,
+                trim: true
+            },
+
             cid: {
                 type: String,
                 required: true,
@@ -80,6 +88,11 @@ const PreparedMedicalRecordSchema =
             fileHash: {
                 type: String,
                 required: true,
+                index: true
+            },
+
+            plaintextHash: {
+                type: String,
                 index: true
             },
 

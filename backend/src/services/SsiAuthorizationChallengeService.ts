@@ -3,6 +3,7 @@ import { randomBytes } from "crypto";
 import SsiAuthorizationChallengeModel from "../models/SsiAuthorizationChallenge";
 
 export interface SsiAuthorizationChallenge {
+    challengeId: string;
     challenge: string;
     expiresAt: Date;
 }
@@ -20,7 +21,7 @@ export class SsiAuthorizationChallengeService {
             Date.now() + SSI_AUTHORIZATION_CHALLENGE_TTL_MS
         );
 
-        await SsiAuthorizationChallengeModel.create({
+        const record = await SsiAuthorizationChallengeModel.create({
             userId,
             challenge,
             expiresAt,
@@ -28,8 +29,36 @@ export class SsiAuthorizationChallengeService {
         });
 
         return {
+            challengeId: String(record._id),
             challenge,
             expiresAt
+        };
+    }
+
+    async getChallenge(
+        userId: string,
+        challengeId: string
+    ): Promise<SsiAuthorizationChallenge | null> {
+        this.requireUserId(userId);
+        if (typeof challengeId !== "string" || !challengeId.trim()) {
+            return null;
+        }
+
+        const record = await SsiAuthorizationChallengeModel.findOne({
+            _id: challengeId.trim(),
+            userId,
+            used: false,
+            expiresAt: { $gt: new Date() }
+        });
+
+        if (!record) {
+            return null;
+        }
+
+        return {
+            challengeId: String(record._id),
+            challenge: record.challenge,
+            expiresAt: record.expiresAt
         };
     }
 
@@ -51,6 +80,7 @@ export class SsiAuthorizationChallengeService {
         }
 
         return {
+            challengeId: String(record._id),
             challenge: record.challenge,
             expiresAt: record.expiresAt
         };
@@ -58,13 +88,13 @@ export class SsiAuthorizationChallengeService {
 
     async consumeChallenge(
         userId: string,
-        challenge: string
+        challengeId: string
     ): Promise<boolean> {
         if (
             typeof userId !== "string" ||
             !userId.trim() ||
-            typeof challenge !== "string" ||
-            !challenge.trim()
+            typeof challengeId !== "string" ||
+            !challengeId.trim()
         ) {
             return false;
         }
@@ -73,7 +103,7 @@ export class SsiAuthorizationChallengeService {
             await SsiAuthorizationChallengeModel.findOneAndUpdate(
                 {
                     userId,
-                    challenge,
+                    _id: challengeId.trim(),
                     used: false,
                     expiresAt: { $gt: new Date() }
                 },
